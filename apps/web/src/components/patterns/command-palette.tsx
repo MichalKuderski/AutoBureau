@@ -46,7 +46,18 @@ const DESTINATIONS: Result[] = [
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [cursor, setCursor] = useState(0);
+  // The cursor remembers which query it was chosen for. When the query changes the
+  // highlight returns to the first result by derivation — no effect, no extra render.
+  const [cursorState, setCursorState] = useState<{ forQuery: string; index: number }>({
+    forQuery: "",
+    index: 0,
+  });
+  const cursor = cursorState.forQuery === query ? cursorState.index : 0;
+  const setCursor = (next: number | ((current: number) => number)) =>
+    setCursorState((prev) => {
+      const current = prev.forQuery === query ? prev.index : 0;
+      return { forQuery: query, index: typeof next === "function" ? next(current) : next };
+    });
   const panelRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const router = useRouter();
@@ -59,13 +70,23 @@ export function CommandPalette() {
   const { data: items = [] } = useItems(household.id, { search: query });
 
   useEffect(() => {
+    const reset = () => {
+      setQuery("");
+      setCursorState({ forQuery: "", index: 0 });
+    };
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen((v) => !v);
+        setOpen((wasOpen) => {
+          if (!wasOpen) reset();
+          return !wasOpen;
+        });
       }
     };
-    const onOpen = () => setOpen(true);
+    const onOpen = () => {
+      reset();
+      setOpen(true);
+    };
     window.addEventListener("keydown", onKey);
     window.addEventListener("autobureau:open-command-palette", onOpen);
     return () => {
@@ -74,12 +95,9 @@ export function CommandPalette() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!open) {
-      setQuery("");
-      setCursor(0);
-    }
-  }, [open]);
+  // Reset happens where the palette is *opened* rather than in an effect watching
+  // `open`. Same user-visible behaviour (a fresh palette every time), one render
+  // instead of two, and no state written during commit.
 
   const results = useMemo<Result[]>(() => {
     const q = query.trim().toLowerCase();
@@ -123,10 +141,6 @@ export function CommandPalette() {
       : DESTINATIONS;
     return [...out, ...dest];
   }, [query, obligations, documents, items, household.timezone]);
-
-  useEffect(() => {
-    setCursor(0);
-  }, [query]);
 
   // Keep the highlighted option scrolled into view as the cursor moves.
   useEffect(() => {

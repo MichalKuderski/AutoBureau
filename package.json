@@ -1,19 +1,29 @@
 {
   "name": "autobureau",
   "private": true,
+  "type": "module",
   "packageManager": "pnpm@10.34.5",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
     "test:integration": "turbo run test:integration",
-    "lint": "turbo run lint",
+    "lint": "eslint .",
     "typecheck": "turbo run typecheck",
     "db:up": "docker compose up -d postgres redis",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "lint:fix": "eslint . --fix"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@next/eslint-plugin-next": "^16.2.12",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.8.0",
     "turbo": "^2.5.0",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.65.0"
   }
 }

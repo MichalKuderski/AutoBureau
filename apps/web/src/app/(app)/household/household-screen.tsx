@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/patterns/page-header";
-import { Card, CardContent } from "@/components/ui/card";
 import { Chip, ITEM_TONE } from "@/components/ui/chip";
 import { FilterBar, SearchInput, type FilterOption } from "@/components/ui/filter-bar";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -36,7 +35,7 @@ export function HouseholdScreen() {
   const [selected, setSelected] = useState<ItemView | null>(null);
 
   const query = useItems(household.id, { search, memberId });
-  const items = query.data ?? [];
+  const items = useMemo(() => query.data ?? [], [query.data]);
 
   const memberFilters: FilterOption[] = useMemo(
     () => [

@@ -54,7 +54,7 @@ export function CalendarScreen() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const query = useObligations(household.id, {});
-  const obligations = query.data ?? [];
+  const obligations = useMemo(() => query.data ?? [], [query.data]);
 
   const byDay = useMemo(() => {
     const map = new Map<string, ObligationView[]>();

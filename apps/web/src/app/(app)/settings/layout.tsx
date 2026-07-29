@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { PageHeader } from "@/components/patterns/page-header";
 import { SettingsNav } from "./settings-nav";
 

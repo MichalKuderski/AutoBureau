@@ -41,7 +41,7 @@ export function ObligationsScreen() {
   const updateStatus = useUpdateObligationStatus(household.id);
   const { toast } = useToast();
 
-  const all = query.data ?? [];
+  const all = useMemo(() => query.data ?? [], [query.data]);
 
   const counts = useMemo(
     () => ({

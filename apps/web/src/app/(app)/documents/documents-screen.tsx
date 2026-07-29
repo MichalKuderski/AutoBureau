@@ -37,7 +37,7 @@ export function DocumentsScreen() {
   const [uploadOpen, setUploadOpen] = useState(false);
 
   const query = useDocuments(household.id, { search });
-  const all = query.data ?? [];
+  const all = useMemo(() => query.data ?? [], [query.data]);
 
   const counts = useMemo(
     () => ({

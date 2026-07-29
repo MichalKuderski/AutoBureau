@@ -8,7 +8,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBoundary, ErrorState, describeError } from "@/components/ui/error-state";
 import { Icon } from "@/components/ui/icon";
 import { SkeletonList, Skeleton, SkeletonGroup } from "@/components/ui/skeleton";
-import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
 import { useHousehold } from "@/providers/household-provider";

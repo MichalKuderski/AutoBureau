@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { SidebarNav, MobileTabBar, NAV_ITEMS } from "./nav";
@@ -19,12 +19,14 @@ import { TopBar } from "./top-bar";
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // Close the mobile drawer whenever the route changes.
-  useEffect(() => {
-    setMobileNavOpen(false);
-  }, [pathname]);
+  // The drawer records *which route* it was opened on, so a route change closes it
+  // by derivation rather than by an effect. An effect here would set state during
+  // commit and force a second render on every navigation; this version also handles
+  // browser back/forward for free, which a click handler alone would miss.
+  const [navOpenFor, setNavOpenFor] = useState<string | null>(null);
+  const mobileNavOpen = navOpenFor === pathname;
+  const setMobileNavOpen = (next: boolean) => setNavOpenFor(next ? pathname : null);
 
   return (
     <div className="min-h-dvh bg-canvas">

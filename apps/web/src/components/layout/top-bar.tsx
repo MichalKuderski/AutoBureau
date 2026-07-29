@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/icon";
@@ -48,13 +48,22 @@ export function TopBar({ onOpenNav }: { onOpenNav: () => void }) {
   );
 }
 
-function SearchTrigger() {
-  const [shortcut, setShortcut] = useState("Ctrl K");
+/**
+ * Platform is an external, never-changing fact. Reading it through
+ * `useSyncExternalStore` (with a no-op subscribe) gives an explicit server snapshot
+ * so hydration can't mismatch, and avoids the extra render an effect would cost.
+ */
+const subscribePlatform = () => () => {};
+const readShortcut = (): string =>
+  /mac|iphone|ipad/i.test(navigator.platform || navigator.userAgent) ? "⌘K" : "Ctrl K";
+const shortcutServerSnapshot = (): string => "Ctrl K";
 
-  useEffect(() => {
-    // Show the modifier the user actually has.
-    if (/mac|iphone|ipad/i.test(navigator.platform || navigator.userAgent)) setShortcut("⌘K");
-  }, []);
+function SearchTrigger() {
+  const shortcut = useSyncExternalStore(
+    subscribePlatform,
+    readShortcut,
+    shortcutServerSnapshot,
+  );
 
   const open = () => window.dispatchEvent(new CustomEvent("autobureau:open-command-palette"));
 

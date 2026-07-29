@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+} from "react";
 
 export type ThemePreference = "light" | "dark" | "system";
 
@@ -23,21 +30,73 @@ export const themeInitScript = `(function(){try{var p=localStorage.getItem(${JSO
   STORAGE_KEY,
 )});var m=window.matchMedia("(prefers-color-scheme: dark)").matches;var t=p==="light"||p==="dark"?p:(m?"dark":"light");document.documentElement.setAttribute("data-theme",t);}catch(e){}})();`;
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [preference, setPreferenceState] = useState<ThemePreference>("system");
-  const [systemDark, setSystemDark] = useState(false);
+/**
+ * Both inputs to the theme are *external stores*, not React state: the OS colour
+ * preference and the persisted choice in localStorage. Reading them in an effect and
+ * calling setState works, but costs a second render on every mount and trips the
+ * cascading-render rule. `useSyncExternalStore` is the API built for exactly this —
+ * it reads the store during render, subscribes for changes, and takes an explicit
+ * server snapshot so hydration can never mismatch.
+ */
 
-  useEffect(() => {
+const storageListeners = new Set<() => void>();
+
+/**
+ * Last choice made in this tab. It exists so the toggle still works when storage is
+ * unavailable (private browsing, blocked cookies) — the preference simply doesn't
+ * outlive the session, which is far better than a control that appears to do nothing.
+ * Cleared on a cross-tab `storage` event so another tab's change wins.
+ */
+let sessionPreference: ThemePreference | null = null;
+
+function subscribePreference(onChange: () => void): () => void {
+  // `storage` only fires in *other* tabs, so same-tab writes notify through the set.
+  storageListeners.add(onChange);
+  const onStorage = () => {
+    sessionPreference = null;
+    onChange();
+  };
+  window.addEventListener("storage", onStorage);
+  return () => {
+    storageListeners.delete(onChange);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
+function readPreference(): ThemePreference {
+  if (sessionPreference !== null) return sessionPreference;
+  try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "light" || stored === "dark" || stored === "system") {
-      setPreferenceState(stored);
-    }
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    setSystemDark(mq.matches);
-    const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
+    return stored === "light" || stored === "dark" ? stored : "system";
+  } catch {
+    return "system";
+  }
+}
+
+/** Server and first hydration render: no storage, no media query — assume system. */
+const preferenceServerSnapshot = (): ThemePreference => "system";
+
+function subscribeSystemDark(onChange: () => void): () => void {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
+const readSystemDark = (): boolean =>
+  window.matchMedia("(prefers-color-scheme: dark)").matches;
+const systemDarkServerSnapshot = (): boolean => false;
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const preference = useSyncExternalStore(
+    subscribePreference,
+    readPreference,
+    preferenceServerSnapshot,
+  );
+  const systemDark = useSyncExternalStore(
+    subscribeSystemDark,
+    readSystemDark,
+    systemDarkServerSnapshot,
+  );
 
   const resolved: "light" | "dark" =
     preference === "system" ? (systemDark ? "dark" : "light") : preference;
@@ -47,13 +106,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [resolved]);
 
   const setPreference = useCallback((next: ThemePreference) => {
-    setPreferenceState(next);
+    sessionPreference = next;
     try {
       if (next === "system") localStorage.removeItem(STORAGE_KEY);
       else localStorage.setItem(STORAGE_KEY, next);
     } catch {
       /* storage unavailable — theme still applies for this session */
     }
+    // The store is the source of truth; notifying re-reads it for every subscriber.
+    for (const listener of storageListeners) listener();
   }, []);
 
   const value = useMemo(
