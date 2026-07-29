@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Local CI credentials only — production secrets live in Doppler (doc 09 §5).
+  POSTGRES_PASSWORD: ci_only
+  DATABASE_ADMIN_URL: postgresql://autobureau:ci_only@localhost:5432/autobureau
+  DATABASE_URL: postgresql://app_user:app_local_only@localhost:5432/autobureau
+
+jobs:
+  verify:
+    name: build · typecheck · test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: autobureau
+          POSTGRES_PASSWORD: ci_only
+          POSTGRES_DB: autobureau
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U autobureau"
+          --health-interval 2s --health-timeout 2s --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      # Tenant isolation is the one property we never ship unverified (review F-01).
+      - name: Integration tests (RLS / tenancy / outbox)
+        run: pnpm test:integration
+
+  guardrails:
+    name: architectural guardrails
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ADR-006: application code never imports a model provider SDK directly;
+      # everything goes through the AI service's gateway.
+      - name: No direct LLM provider SDK imports outside services/ai
+        run: |
+          if grep -rEn "from ['\"](@anthropic-ai/sdk|openai)['\"]" \
+               --include="*.ts" --include="*.tsx" \
+               --exclude-dir=dist --exclude-dir=node_modules apps packages 2>/dev/null; then
+            echo "::error::Provider SDKs must be used only via the AI service gateway (ADR-006)."
+            exit 1
+          fi
+
+      # doc 06 §5: the RLS-bypassing escape hatch is allow-listed, not ambient.
+      - name: Dispatcher escape hatch stays allow-listed
+        run: |
+          hits=$(grep -rln "unsafeAcrossAllHouseholds" --include="*.ts" \
+                   --exclude-dir=dist --exclude-dir=node_modules packages apps 2>/dev/null \
+                 | grep -vE "packages/db/(src/scoped\.ts|tests/)" || true)
+          if [ -n "$hits" ]; then
+            echo "::error::unsafeAcrossAllHouseholds used outside allow-listed modules:"
+            echo "$hits"
+            exit 1
+          fi
+
+      # PRD v1 §9: chat and agent-execution are postponed. Tables//models for them
+      # must not reappear without a §21 amendment.
+      - name: PRD scope fence
+        run: |
+          if grep -rEn "^model (Conversation|Message|TaskRun|Approval) " \
+               packages/db/prisma/schema.prisma 2>/dev/null; then
+            echo "::error::v1 scope fence: chat/agent models are postponed (PRD §9). Amend via PRD §21 first."
+            exit 1
+          fi
+
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  governance:
+    name: governance documents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # The assumption registry is a governing document; structural rot there
+      # silently misleads gate decisions (docs/TRACEABILITY.md §1).
+      - name: Assumption registry is valid and complete
+        run: pnpm --filter @autobureau/ops test
+
+      - name: Constitutional documents present
+        run: |
+          for f in FOUNDING_PRINCIPLES.md CLAUDE.md docs/TRACEABILITY.md \
+                   docs/product/PRD-v1.md ops/assumptions.yaml; do
+            [ -f "$f" ] || { echo "::error::missing governing document: $f"; exit 1; }
+          done

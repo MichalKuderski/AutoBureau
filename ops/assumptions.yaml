@@ -1,0 +1,392 @@
+# AutoBureau — Assumption Registry (machine-readable source of truth)
+#
+# This file, not the markdown ledger, is authoritative. `ops/assumption-ledger.md`
+# holds the updating rules and narrative; the dashboard renders from here.
+#
+# UPDATING (FOUNDING_PRINCIPLES §10):
+#   evidence_class hierarchy, strongest first:
+#     behavioral  — we watched them do it
+#     paid        — they gave us money
+#     stated      — they told us they would
+#     expert      — a panel/advisor/model judged it
+#     secondary   — desk research, competitor signals, precedent
+#     prior       — our own reasoning, no external input
+#   Disconfirming evidence moves confidence further than confirming evidence of
+#   equal weight. `n` travels with every entry. Anecdotes (n<3) move nothing,
+#   except trust/accuracy failures, which are signal at n=1 by design.
+#
+# STATUS VOCABULARY:
+#   untested  — no primary evidence yet
+#   testing   — an experiment is live
+#   supported — evidence favors it; not yet load-bearing-proven
+#   weakened  — evidence runs against it; still open
+#   refuted   — decided against; roadmap consequence recorded
+#   retired   — no longer decision-relevant
+
+version: 2
+updated: 2026-07-28
+next_gate:
+  id: G1
+  expected: 2026-08-25
+  decides: kill / re-roll / proceed; confirms the entry wedge
+
+owners:
+  founder: { key: F, role: Founder }
+  cto: { key: CTO, role: Founding CTO }
+  ops: { key: OPS, role: Concierge/ops operator (first hire) }
+
+assumptions:
+  - id: H1
+    description: >-
+      Households will continuously feed the ledger — forwarding, connecting an inbox, or
+      uploading — at a friction level they will tolerate indefinitely.
+    category: existential
+    cost_if_wrong: existential
+    confidence: low
+    confidence_trend: flat
+    status: untested
+    owner: ops
+    accountable: founder
+    validation_experiment: >-
+      P0 concierge cohort (n=25) weekly forwarding counts, plus unaided ingestion-friction
+      test (n=50).
+    kill_threshold: <40% of concierge households still forwarding in week 3
+    next_evidence_due: 2026-08-08
+    validates_at: G1
+    reconfirms_at: G3
+    related_prd: ["F4", "F5", "F6", "M3", "M4"]
+    related_adr: []
+    related_docs: ["strategy/2026-07-27-first-principles-the-ledger.md#3", "architecture/05-document-pipeline.md"]
+    evidence:
+      - date: 2026-07-22
+        source: Category graveyard analysis (Manilla, FileThis, PKM lockers)
+        evidence_class: secondary
+        n: null
+        direction: weakens
+        note: Every passive-record ancestor died of maintenance friction; none solved ingestion.
+
+  - id: H2
+    description: >-
+      Standalone willingness to pay of $8–12/month exists in the target wedge, without a
+      found-money anchor.
+    category: existential
+    cost_if_wrong: existential
+    confidence: low
+    confidence_trend: flat
+    status: untested
+    owner: founder
+    validation_experiment: >-
+      Landing-page price split ($6 / $12 / $99yr) measured on card-intent clicks; concierge
+      day-30 real card ask.
+    kill_threshold: <25% card-intent at day 30 AND no wedge showing retention
+    next_evidence_due: 2026-08-11
+    validates_at: G1
+    reconfirms_at: G3
+    related_prd: ["F14", "M8"]
+    related_adr: []
+    related_docs: ["strategy/2026-07-27-series-a-red-team.md#6"]
+    evidence:
+      - date: 2026-07-22
+        source: Mint and Manilla shutdowns despite large user bases
+        evidence_class: secondary
+        n: null
+        direction: weakens
+        note: Prevention-shaped value historically failed to convert at consumer price points.
+      - date: 2026-07-28
+        source: Ohai.ai public pricing ($9.99/mo, $99/yr) — adjacent household-admin product
+        evidence_class: secondary
+        n: 1
+        direction: supports
+        note: First real adjacent price anchor; re-anchors the band rather than proving ours.
+
+  - id: H3
+    description: The sandwich-generation caregiver is the correct entry wedge.
+    category: strategic
+    cost_if_wrong: high
+    confidence: medium
+    confidence_trend: flat
+    status: untested
+    owner: founder
+    validation_experiment: >-
+      75 structured interviews (25 caregiver / 25 visa-holder / 25 generalist), scored with a
+      rubric written before data collection.
+    kill_threshold: Caregiver segment fails to lead on (pain_severity x commitment rate)
+    next_evidence_due: 2026-08-11
+    validates_at: G1
+    related_prd: ["§2", "§4", "§4.1"]
+    related_adr: []
+    related_docs: ["ops/p0/interview-guide.md"]
+    evidence:
+      - date: 2026-07-27
+        source: Investor/operator panel preference; adjacent-company existence (Carefull, Ohai, Milo)
+        evidence_class: expert
+        n: 7
+        direction: supports
+        note: Demand signals exist around the persona; zero first-party interviews conducted.
+
+  - id: H4
+    description: >-
+      An AI-proposal accept rate of >=85% is achievable across the eight launch document
+      types at per-field confidence thresholds.
+    category: product
+    cost_if_wrong: high
+    confidence: medium
+    confidence_trend: flat
+    status: untested
+    owner: cto
+    validation_experiment: >-
+      Evaluation harness over a 300+ fixture corpus seeded from concierge corrections; alpha
+      accept-rate telemetry.
+    kill_threshold: <75% after two tuning cycles -> pivot to human-verified service
+    next_evidence_due: 2026-10-15
+    validates_at: G2
+    related_prd: ["F7", "M5", "X1"]
+    related_adr: ["ADR-006"]
+    related_docs: ["architecture/11-testing-strategy.md#2", "architecture/04-ai-architecture.md#5"]
+    evidence: []
+
+  - id: H5
+    description: A household produces roughly 20 processable documents per month.
+    category: operational
+    cost_if_wrong: medium
+    confidence: low
+    confidence_trend: down
+    status: weakened
+    owner: ops
+    validation_experiment: Concierge weekly document counts, segmented by wedge.
+    kill_threshold: null
+    next_evidence_due: 2026-08-04
+    validates_at: G1
+    related_prd: ["§12"]
+    related_adr: []
+    related_docs: ["architecture/14-scaling-roadmap.md#4"]
+    evidence:
+      - date: 2026-07-27
+        source: Red-team panel re-estimate
+        evidence_class: expert
+        n: 7
+        direction: weakens
+        note: >-
+          Panel put realistic volume at 3–8/month after month one. Cuts COGS (good) and
+          engagement surface (bad); both models need re-baselining.
+
+  - id: H6
+    description: A search box is sufficient in version one; a conversational assistant is not needed.
+    category: product
+    cost_if_wrong: low
+    confidence: medium
+    confidence_trend: flat
+    status: untested
+    owner: cto
+    validation_experiment: Search telemetry plus tagging of "wish I could ask" support contacts in beta.
+    kill_threshold: null
+    next_evidence_due: 2027-01-15
+    validates_at: G3
+    related_prd: ["F12", "§9"]
+    related_adr: ["ADR-006"]
+    related_docs: ["strategy/2026-07-27-series-a-red-team.md#18"]
+    evidence: []
+
+  - id: H7
+    description: >-
+      Email forwarding is a workable ingestion channel alongside inbox OAuth, rather than a
+      dead end users abandon.
+    category: strategic
+    cost_if_wrong: high
+    confidence: low
+    confidence_trend: down
+    status: weakened
+    owner: ops
+    validation_experiment: Unaided friction test (n=50); concierge channel-mix observation.
+    kill_threshold: <50% unaided setup completion
+    next_evidence_due: 2026-08-15
+    validates_at: G1
+    reconfirms_at: G3
+    related_prd: ["F5", "F6"]
+    related_adr: []
+    related_docs: ["strategy/2026-07-27-series-a-red-team.md#Part IV"]
+    evidence:
+      - date: 2026-07-27
+        source: Red-team amendment A-B1
+        evidence_class: expert
+        n: 7
+        direction: weakens
+        note: Passive ingestion argued to be the product; forwarding demoted to fallback.
+
+  - id: H8
+    description: >-
+      The vendor/obligation rulebook is a tractable content problem at sustainable
+      hours-per-vendor — i.e. the moat is buildable by a small team.
+    category: strategic
+    cost_if_wrong: high
+    confidence: medium
+    confidence_trend: flat
+    status: untested
+    owner: cto
+    accountable: founder
+    validation_experiment: >-
+      Rulebook spike: complete rules for 3 states x DMV + 10 insurers + 20 subscription
+      vendors; measure hours per vendor and decay rate.
+    kill_threshold: Sustained >4 hours/vendor with annual re-verification implies unbuildable at team size
+    next_evidence_due: 2026-08-22
+    validates_at: G1
+    related_prd: ["F17"]
+    related_adr: []
+    related_docs: ["strategy/2026-07-28-competitive-deep-dive.md#Part IV"]
+    evidence: []
+
+  - id: H9
+    description: Found-money and entitlement moments drive sharing and conversion.
+    category: strategic
+    cost_if_wrong: medium
+    confidence: medium
+    confidence_trend: up
+    status: untested
+    owner: founder
+    validation_experiment: Landing-page greed variant; concierge found-value reaction logging.
+    kill_threshold: null
+    next_evidence_due: 2026-08-11
+    validates_at: G1
+    reconfirms_at: G3
+    related_prd: ["F9"]
+    related_adr: []
+    related_docs: ["ops/p0/landing-copy.md"]
+    evidence:
+      - date: 2026-07-27
+        source: Rocket Money trajectory; entitlements reframe in ledger thesis
+        evidence_class: secondary
+        n: null
+        direction: supports
+        note: The one category winner monetized recovery, not prevention.
+
+  - id: H10
+    description: Bank and advisor channels are a viable later distribution path.
+    category: strategic
+    cost_if_wrong: medium
+    confidence: high
+    confidence_trend: up
+    status: supported
+    owner: founder
+    validation_experiment: Letter-of-intent conversations during Act II. Build nothing before then.
+    kill_threshold: null
+    next_evidence_due: 2027-06-30
+    validates_at: post-G5
+    related_prd: []
+    related_adr: []
+    related_docs: ["strategy/2026-07-28-competitive-deep-dive.md#Part IV"]
+    evidence:
+      - date: 2026-07-28
+        source: Trustworthy (bank marketplace), Carefull (bank channel), Everplans (advisor channel)
+        evidence_class: secondary
+        n: 3
+        direction: supports
+        note: Three independent trust-product companies distribute this way; channel is real.
+
+  - id: H11
+    description: >-
+      Reminders function as freshness probes, so the ledger maintains itself rather than
+      decaying — the answer to the personal-knowledge-management graveyard.
+    category: product
+    cost_if_wrong: high
+    confidence: medium
+    confidence_trend: flat
+    status: untested
+    owner: cto
+    accountable: ops
+    validation_experiment: >-
+      Concierge digest probes ("is this still true?") response-rate logging; alpha freshness
+      metric.
+    kill_threshold: <30% probe response implies the self-maintenance mechanism does not exist
+    next_evidence_due: 2026-08-10
+    validates_at: G2
+    related_prd: ["F10", "M10"]
+    related_adr: []
+    related_docs: ["strategy/2026-07-27-first-principles-the-ledger.md#4"]
+    evidence: []
+
+  - id: H12
+    description: Multi-member under a single login covers caregiver needs in version one.
+    category: product
+    cost_if_wrong: medium
+    confidence: medium
+    confidence_trend: flat
+    status: untested
+    owner: founder
+    validation_experiment: Interview question set ("who else needs to see this?"); concierge sharing requests.
+    kill_threshold: null
+    next_evidence_due: 2026-08-11
+    validates_at: G1
+    reconfirms_at: G3
+    related_prd: ["F2", "§9"]
+    related_adr: ["ADR-002"]
+    related_docs: ["architecture/02-data-model.md#2"]
+    evidence: []
+
+  - id: H13
+    description: A United States-only launch is correct; international is a later, different geometry.
+    category: strategic
+    cost_if_wrong: low
+    confidence: high
+    confidence_trend: flat
+    status: supported
+    owner: founder
+    validation_experiment: None. Revisited only on Act III evidence.
+    kill_threshold: null
+    next_evidence_due: null
+    validates_at: post-G5
+    related_prd: ["§12"]
+    related_adr: []
+    related_docs: ["architecture/13-compliance-and-privacy.md#6"]
+    evidence:
+      - date: 2026-07-28
+        source: EU digital-identity wallet mandate (Dec 2026); US federal retreat from consumer filing tools
+        evidence_class: secondary
+        n: null
+        direction: supports
+        note: EU becomes a build-on-state-rails market; US white space widens.
+
+  - id: H14
+    description: >-
+      Cost of goods holds near $1.10 per active household per month at real usage after the
+      version-one scope cuts.
+    category: operational
+    cost_if_wrong: high
+    confidence: medium
+    confidence_trend: flat
+    status: untested
+    owner: cto
+    validation_experiment: Per-household cost dashboard from alpha onward.
+    kill_threshold: ">$1.60 sustained triggers a routing/caching sprint before feature work"
+    next_evidence_due: 2026-11-15
+    validates_at: G2
+    related_prd: ["X5"]
+    related_adr: ["ADR-006"]
+    related_docs: ["architecture/14-scaling-roadmap.md#4"]
+    evidence: []
+
+  - id: H15
+    description: >-
+      A well-resourced incumbent (Rocket Money most likely) enters the standing plane within
+      18–24 months. Threat model, not a plan.
+    category: strategic
+    cost_if_wrong: high
+    confidence: medium
+    confidence_trend: flat
+    status: testing
+    owner: cto
+    validation_experiment: Monthly incumbent-watch scan; tracked, never "validated".
+    kill_threshold: null
+    next_evidence_due: 2026-08-28
+    validates_at: rolling
+    related_prd: []
+    related_adr: []
+    related_docs: ["strategy/2026-07-28-competitive-deep-dive.md#Part III"]
+    evidence:
+      - date: 2026-07-28
+        source: Live competitive research — Gemini in Gmail already answers subscription-audit queries on request
+        evidence_class: secondary
+        n: null
+        direction: supports
+        note: >-
+          Incumbent capability is pull-based and stateless today. Push-based, persistent
+          tracking is the sherlock event; clock started.

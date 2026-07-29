@@ -1,0 +1,4 @@
+evidence_id,date,observation,assumptions,evidence_class,n,direction,grade,confidence_impact,source_ref,next_action,promoted
+E-001,2026-07-28,"EXAMPLE — Trustworthy and Carefull both distribute through bank marketplaces",H10,secondary,3,supports,D,moderate,competitive-deep-dive,none — later-act channel confirmed,yes
+E-002,2026-07-30,"EXAMPLE — P-001 forwarded 4 documents in week 1 without being asked",H1;H7,behavioral,1,supports,C,slight,P-001,none — wait for cohort n,no
+E-003,2026-07-31,"EXAMPLE — P-014 no inbound for 17 days despite two light touches",H1,behavioral,1,weakens,C,moderate,P-014,Mark dormant at day 24; do not chase,no

@@ -1,0 +1,17 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/page": "/",
+  "/(app)/dashboard/page": "/dashboard",
+  "/(app)/documents/page": "/documents",
+  "/(app)/notifications/page": "/notifications",
+  "/(app)/calendar/page": "/calendar",
+  "/(app)/timeline/page": "/timeline",
+  "/(app)/household/page": "/household",
+  "/(app)/obligations/page": "/obligations",
+  "/(app)/documents/upload/page": "/documents/upload",
+  "/(app)/settings/billing/page": "/settings/billing",
+  "/(app)/settings/profile/page": "/settings/profile",
+  "/(app)/settings/privacy/page": "/settings/privacy",
+  "/(app)/settings/page": "/settings",
+  "/(app)/settings/notifications/page": "/settings/notifications"
+}

@@ -1,0 +1,23 @@
+# Local development infrastructure only — production runs Supabase + Upstash (doc 01 §5).
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    ports: ["54329:5432"]
+    environment:
+      POSTGRES_USER: autobureau
+      POSTGRES_PASSWORD: local_dev_only
+      POSTGRES_DB: autobureau
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autobureau"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports: ["63790:6379"]
+
+volumes:
+  pgdata:
