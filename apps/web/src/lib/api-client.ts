@@ -1,4 +1,5 @@
 import { ProblemDetailsSchema, type ProblemDetails } from "@autobureau/contracts";
+import { CSRF_HEADER, CSRF_HEADER_VALUE, isSafeMethod } from "./csrf";
 
 /**
  * The single HTTP door to `/v1` (ADR-008, doc 03).
@@ -65,6 +66,10 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const headers: Record<string, string> = { Accept: "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (householdId) headers["X-Household-Id"] = householdId;
+  // ADR-009 D4: unconditional on every unsafe method, DELETE included. Idempotency-Key
+  // below is deliberately NOT the CSRF signal — it is semantic, and it is skipped for
+  // DELETE, which would have left the destructive method the only unprotected one.
+  if (!isSafeMethod(method)) headers[CSRF_HEADER] = CSRF_HEADER_VALUE;
   if (method !== "GET" && method !== "DELETE") {
     headers["Idempotency-Key"] = idempotencyKey ?? newIdempotencyKey();
   }
