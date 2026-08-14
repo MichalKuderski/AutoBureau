@@ -22,7 +22,12 @@ const PUBLIC_PAGES = ["/", "/sign-in", "/sign-up", "/forgot-password"] as const;
 const PUBLIC_AUTH_ENDPOINTS = [
   "/v1/auth/sign-in",
   "/v1/auth/sign-out",
+  "/v1/auth/magic-link",
   "/auth/refresh",
+  // Reached by following an emailed link, i.e. always without a session. It carries an
+  // authorization code that is inert without the verifier cookie, so being public costs
+  // nothing: the code alone authenticates no one.
+  "/auth/callback",
 ] as const;
 
 export const PUBLIC_PATHS: readonly string[] = [...PUBLIC_PAGES, ...PUBLIC_AUTH_ENDPOINTS];

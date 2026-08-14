@@ -26,6 +26,8 @@ export type ProviderRejection =
   | "invalid-credentials"
   /** The refresh token was rejected: rotated, revoked, or expired. */
   | "invalid-refresh"
+  /** The authorization code was wrong, expired, already redeemed, or unmatched. */
+  | "invalid-code"
   | "rate-limited"
   | "unavailable";
 
@@ -50,6 +52,10 @@ export interface AuthProvider {
   signInWithPassword(email: string, password: string): Promise<SessionTokens>;
   refresh(refreshToken: string): Promise<SessionTokens>;
   signOut(accessToken: string): Promise<void>;
+  /** Ask the provider to email a link that will return an authorization code. */
+  requestMagicLink(email: string, codeChallenge: string, redirectTo: string): Promise<void>;
+  /** Redeem that code. Useless without the verifier that produced the challenge. */
+  exchangeCode(authCode: string, codeVerifier: string): Promise<SessionTokens>;
 }
 
 function mapStatus(status: number, fallback: ProviderRejection): ProviderRejection {
@@ -69,7 +75,7 @@ export function createGoTrueProvider(
   };
 
   async function tokenGrant(
-    grant: "password" | "refresh_token",
+    grant: "password" | "refresh_token" | "pkce",
     body: Record<string, string>,
     onRejection: ProviderRejection,
   ): Promise<SessionTokens> {
@@ -108,6 +114,38 @@ export function createGoTrueProvider(
 
     refresh(refreshToken) {
       return tokenGrant("refresh_token", { refresh_token: refreshToken }, "invalid-refresh");
+    },
+
+    exchangeCode(authCode, codeVerifier) {
+      return tokenGrant("pkce", { auth_code: authCode, code_verifier: codeVerifier }, "invalid-code");
+    },
+
+    async requestMagicLink(email, codeChallenge, redirectTo) {
+      // S256 only. Offering `plain` would let anyone who sees the authorization request
+      // reconstruct the verifier, which is the whole thing PKCE prevents.
+      let response: Response;
+      try {
+        response = await fetchImpl(
+          `${config.apiUrl}/otp?redirect_to=${encodeURIComponent(redirectTo)}`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              email,
+              code_challenge: codeChallenge,
+              code_challenge_method: "S256",
+            }),
+          },
+        );
+      } catch {
+        throw new ProviderError("unavailable", "the identity provider could not be reached");
+      }
+      if (!response.ok) {
+        throw new ProviderError(
+          mapStatus(response.status, "invalid-credentials"),
+          "the link could not be sent",
+        );
+      }
     },
 
     async signOut(accessToken) {

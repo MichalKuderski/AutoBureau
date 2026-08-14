@@ -14,10 +14,12 @@ describe("A4 · the public surface is exactly this and nothing more", () => {
     expect([...PUBLIC_PATHS].sort()).toEqual(
       [
         "/",
+        "/auth/callback",
         "/auth/refresh",
         "/forgot-password",
         "/sign-in",
         "/sign-up",
+        "/v1/auth/magic-link",
         "/v1/auth/sign-in",
         "/v1/auth/sign-out",
       ].sort(),
@@ -47,6 +49,7 @@ describe("A4 · the public surface is exactly this and nothing more", () => {
     expect(isPublicPath("/auth/refresh/../../dashboard")).toBe(false);
     expect(isPublicPath("/sign-in/secret")).toBe(false);
     expect(isPublicPath("/v1/auth/sign-in/extra")).toBe(false);
+    expect(isPublicPath("/auth/callback/extra")).toBe(false);
   });
 
   it("normalises a trailing slash rather than letting it bypass the match", () => {
