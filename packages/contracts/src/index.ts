@@ -18,5 +18,9 @@ export {
   EVENT_TYPES, EventTypeSchema, EventEnvelopeSchema, EventPayloadSchema,
   type EventType, type EventEnvelope,
 } from "./events.js";
+export {
+  AUDIT_ACTIONS, AuditActionSchema, ACTOR_TYPES, ActorTypeSchema,
+  type AuditAction, type ActorType,
+} from "./audit.js";
 export * from "./domain/common.js";
 export * from "./domain/entities.js";
