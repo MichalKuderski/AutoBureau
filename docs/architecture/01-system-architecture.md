@@ -84,7 +84,7 @@ modules/
 2. **All writes that must trigger side effects go through the outbox** in the same transaction (doc 07 §2). No dual-writes to Redis from request handlers.
 3. **Only the AI service calls model providers.** `apps/web` has no Anthropic/OpenAI dependency (ADR-006).
 4. **Documents' raw content never enters `apps/web` memory** beyond upload proxying; parsing/extraction is exclusively the pipeline's job, in the sandboxed worker (doc 05).
-5. **Every state mutation writes `audit_log`** (doc 02 §9) via a Prisma client extension — not left to individual handler authors.
+5. **Every state mutation writes `audit_log`** (doc 02 §9) — not left to individual handler authors. *(Correction, ADR-009 D6: a Prisma `query` extension cannot write the row itself — it holds no handle on the enclosing transaction. The extension observes mutations and refuses those lacking actor context or a required domain verb; the scoped client flushes the rows before commit. Both are infrastructure; the guarantee is unchanged.)*
 
 ## 5. Vendor set and the "one throat to choke" test
 

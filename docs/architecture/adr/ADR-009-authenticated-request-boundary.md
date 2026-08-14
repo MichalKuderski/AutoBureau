@@ -2,7 +2,8 @@
 
 **Status:** Accepted (2026-08-14) · **Date:** 2026-08-14
 **Amended:** 2026-08-14 — D5 added: the principal GUC and the phase-1 self-read policies that make D1
-implementable, plus a database-enforced audit actor.
+implementable, plus a database-enforced audit actor. D6 (audit domain-verb layer) and D7 (`jose`
+authorization under PRD §12) added the same day.
 **Supersedes in part:** ADR-002 §Decision ¶1 (auth-session half only) · doc 01 §4.1 (same clause)
 **Relates to:** doc 06 (authN/authZ) · doc 12 §4 (application security) · doc 03 §1 (API conventions) · PRD F1
 
@@ -180,6 +181,101 @@ into the application layer alone, which is the exact class of bug RLS exists to 
 ¶3), and it creates a privilege-bypass primitive that the CI grep for `unsafeAcrossAllHouseholds`
 cannot see.
 
+### D6 — The audit domain-verb layer: infrastructure observes and enforces, infrastructure persists
+
+**Amendment (2026-08-14).** D5 froze the floor: every user mutation produces an attributed row, with
+Postgres refusing an unattributed one. D6 settles the layer above it — when a row must carry a
+domain verb (`obligation.dismissed`) rather than the CRUD-derived action (`obligation.update`).
+
+**A mechanical constraint shapes this, and it was measured.** Doc 01 §4.5 states that the audit row
+is written "via a Prisma client extension". In Prisma 6 that is impossible: inside a `query`
+extension, `this` is `{'0': …}` and `Prisma.getExtensionContext(this)` exposes no model delegates,
+so the hook has no handle on the enclosing interactive transaction and cannot write anything. The
+work therefore splits across two pieces of infrastructure, neither of which is a handler author:
+
+- **The extension observes and enforces.** It intercepts mutating operations, refuses to proceed
+  when no actor context is in scope, refuses to proceed when the operation requires a domain verb
+  and none was declared, and records the intended row into the ambient context.
+- **The scoped wrapper persists.** `withHousehold` owns the transaction, so it flushes the recorded
+  rows before commit. A handler cannot skip the flush because it does not own the transaction.
+
+Verified end to end on a disposable database (20 checks, no failures): the floor writes one row per
+mutation with the actor stamped by the D5 default; a declared verb replaces the CRUD action; a
+required verb omitted **rejects the mutation and leaves the domain row unchanged**; absent actor
+context rejects likewise; the audit rows roll back with the domain write; reads are not audited; and
+two mutations in one unit of work produce two rows.
+
+**A domain verb is required in exactly three cases**, each traceable to an existing requirement:
+
+1. **Lifecycle transitions where one CRUD operation maps to several user-meaningful outcomes** —
+   dismiss, complete, reopen all being `obligation.update`. Doc 02 §9's own example
+   (`obligation.dismissed`) is this case.
+2. **Privileged operations** — the owner-only rows of doc 06 §3: member management, alias rotation,
+   household deletion, export.
+3. **Security-sensitive actions the extension cannot observe.** `secret.revealed` (doc 12 §5.3,
+   PRD §13/F8) is a *read*; no write-interceptor will ever see it. An explicit audit API is
+   therefore a necessity, not a convenience — and it is the only sanctioned way to write a row the
+   extension did not generate.
+
+**Everything else stays CRUD-level.** An ordinary create or a field edit is fully and honestly
+described by `item.create`; inventing a verb for it would grow a taxonomy nobody reads.
+
+**The catalogue lives in `packages/contracts`, beside `EVENT_TYPES`.** That registry already exists
+with exactly the governance this needs ("adding an event type is a contracts PR"), `packages/db`
+already depends on contracts, and `outbox.ts` already imports from it — so this costs no new wiring.
+Two of doc 02 §9's three example actions (`obligation.dismissed`, `export.requested`) are already
+`EVENT_TYPES` members, so most of the vocabulary exists.
+
+It is nonetheless a **separate registry**, not a reuse of `EVENT_TYPES`: the two measure different
+axes. Not every event is user-caused (`reminder.due`, `radar.completed`), and not every audited
+action emits an event — `secret.revealed` has no async consumer, and adding it to the outbox
+taxonomy would imply a subscriber that does not exist. Same dotted `aggregate.verb` convention,
+different list.
+
+**Enforcement is data, not discipline.** The set of `Model.operation` keys that may not fall back to
+a CRUD action is a typed constant; the extension throws when one of them runs with no verb in scope.
+A handler cannot silently omit a required verb, because the write fails.
+
+**Actor identity does not come from the ambient context.** The context carries the household, the
+optional verb, and the pending rows; `actor_id` is stamped by the database default from the
+principal setting (D5). A bug in context propagation therefore cannot forge an actor — it can only
+fail closed.
+
+Deliberately still open, and not needed for F1: the `meta` diff shape for sensitive mutations
+(doc 02 §9, doc 10 §3 PII scrubbing). The floor and the verb layer do not depend on it.
+
+### D7 — `jose` is authorized as a runtime dependency for JWT/JWKS verification
+
+**Amendment (2026-08-14).** PRD §12 freezes the stack and admits "no new vendors or runtime
+dependencies without ADR". This is that ADR entry.
+
+`jose` is a **dependency, not a vendor**: no service, no account, no data leaves the process, so
+doc 01 §5's "one throat to choke" vendor test does not apply — only PRD §12's dependency clause.
+
+Verified at authorization time: **`jose@6.2.8`, MIT, zero runtime dependencies and zero peer
+dependencies.** Its export map resolves to a WebCrypto (`webapi`) build rather than a Node-specific
+one, so it runs unchanged on Node and Edge — which keeps D3's deliberately-open middleware runtime
+open. Nothing equivalent exists in the dependency tree today.
+
+It supplies exactly the F1 surface and no more: `jwtVerify` with explicit `issuer`, `audience`, and
+`algorithms`; `createRemoteJWKSet` for doc 06 §2's cached JWKS verification; and
+`createLocalJWKSet` with `generateKeyPair`/`exportJWK` so the verification path is testable with
+fixture-signed tokens and no live provider.
+
+**Rejected: hand-rolling verification.** Algorithm confusion and `alg: none` handling are the
+recurring CVE class in hand-written JWT code. A zero-dependency library built on the platform's own
+crypto is the smaller risk, and the repository's hand-rolled-over-dependency instinct (the icon set)
+does not extend to signature verification.
+
+**Rejected: `@supabase/supabase-js`.** The Auth exchange D2 requires is documented server-to-server
+REST reachable with `fetch`. Avoiding the SDK keeps D2's provider-portability claim (doc 14: migrate
+"without token-format change") real rather than aspirational.
+
+**Binding constraint on the implementation.** The verification module stays provider-agnostic: pin
+the accepted `algorithms` explicitly, verify `issuer`, `audience`, and expiry explicitly, and never
+take the algorithm from the token header. Supabase populates the configuration; it is not named in
+the module.
+
 ## Consequences
 
 - ✅ The four gaps that would have been filled by convention are now filled by decision, each with
@@ -213,3 +309,8 @@ cannot see.
 | A10 | Phase 2 admits no union | Unfiltered `household_users` under a household scope returns that household's members only; the principal's memberships elsewhere are absent |
 | A11 | The audit actor is enforced by the database | `actor_id` defaults to the principal; a `user` row without a principal is rejected; a `system` row without a principal is accepted |
 | A12 | Self-read policies do not widen writes | Phase-1 self-grant of a membership rejected; phase-1 role escalation affects 0 rows |
+| A13 | The audit floor cannot be bypassed | A mutation with no actor context in scope is rejected; no domain row and no audit row is written |
+| A14 | A required domain verb cannot be omitted | A mutation on a verb-required operation without a declared verb is rejected, domain row unchanged |
+| A15 | Audit is atomic with the domain write | A unit of work that fails after mutating leaves neither domain nor audit rows; two mutations produce two rows; reads produce none |
+| A16 | Audit-only actions are recordable | `secret.revealed` — an action no write-interceptor can observe — is written through the explicit API with the actor still DB-stamped |
+| A17 | JWT verification is complete and pinned | Valid token verifies; invalid signature, expired, wrong issuer, wrong audience, unpinned algorithm, and malformed claims each fail |
