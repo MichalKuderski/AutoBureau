@@ -11,6 +11,8 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    // The integration tier has its own config: node environment, real database.
+    exclude: ["**/node_modules/**", "src/**/*.integration.test.ts"],
   },
   resolve: {
     alias: {

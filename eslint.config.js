@@ -83,7 +83,7 @@ export default tseslint.config(
   // Tests may reach for shapes the production types forbid in order to prove the
   // production types hold.
   {
-    files: ["**/*.test.{ts,tsx}", "**/tests/**/*.{ts,tsx}"],
+    files: ["**/*.test.{ts,tsx}", "**/tests/**/*.{ts,tsx}", "**/src/test/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-non-null-assertion": "off",
