@@ -38,6 +38,10 @@ Enforcement is centralized: a `can(ctx, action, resource)` policy module in `mod
 
 Every Prisma query goes through a scoped client: `db.forHousehold(ctx)` returns a client extension that injects `household_id = ctx.household_id` into every where-clause for household-scoped models and refuses queries on those models without it. Forgetting a scope is a type error, not a code-review hope.
 
+> **As implemented (review A1/F-01):** the shipped API is `Database.withHousehold(householdId, fn)` in `packages/db/src/scoped.ts`, which establishes scope through a transaction-local GUC read by RLS policies rather than by where-clause injection. The amended design is the binding one; this paragraph describes the pre-review shape.
+
+**Which household.** `X-Household-Id` is a candidate validated against `household_users` on every request, never authority (doc 03 §1). Absent header: exactly one membership → that household; zero → `403`; more than one → `400`, the request must name it. No tie-breaker is inferred. Frozen in **ADR-009 D1**.
+
 ## 5. RLS: the second wall
 
 RLS is **enabled on every household-scoped table** even though the app connects via Prisma. Pattern:

@@ -1,6 +1,9 @@
 # ADR-002: Supabase as data platform; Prisma as ORM; RLS as defense-in-depth
 
-**Status:** Accepted (2026-07-28; implemented) · **Date:** 2026-07-22
+**Status:** Accepted (2026-07-28) · **Date:** 2026-07-22
+**Implementation:** Postgres + Prisma + RLS implemented; **Auth and Storage not yet built.**
+**Superseded in part:** the auth-session half of Decision ¶1 — see ADR-009. The browser still never
+queries the database; the session is established server-side rather than by client-side supabase-js.
 
 ## Context
 The brief lists both Supabase and Prisma. The naive combination is a known trap: Prisma connects as a privileged role and silently bypasses RLS, while tutorials meanwhile encourage client-side supabase-js queries "because RLS protects you." Both halves of that default are wrong for a PII-heavy product.
@@ -8,7 +11,7 @@ The brief lists both Supabase and Prisma. The naive combination is a known trap:
 ## Decision
 Adopt Supabase for **Postgres + Auth + Storage**, Prisma as the only ORM, with a strict access pattern:
 
-1. **The browser never queries the database.** supabase-js is used client-side for auth session + signed storage operations only. All data access goes through `/v1`.
+1. **The browser never queries the database.** All data access goes through `/v1`. *(The auth-session clause originally here — client-side supabase-js holding the session — is superseded by ADR-009 D2: a browser SDK cannot write the `HttpOnly` cookies doc 06 §1 mandates. Signed storage operations are unaffected.)*
 2. Prisma connects as a non-superuser `app_user` role through the transaction pooler; a scoped client extension injects `household_id` filters and wraps **every unit of work in an explicit `$transaction` opening with `SET LOCAL request.household_id`** (doc 06 §4–5; review A1/F-01 — the wrapper is mandatory: `SET LOCAL` is transaction-scoped, and session-level `SET` leaks across pooled connections). Transactions stay short (no external I/O inside); pool-wait p95 is paged; escape hatch: relocate `/v1` to a long-lived Node service, unchanged code.
 3. **RLS stays enabled on every household-scoped table** and policies check the transaction-local setting — a second wall that catches scope bugs, raw-SQL mistakes, and any future direct-access surface.
 4. `service_role` confined to migrations + two named jobs; CI-greppable.

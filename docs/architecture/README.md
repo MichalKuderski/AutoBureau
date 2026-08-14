@@ -39,6 +39,7 @@ see `docs/product/pre-g1-backlog.md`.
 | [006](adr/ADR-006-llm-gateway-and-model-tiering.md) | Provider-agnostic LLM gateway; Claude-primary with model tiering | Accepted · not yet impl. |
 | [007](adr/ADR-007-field-level-encryption.md) | KMS envelope encryption for identifier-grade PII | Accepted · not yet impl. |
 | [008](adr/ADR-008-rest-openapi-first.md) | Versioned REST + OpenAPI-first contracts (over tRPC/GraphQL) | Accepted · implemented |
+| [009](adr/ADR-009-authenticated-request-boundary.md) | Authenticated request boundary: server-side session, household resolution, route protection, CSRF | Accepted · not yet impl. |
 
 ## Where I pushed back on the brief
 
