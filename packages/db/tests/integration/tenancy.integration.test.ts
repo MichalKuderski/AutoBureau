@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Database, ScopeError } from "../../src/scoped.js";
 import { outbox } from "../../src/outbox.js";
+import { runAsSystem } from "../../src/audit.js";
 import { APP_URL, adminClient, bootstrapDatabase, grantAppUserLogin } from "./setup.js";
 
 /**
@@ -87,10 +88,12 @@ describe("scoped reads", () => {
 describe("scoped writes", () => {
   it("rejects writing a row into another household (RLS WITH CHECK)", async () => {
     await expect(
-      db.withHousehold(HOUSEHOLD_A, (tx) =>
-        tx.item.create({
-          data: { householdId: HOUSEHOLD_B, kind: "warranty", name: "smuggled" },
-        }),
+      runAsSystem("tenancy suite: RLS write probe", () =>
+        db.withHousehold(HOUSEHOLD_A, (tx) =>
+          tx.item.create({
+            data: { householdId: HOUSEHOLD_B, kind: "warranty", name: "smuggled" },
+          }),
+        ),
       ),
     ).rejects.toThrow();
 
@@ -100,8 +103,10 @@ describe("scoped writes", () => {
 
   it("cannot update another household's row", async () => {
     const target = await admin.item.findFirstOrThrow({ where: { householdId: HOUSEHOLD_B } });
-    const result = await db.withHousehold(HOUSEHOLD_A, (tx) =>
-      tx.item.updateMany({ where: { id: target.id }, data: { name: "hijacked" } }),
+    const result = await runAsSystem("tenancy suite: RLS update probe", () =>
+      db.withHousehold(HOUSEHOLD_A, (tx) =>
+        tx.item.updateMany({ where: { id: target.id }, data: { name: "hijacked" } }),
+      ),
     );
     expect(result.count).toBe(0);
 
@@ -153,18 +158,20 @@ describe("scope lifetime (the pooled-connection leak F-01 warned about)", () => 
 describe("outbox atomicity (ADR-005)", () => {
   it("writes the domain row and its event in one transaction", async () => {
     const name = `atomic-${randomUUID()}`;
-    await db.withHousehold(HOUSEHOLD_A, async (tx) => {
-      const item = await tx.item.create({
-        data: { householdId: HOUSEHOLD_A, kind: "subscription", name },
-      });
-      await outbox(tx).emit({
-        event_type: "item.created",
-        aggregate_type: "item",
-        aggregate_id: item.id,
-        household_id: HOUSEHOLD_A,
-        payload: { kind: "subscription" },
-      });
-    });
+    await runAsSystem("tenancy suite: outbox atomicity", () =>
+      db.withHousehold(HOUSEHOLD_A, async (tx) => {
+        const item = await tx.item.create({
+          data: { householdId: HOUSEHOLD_A, kind: "subscription", name },
+        });
+        await outbox(tx).emit({
+          event_type: "item.created",
+          aggregate_type: "item",
+          aggregate_id: item.id,
+          household_id: HOUSEHOLD_A,
+          payload: { kind: "subscription" },
+        });
+      }),
+    );
 
     const events = await admin.outboxEvent.findMany({ where: { householdId: HOUSEHOLD_A } });
     expect(events).toHaveLength(1);
@@ -174,19 +181,21 @@ describe("outbox atomicity (ADR-005)", () => {
   it("rolls the event back when the domain write fails", async () => {
     const before = await admin.outboxEvent.count();
     await expect(
-      db.withHousehold(HOUSEHOLD_A, async (tx) => {
-        const item = await tx.item.create({
-          data: { householdId: HOUSEHOLD_A, kind: "vehicle", name: "doomed" },
-        });
-        await outbox(tx).emit({
-          event_type: "item.created",
-          aggregate_type: "item",
-          aggregate_id: item.id,
-          household_id: HOUSEHOLD_A,
-          payload: {},
-        });
-        throw new Error("domain failure after event write");
-      }),
+      runAsSystem("tenancy suite: outbox rollback", () =>
+        db.withHousehold(HOUSEHOLD_A, async (tx) => {
+          const item = await tx.item.create({
+            data: { householdId: HOUSEHOLD_A, kind: "vehicle", name: "doomed" },
+          });
+          await outbox(tx).emit({
+            event_type: "item.created",
+            aggregate_type: "item",
+            aggregate_id: item.id,
+            household_id: HOUSEHOLD_A,
+            payload: {},
+          });
+          throw new Error("domain failure after event write");
+        }),
+      ),
     ).rejects.toThrow("domain failure");
 
     expect(await admin.outboxEvent.count()).toBe(before);
@@ -196,16 +205,18 @@ describe("outbox atomicity (ADR-005)", () => {
 
 describe("audit log is append-only", () => {
   it("permits insert but denies update and delete", async () => {
-    await db.withHousehold(HOUSEHOLD_A, (tx) =>
-      tx.auditLog.create({
-        data: {
-          householdId: HOUSEHOLD_A,
-          actorType: "user",
-          actorId: USER_A,
-          action: "item.created",
-          targetType: "item",
-        },
-      }),
+    await runAsSystem("tenancy suite: audit append-only", () =>
+      db.withHousehold(HOUSEHOLD_A, (tx) =>
+        tx.auditLog.create({
+          data: {
+            householdId: HOUSEHOLD_A,
+            actorType: "user",
+            actorId: USER_A,
+            action: "item.created",
+            targetType: "item",
+          },
+        }),
+      ),
     );
 
     await expect(

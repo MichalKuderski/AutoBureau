@@ -11,7 +11,7 @@
     "build": "prisma generate && tsc -p tsconfig.json",
     "typecheck": "prisma generate && tsc -p tsconfig.json --noEmit",
     "test": "vitest run --dir tests/unit",
-    "test:integration": "vitest run --dir tests/integration",
+    "test:integration": "vitest run --dir tests/integration --no-file-parallelism",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:reset": "prisma migrate reset --force --skip-seed",

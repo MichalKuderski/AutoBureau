@@ -1,4 +1,6 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
+import type { AuditAction } from "@autobureau/contracts";
+import { auditExtension, currentActor, withAuditUnit, type AuditWriter } from "./audit.js";
 
 /**
  * The scoped database client — implements review amendment A1 (blocker F-01).
@@ -50,11 +52,67 @@ export interface ScopedTransactionOptions {
   maxWaitMs?: number;
 }
 
+export interface HouseholdScopeOptions extends ScopedTransactionOptions {
+  /**
+   * The domain verb for this unit of work (ADR-009 D6). Required for operations whose
+   * CRUD-derived action would be ambiguous — one `obligation.update` covers dismiss,
+   * complete and reopen — and rejected by the audit extension when omitted there.
+   */
+  verb?: AuditAction;
+}
+
 const DEFAULT_TIMEOUT_MS = 5_000;
 const DEFAULT_MAX_WAIT_MS = 2_000;
 
+/** Named so the extended client's type can be recovered; `$extends` erases to unknown. */
+function extendWithAudit(prisma: PrismaClient) {
+  return prisma.$extends(auditExtension);
+}
+type AuditedClient = ReturnType<typeof extendWithAudit>;
+
 export class Database {
-  constructor(private readonly prisma: PrismaClient) {}
+  /**
+   * The audit extension must be applied before any transaction opens: a
+   * `Prisma.TransactionClient` cannot be extended after the fact. Held separately from
+   * `prisma`, which stays the plain handle for lifecycle calls.
+   */
+  private readonly client: AuditedClient;
+
+  constructor(private readonly prisma: PrismaClient) {
+    this.client = extendWithAudit(prisma);
+  }
+
+  /**
+   * Phase 1 of the authenticated request (ADR-009 D5): principal scope, no household.
+   *
+   * Establishes `request.user_id` and deliberately nothing else, which is the condition
+   * the two self-read policies are guarded on. Inside this transaction the principal can
+   * read its own `household_users` and `households` rows — and nothing else; household
+   * data stays invisible because no household is selected.
+   *
+   * Read-only by construction. The audit extension refuses any mutation that runs
+   * without a scoped unit of work, and phase 1 deliberately does not open one: deciding
+   * *which* household a request belongs to is not a moment that should be changing rows.
+   */
+  async withPrincipal<T>(
+    userId: string,
+    fn: (tx: ScopedClient) => Promise<T>,
+    options: ScopedTransactionOptions = {},
+  ): Promise<T> {
+    if (!UUID_RE.test(userId)) {
+      throw new ScopeError(`userId is not a valid UUID: ${JSON.stringify(userId)}`);
+    }
+    return this.client.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT set_config('request.user_id', ${userId}, true)`;
+        return fn(tx as unknown as ScopedClient);
+      },
+      {
+        timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        maxWait: options.maxWaitMs ?? DEFAULT_MAX_WAIT_MS,
+      },
+    );
+  }
 
   /**
    * Run `fn` with tenant scope established for `householdId`.
@@ -68,20 +126,34 @@ export class Database {
   async withHousehold<T>(
     householdId: string,
     fn: (tx: ScopedClient) => Promise<T>,
-    options: ScopedTransactionOptions = {},
+    options: HouseholdScopeOptions = {},
   ): Promise<T> {
     if (!UUID_RE.test(householdId)) {
       throw new ScopeError(`householdId is not a valid UUID: ${JSON.stringify(householdId)}`);
     }
-    return this.prisma.$transaction(
-      async (tx) => {
-        await tx.$executeRaw`SELECT set_config('request.household_id', ${householdId}, true)`;
-        return fn(tx as ScopedClient);
-      },
-      {
-        timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-        maxWait: options.maxWaitMs ?? DEFAULT_MAX_WAIT_MS,
-      },
+    return withAuditUnit(householdId, options.verb, (flush) =>
+      this.client.$transaction(
+        async (tx) => {
+          await tx.$executeRaw`SELECT set_config('request.household_id', ${householdId}, true)`;
+          // Phase 2 carries the principal too, so `audit_log.actor_id` is stamped by the
+          // database rather than by anything this process asserts (D5). With a household
+          // set, the phase-1 self-read policies are inert — their guard is
+          // `app.current_household() IS NULL` — so this widens no read.
+          const actor = currentActor();
+          if (actor?.type === "user") {
+            await tx.$executeRaw`SELECT set_config('request.user_id', ${actor.userId}, true)`;
+          }
+          const result = await fn(tx as unknown as ScopedClient);
+          // Before commit, inside the same transaction: audit rows and the domain rows
+          // they describe live or die together.
+          await flush(tx as unknown as AuditWriter);
+          return result;
+        },
+        {
+          timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+          maxWait: options.maxWaitMs ?? DEFAULT_MAX_WAIT_MS,
+        },
+      ),
     );
   }
 
@@ -101,10 +173,23 @@ export class Database {
     if (!reason || reason.length < 8) {
       throw new ScopeError("unsafeAcrossAllHouseholds requires a documented reason");
     }
-    return this.prisma.$transaction(fn, {
-      timeout: options.timeoutMs ?? 30_000,
-      maxWait: options.maxWaitMs ?? DEFAULT_MAX_WAIT_MS,
-    });
+    // Cross-household work still has to be attributable, so it runs inside an audit unit
+    // with no household of its own. The rows it produces carry `household_id = NULL`,
+    // which only the BYPASSRLS dispatcher role can insert — exactly the role this method
+    // already documents as its precondition.
+    return withAuditUnit(null, undefined, (flush) =>
+      this.client.$transaction(
+        async (tx) => {
+          const result = await fn(tx as unknown as DispatcherClient);
+          await flush(tx as unknown as AuditWriter);
+          return result;
+        },
+        {
+          timeout: options.timeoutMs ?? 30_000,
+          maxWait: options.maxWaitMs ?? DEFAULT_MAX_WAIT_MS,
+        },
+      ),
+    );
   }
 
   /** Health probe. Deliberately unscoped and trivial. */
