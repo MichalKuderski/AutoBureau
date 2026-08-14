@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { dynamicHref } from "@/lib/routes";
 import { Chip, OBLIGATION_LABEL, OBLIGATION_TONE } from "@/components/ui/chip";
 import { Icon } from "@/components/ui/icon";
 import { formatDueLabel, formatMoney } from "@/lib/format";
@@ -77,7 +78,7 @@ export function ObligationCard({
 
             <h3 className="text-base font-medium leading-snug text-ink">
               <Link
-                href={`/obligations/${obligation.id}` as never}
+                href={dynamicHref(`/obligations/${obligation.id}`)}
                 className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
               >
                 {obligation.title}

@@ -9,6 +9,7 @@ import { ErrorBoundary, ErrorState, describeError } from "@/components/ui/error-
 import { Icon } from "@/components/ui/icon";
 import { SkeletonList, Skeleton, SkeletonGroup } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
+import { dynamicHref } from "@/lib/routes";
 import { formatDate, formatMoney } from "@/lib/format";
 import { useHousehold } from "@/providers/household-provider";
 import { useObligations, useSummary, useUpdateObligationStatus } from "@/lib/domain/queries";
@@ -169,7 +170,7 @@ export function DashboardScreen() {
                     {openEntitlements.map((o) => (
                       <li key={o.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0">
                         <Link
-                          href={`/obligations/${o.id}` as never}
+                          href={dynamicHref(`/obligations/${o.id}`)}
                           className="min-w-0 flex-1 text-sm hover:text-accent"
                         >
                           <span className="block truncate">{o.title}</span>

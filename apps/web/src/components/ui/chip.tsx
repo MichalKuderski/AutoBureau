@@ -75,6 +75,18 @@ export const OBLIGATION_LABEL: Record<string, string> = {
   missed: "Missed",
 };
 
+/** Obligation kind → plain English. The enum values are wire shapes, not copy. */
+export const OBLIGATION_KIND_LABEL: Record<string, string> = {
+  renewal: "Renewal",
+  payment: "Payment",
+  cancellation_window: "Cancellation window",
+  filing: "Filing",
+  claim: "Claim",
+  enrollment: "Enrollment",
+  appointment: "Appointment",
+  custom: "Task",
+};
+
 export const ITEM_TONE: Record<string, ChipTone> = {
   active: "success",
   expiring: "warning",

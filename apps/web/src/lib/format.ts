@@ -94,6 +94,48 @@ export function formatMoney(
   }).format(money.amountCents / 100);
 }
 
+/**
+ * Recurrence, in the one dimension this product actually renders: how often.
+ *
+ * Deliberately not an RRULE parser. We store the rule verbatim so a future scheduler
+ * can honour it exactly; here we only need to tell a person "every year", and a rule
+ * we can't confidently summarise returns null so the caller renders nothing rather
+ * than a wrong sentence.
+ */
+const RECURRENCE_LABELS: Record<string, string> = {
+  DAILY: "Every day",
+  WEEKLY: "Every week",
+  MONTHLY: "Every month",
+  YEARLY: "Every year",
+};
+
+export function formatRecurrence(rule: string | null | undefined): string | null {
+  if (!rule) return null;
+  const freq = /(?:^|;)FREQ=([A-Z]+)/.exec(rule)?.[1];
+  if (!freq) return null;
+  // An interval other than 1 changes the meaning ("every 2 years"); rather than
+  // guess the phrasing we decline to summarise.
+  const interval = /(?:^|;)INTERVAL=(\d+)/.exec(rule)?.[1];
+  if (interval && interval !== "1") return null;
+  return RECURRENCE_LABELS[freq] ?? null;
+}
+
+/**
+ * The inverse of `formatMoney` for a typed amount.
+ *
+ * Money is integer cents everywhere (PRD §12), so the float→int conversion happens
+ * exactly here rather than at each input. More than two decimal places is rejected
+ * rather than silently rounded: a user who typed `12.345` meant something, and
+ * guessing which cent they meant is how ledgers drift.
+ */
+export function parseCents(input: string): number | null {
+  const cleaned = input.trim().replace(/[$,\s]/g, "");
+  if (!/^\d+(\.\d{0,2})?$/.test(cleaned)) return null;
+  const value = Number(cleaned);
+  if (!Number.isFinite(value)) return null;
+  return Math.round(value * 100);
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const units = ["KB", "MB", "GB"];

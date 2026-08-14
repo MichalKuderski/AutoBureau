@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ObligationOutcome } from "@autobureau/contracts";
 import type {
   DashboardSummary,
   DocumentView,
@@ -102,10 +103,18 @@ export function useObligations(householdId: string, filters: ObligationFilters =
   });
 }
 
+/**
+ * Single-record reads resolve `null` for "no such row", never `undefined`.
+ *
+ * React Query treats an `undefined` result as a broken query function and fails the
+ * query, which would render a generic error where the screen means to say "we
+ * couldn't find that". The API returns 404 for the same case; `null` is how that
+ * arrives here without dressing a missing row up as a fault.
+ */
 export function useObligation(householdId: string, id: string) {
-  return useQuery<ObligationView | undefined>({
+  return useQuery<ObligationView | null>({
     queryKey: queryKeys.obligation(householdId, id),
-    queryFn: () => resolve(fixtures.OBLIGATIONS.find((o) => o.id === id)),
+    queryFn: () => resolve(fixtures.OBLIGATIONS.find((o) => o.id === id) ?? null),
   });
 }
 
@@ -125,9 +134,9 @@ export function useItems(householdId: string, filters: ItemFilters = {}) {
 }
 
 export function useItem(householdId: string, id: string) {
-  return useQuery<ItemView | undefined>({
+  return useQuery<ItemView | null>({
     queryKey: queryKeys.item(householdId, id),
-    queryFn: () => resolve(fixtures.ITEMS.find((i) => i.id === id)),
+    queryFn: () => resolve(fixtures.ITEMS.find((i) => i.id === id) ?? null),
   });
 }
 
@@ -146,9 +155,9 @@ export function useDocuments(householdId: string, filters: DocumentFilters = {})
 }
 
 export function useDocument(householdId: string, id: string) {
-  return useQuery<DocumentView | undefined>({
+  return useQuery<DocumentView | null>({
     queryKey: queryKeys.document(householdId, id),
-    queryFn: () => resolve(fixtures.DOCUMENTS.find((d) => d.id === id)),
+    queryFn: () => resolve(fixtures.DOCUMENTS.find((d) => d.id === id) ?? null),
   });
 }
 
@@ -171,28 +180,54 @@ export function useNotifications(householdId: string) {
  * user is often on a phone in a waiting room; the UI must respond instantly and
  * repair itself if the server disagrees.
  */
+export interface ObligationStatusUpdate {
+  id: string;
+  status: ObligationView["status"];
+  /**
+   * A-F3 outcome capture. Present only when a completion collected one — an absent
+   * outcome and a null one mean different things (not asked vs. skipped), so this is
+   * optional rather than nullable at the call site.
+   */
+  outcome?: ObligationOutcome | undefined;
+}
+
 export function useUpdateObligationStatus(householdId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: ObligationView["status"] }) => {
+    mutationFn: async ({ id, status, outcome }: ObligationStatusUpdate) => {
       await new Promise((r) => setTimeout(r, 260));
-      return { id, status };
+      return { id, status, outcome: outcome ?? null };
     },
-    onMutate: async ({ id, status }) => {
+    onMutate: async ({ id, status, outcome }) => {
+      const detailKey = queryKeys.obligation(householdId, id);
       await qc.cancelQueries({ queryKey: ["obligations", householdId] });
-      const previous = qc.getQueriesData<ObligationView[]>({
+      await qc.cancelQueries({ queryKey: detailKey });
+
+      // Both shapes hold the same row: the lists a screen filters, and the single
+      // record the detail view reads. Updating one and not the other is how a user
+      // marks something done and watches it stay open on the page they did it from.
+      const apply = (o: ObligationView): ObligationView =>
+        outcome === undefined ? { ...o, status } : { ...o, status, outcome };
+
+      const previousLists = qc.getQueriesData<ObligationView[]>({
         queryKey: ["obligations", householdId],
       });
+      const previousDetail = qc.getQueryData<ObligationView | null>(detailKey);
+
       qc.setQueriesData<ObligationView[]>({ queryKey: ["obligations", householdId] }, (old) =>
-        old?.map((o) => (o.id === id ? { ...o, status } : o)),
+        old?.map((o) => (o.id === id ? apply(o) : o)),
       );
-      return { previous };
+      qc.setQueryData<ObligationView | null>(detailKey, (old) => (old ? apply(old) : old));
+
+      return { previousLists, previousDetail, detailKey };
     },
     onError: (_err, _vars, context) => {
-      for (const [key, data] of context?.previous ?? []) qc.setQueryData(key, data);
+      for (const [key, data] of context?.previousLists ?? []) qc.setQueryData(key, data);
+      if (context) qc.setQueryData(context.detailKey, context.previousDetail);
     },
-    onSettled: () => {
+    onSettled: (_data, _err, variables) => {
       void qc.invalidateQueries({ queryKey: ["obligations", householdId] });
+      void qc.invalidateQueries({ queryKey: queryKeys.obligation(householdId, variables.id) });
       void qc.invalidateQueries({ queryKey: queryKeys.summary(householdId) });
     },
   });

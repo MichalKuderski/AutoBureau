@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 const FOCUSABLE = [
   "a[href]",
@@ -18,12 +18,23 @@ const FOCUSABLE = [
  * focus moves *into* the dialog on open, Tab cycles within it, and focus returns to
  * the element that opened it on close. Without the third, a keyboard user who closes
  * a modal is dumped at the top of the document with no idea where they were.
+ *
+ * `onEscape` is held in a ref rather than depended on. Callers pass an inline arrow —
+ * every one of them does, and reasonably — so a dependency on it re-runs the whole
+ * effect on each render of the modal's parent: focus is dragged back to the autofocus
+ * element mid-keystroke, and the cleanup's focus-restore fires on a dialog that never
+ * closed. A dialog containing a text field is unusable when that happens.
  */
 export function useFocusTrap(
   ref: RefObject<HTMLElement | null>,
   active: boolean,
   onEscape?: () => void,
 ): void {
+  const escapeRef = useRef(onEscape);
+  useEffect(() => {
+    escapeRef.current = onEscape;
+  }, [onEscape]);
+
   useEffect(() => {
     if (!active) return;
     const node = ref.current;
@@ -42,9 +53,9 @@ export function useFocusTrap(
     const raf = requestAnimationFrame(focusFirst);
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && onEscape) {
+      if (event.key === "Escape" && escapeRef.current) {
         event.stopPropagation();
-        onEscape();
+        escapeRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -82,5 +93,5 @@ export function useFocusTrap(
       document.body.style.paddingRight = paddingRight;
       previouslyFocused?.focus?.();
     };
-  }, [ref, active, onEscape]);
+  }, [ref, active]);
 }

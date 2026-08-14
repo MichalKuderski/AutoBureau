@@ -6,7 +6,9 @@ import {
   formatDueLabel,
   formatMasked,
   formatMoney,
+  formatRecurrence,
   initialsOf,
+  parseCents,
 } from "./format";
 
 /**
@@ -86,6 +88,29 @@ describe("money", () => {
     expect(formatMoney(null)).toBe("—");
     expect(formatMoney(undefined)).toBe("—");
   });
+
+  it("parses a typed amount into integer cents", () => {
+    expect(parseCents("168")).toBe(16800);
+    expect(parseCents("$1,800.50")).toBe(180050);
+    expect(parseCents(" 42.9 ")).toBe(4290);
+    expect(parseCents("0")).toBe(0);
+  });
+
+  it("refuses input it would have to guess about", () => {
+    // Sub-cent precision, negatives, and prose all become null rather than a
+    // plausible-looking integer nobody chose.
+    expect(parseCents("12.345")).toBeNull();
+    expect(parseCents("-5")).toBeNull();
+    expect(parseCents("about a hundred")).toBeNull();
+    expect(parseCents("")).toBeNull();
+    expect(parseCents(".")).toBeNull();
+  });
+
+  it("round-trips through formatMoney", () => {
+    const cents = parseCents("1800");
+    expect(cents).not.toBeNull();
+    expect(formatMoney({ amountCents: cents!, currency: "USD" })).toBe("$1,800");
+  });
 });
 
 describe("identifier masking", () => {
@@ -96,6 +121,21 @@ describe("identifier masking", () => {
   it("masks completely when no hint is available", () => {
     expect(formatMasked(null)).toBe("••••");
     expect(formatMasked("")).toBe("••••");
+  });
+});
+
+describe("recurrence", () => {
+  it("summarises the frequencies we render", () => {
+    expect(formatRecurrence("FREQ=YEARLY")).toBe("Every year");
+    expect(formatRecurrence("FREQ=MONTHLY;BYMONTHDAY=1")).toBe("Every month");
+  });
+
+  it("declines to summarise anything it would have to guess at", () => {
+    // Rendering "every year" for an INTERVAL=2 rule tells the user the wrong date.
+    expect(formatRecurrence("FREQ=YEARLY;INTERVAL=2")).toBeNull();
+    expect(formatRecurrence("FREQ=HOURLY")).toBeNull();
+    expect(formatRecurrence("RRULE:nonsense")).toBeNull();
+    expect(formatRecurrence(null)).toBeNull();
   });
 });
 
