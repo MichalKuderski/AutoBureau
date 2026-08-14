@@ -10,3 +10,5 @@ coverage/
 .DS_Store
 # Local editor/agent configuration — machine-specific, never shared.
 .claude/
+# Screenshots dropped in the repo root by the local preview tooling.
+preview-screenshot*.png
