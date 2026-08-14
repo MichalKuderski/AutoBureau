@@ -443,7 +443,10 @@ model AuditLog {
   id          BigInt    @id @default(autoincrement())
   householdId String?   @map("household_id") @db.Uuid
   actorType   ActorType @map("actor_type")
-  actorId     String?   @map("actor_id") @db.Uuid
+  /// ADR-009 D5: stamped by the database from the principal setting when omitted, so a
+  /// user-attributed row cannot carry an actor the request did not authenticate as. A
+  /// CHECK constraint (see the principal-scope migration) rejects `user` rows without one.
+  actorId     String?   @default(dbgenerated("app.current_user_id()")) @map("actor_id") @db.Uuid
   action      String
   targetType  String    @map("target_type")
   targetId    String?   @map("target_id") @db.Uuid
