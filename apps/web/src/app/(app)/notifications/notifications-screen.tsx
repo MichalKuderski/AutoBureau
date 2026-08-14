@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/patterns/page-header";
 import { FilterBar, type FilterOption } from "@/components/ui/filter-bar";
@@ -36,13 +36,15 @@ export function NotificationsScreen() {
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const query = useNotifications(household.id);
 
-  const all = query.data ?? [];
-  const isRead = (n: NotificationView) => n.read_at !== null || readIds.has(n.id);
+  const all = useMemo(() => query.data ?? [], [query.data]);
+  const isRead = useCallback(
+    (n: NotificationView) => n.read_at !== null || readIds.has(n.id),
+    [readIds],
+  );
 
   const rows = useMemo(
     () => (lens === "unread" ? all.filter((n) => !isRead(n)) : all),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [all, lens, readIds],
+    [all, lens, isRead],
   );
 
   const unreadCount = all.filter((n) => !isRead(n)).length;

@@ -40,17 +40,18 @@ scaffold is an invitation to build the wrong thing early.
 
 ```
 autobureau/
+├── apps/
+│   └── web/            Next.js App Router — UI and domain API                 ✅ built
 ├── packages/
 │   ├── contracts/      Zod domain schemas, event taxonomy, canonical hashing  ✅ built
 │   └── db/             Prisma schema, RLS migrations, scoped client, outbox   ✅ built
 ├── ops/                assumption registry + schema/tests, dashboard, P0 kit  ✅ built
 ├── docs/               architecture · product · strategy · traceability       ✅ built
-└── .github/workflows/  CI: build, tests, guardrails, governance               ✅ built
+└── .github/workflows/  CI: lint, build, typecheck, tests, guardrails          ✅ built
 ```
 
-Planned, and gated on G1 (see the backlog for why each is deferred): `apps/web` (Next.js — UI and
-domain API), `services/ai` (FastAPI + LangGraph), `packages/ui`, `packages/config`,
-`infra/terraform`.
+Not yet created (see the backlog for why each is deferred): `services/ai` (FastAPI + LangGraph),
+`packages/ui`, `packages/config`, `infra/terraform`.
 
 ## How to review
 
