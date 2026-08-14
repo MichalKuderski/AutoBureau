@@ -1,11 +1,13 @@
-import {
-  createLocalJWKSet,
-  createRemoteJWKSet,
-  errors,
-  jwtVerify,
-  type JSONWebKeySet,
-  type JWTVerifyGetKey,
-} from "jose";
+// Subpath imports, not the barrel. `jose`'s index re-exports JWE decryption, which pulls
+// in `CompressionStream` — a Node API the Edge Runtime does not support, and which this
+// module never uses. Importing only the JWS pieces keeps that dead code out of the
+// middleware bundle instead of shipping a build warning about it. Types come from the
+// barrel because type-only imports are erased and carry no runtime weight.
+import { createLocalJWKSet } from "jose/jwks/local";
+import { createRemoteJWKSet } from "jose/jwks/remote";
+import { jwtVerify } from "jose/jwt/verify";
+import * as errors from "jose/errors";
+import type { JSONWebKeySet, JWTVerifyGetKey } from "jose";
 import { UUID_RE } from "@autobureau/contracts";
 
 /**

@@ -85,6 +85,11 @@ beforeAll(async () => {
     audience: AUDIENCE,
     jwks: { uri: `http://127.0.0.1:${port}/jwks.json` },
     cookieName: COOKIE,
+    refreshCookieName: `${COOKIE}_refresh`,
+    // The boundary never calls the provider — it only verifies tokens — so these exist
+    // to satisfy the shape, not to be reached.
+    apiUrl: `http://127.0.0.1:${port}`,
+    anonKey: "unused-by-the-boundary",
     allowedOrigins: [ORIGIN],
     algorithms: ["RS256"],
   };

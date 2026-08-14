@@ -19,6 +19,17 @@ export interface AuthConfig {
   readonly cookieName: string;
   readonly allowedOrigins: readonly string[];
   readonly algorithms: readonly string[];
+  /** GoTrue REST base. Separate from `issuer` so a provider swap can move one and not the other. */
+  readonly apiUrl: string;
+  /**
+   * The provider's publishable key. Not a secret — GoTrue requires it as `apikey` on
+   * every REST call — but it is still read from configuration rather than compiled in,
+   * because it differs per environment. The `service_role` key is deliberately absent:
+   * no request-path code may hold it (doc 06 §5).
+   */
+  readonly anonKey: string;
+  /** The refresh token gets its own cookie, and therefore its own name. */
+  readonly refreshCookieName: string;
 }
 
 export class AuthConfigError extends Error {
@@ -36,11 +47,15 @@ function required(env: NodeJS.ProcessEnv, key: string): string {
 }
 
 export function authConfigFromEnv(env: NodeJS.ProcessEnv = process.env): AuthConfig {
+  const cookieName = required(env, "AUTH_COOKIE_NAME");
   return {
     issuer: required(env, "AUTH_ISSUER"),
     audience: required(env, "AUTH_AUDIENCE"),
     jwks: { uri: required(env, "AUTH_JWKS_URL") },
-    cookieName: required(env, "AUTH_COOKIE_NAME"),
+    cookieName,
+    refreshCookieName: `${cookieName}_refresh`,
+    apiUrl: required(env, "AUTH_API_URL").replace(/\/+$/, ""),
+    anonKey: required(env, "AUTH_ANON_KEY"),
     allowedOrigins: [required(env, "APP_ORIGIN")],
     // Pinned here rather than read from the environment: an operator who can widen the
     // accepted algorithm set through configuration can reintroduce algorithm confusion
