@@ -4,24 +4,23 @@ import type { AddressInfo } from "node:net";
 import type { PrismaClient } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { SignJWT, exportJWK, generateKeyPair, type JSONWebKeySet } from "jose";
-import { createDatabase, type Database } from "@autobureau/db";
-import {
-  APP_URL,
-  adminClient,
-  assertExpectedServer,
-  grantAppUserLogin,
-} from "@/test/integration/database";
+import { adminClient, assertExpectedServer, grantAppUserLogin } from "@/test/integration/database";
 import { CSRF_HEADER, CSRF_HEADER_VALUE } from "@/lib/csrf";
-import type { AuthConfig } from "@/server/auth/config";
 
 /**
  * ADR-009 A1–A8, end to end over HTTP against PostgreSQL 16.
  *
- * Requests are real `Request` objects handed to the real route handler, and assertions
- * are made on the real `Response` — status, problem body, and payload. Nothing is
- * stubbed below the boundary: the token is signed with a real key and fetched through a
- * real JWKS endpoint, membership comes from Postgres under RLS, and the household read
- * is scoped by the policy rather than by a where-clause.
+ * The subject under test is the *shipped* handler: `GET` is imported from
+ * `app/v1/households/current/route.ts` and invoked with real `Request` objects, and the
+ * assertions are made on the real `Response`. Nothing below the boundary is stubbed —
+ * the token is signed with a real key and resolved through a real JWKS endpoint,
+ * membership comes from Postgres under RLS, and the household read is scoped by the
+ * policy rather than by a where-clause.
+ *
+ * The route reads its configuration from the environment, so the environment is what
+ * this file sets up (the same pattern the session and PKCE suites use). Injecting a
+ * config object instead would mean testing a handler assembled here rather than the one
+ * that ships — which is exactly the defect this file previously had.
  */
 
 const ISSUER = "https://auth.example.test/v1";
@@ -38,11 +37,10 @@ const B = randomUUID();
 const C = randomUUID();
 
 let admin: PrismaClient;
-let db: Database;
 let signingKey: CryptoKey;
 let jwks: JSONWebKeySet;
 let jwksServer: Server;
-let config: AuthConfig;
+/** The exported handler from the route module — not a copy assembled here. */
 let GET: (request: Request) => Promise<Response>;
 
 beforeAll(async () => {
@@ -80,39 +78,24 @@ beforeAll(async () => {
   await new Promise<void>((resolve) => jwksServer.listen(0, "127.0.0.1", resolve));
   const port = (jwksServer.address() as AddressInfo).port;
 
-  config = {
-    issuer: ISSUER,
-    audience: AUDIENCE,
-    jwks: { uri: `http://127.0.0.1:${port}/jwks.json` },
-    cookieName: COOKIE,
-    refreshCookieName: `${COOKIE}_refresh`,
-    // The boundary never calls the provider — it only verifies tokens — so these exist
-    // to satisfy the shape, not to be reached.
-    apiUrl: `http://127.0.0.1:${port}`,
-    anonKey: "unused-by-the-boundary",
-    allowedOrigins: [ORIGIN],
-    algorithms: ["RS256"],
-  };
-  db = createDatabase(APP_URL());
+  // Set before the route module is imported: it resolves its configuration on first
+  // request and caches it. `apiUrl`/`anonKey` are required by the config shape but never
+  // reached — this boundary verifies tokens, it does not call the provider.
+  process.env["AUTH_ISSUER"] = ISSUER;
+  process.env["AUTH_AUDIENCE"] = AUDIENCE;
+  process.env["AUTH_JWKS_URL"] = `http://127.0.0.1:${port}/jwks.json`;
+  process.env["AUTH_API_URL"] = `http://127.0.0.1:${port}`;
+  process.env["AUTH_ANON_KEY"] = "unused-by-this-boundary";
+  process.env["AUTH_COOKIE_NAME"] = COOKIE;
+  process.env["APP_ORIGIN"] = ORIGIN;
 
-  // The real route module, with its dependencies injected rather than read from the
-  // environment — there is no Supabase project, and fabricating one would prove nothing.
-  const { authenticated } = await import("@/server/http/route");
-  const real = await import("@/app/v1/households/current/route");
-  void real; // asserts the route module compiles and registers a GET export
-  GET = authenticated({ requires: "registry.read", config, db }, async ({ ctx, db: scoped }) => {
-    const household = await scoped.withHousehold(ctx.householdId, (tx) =>
-      tx.household.findFirst({ select: { id: true, name: true } }),
-    );
-    return { id: household?.id ?? ctx.householdId, name: household?.name ?? null, role: ctx.role };
-  });
+  ({ GET } = await import("@/app/v1/households/current/route"));
 }, 120_000);
 
 afterAll(async () => {
   await admin?.household.deleteMany({ where: { id: { in: [A, B, C] } } });
   await admin?.user.deleteMany({ where: { id: { in: [OWNER, VIEWER, LONER, ORPHAN] } } });
   await admin?.$disconnect();
-  await db?.disconnect();
   await new Promise<void>((resolve) => jwksServer?.close(() => resolve()));
 });
 
@@ -291,6 +274,9 @@ describe("cross-household isolation holds through the boundary", () => {
 // ─────────────────────────── A6 · CSRF ───────────────────────────
 
 describe("A6 · CSRF is enforced at the boundary", () => {
+  // These drive the exported handler directly with an unsafe method. In production Next
+  // would answer 405 first, since the route exports only GET — so what is proved here is
+  // the boundary's ordering and its refusal, not that this URL accepts a POST.
   const unsafe = ["POST", "PUT", "PATCH", "DELETE"] as const;
 
   async function send(method: string, headers: Record<string, string> = {}): Promise<Response> {
@@ -341,7 +327,7 @@ describe("authorization is enforced by the boundary, not the handler", () => {
     let handlerRan = false;
     const { authenticated } = await import("@/server/http/route");
     const ownerOnly = authenticated(
-      { requires: "member.manage", config, db },
+      { requires: "member.manage" },
       async () => {
         handlerRan = true;
         return { ok: true };
@@ -354,7 +340,7 @@ describe("authorization is enforced by the boundary, not the handler", () => {
 
   it("allows the owner of that household the same capability", async () => {
     const { authenticated } = await import("@/server/http/route");
-    const ownerOnly = authenticated({ requires: "member.manage", config, db }, async () => ({
+    const ownerOnly = authenticated({ requires: "member.manage" }, async () => ({
       ok: true,
     }));
     expect((await ownerOnly(get(await token(OWNER), { "x-household-id": A }))).status).toBe(200);
@@ -362,7 +348,7 @@ describe("authorization is enforced by the boundary, not the handler", () => {
 
   it("refuses the same principal in a household where they are only a member", async () => {
     const { authenticated } = await import("@/server/http/route");
-    const ownerOnly = authenticated({ requires: "member.manage", config, db }, async () => ({
+    const ownerOnly = authenticated({ requires: "member.manage" }, async () => ({
       ok: true,
     }));
     // OWNER is `member` in B — the capability follows the membership row, not the person.
