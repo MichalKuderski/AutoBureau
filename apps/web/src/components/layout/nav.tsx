@@ -92,11 +92,11 @@ export function SidebarNav({
         </ul>
       </nav>
 
-      <div className="border-t border-line p-2">
+      <div className="flex items-center gap-1 border-t border-line p-2">
         <Link
           href="/settings/profile"
           {...(onNavigate ? { onClick: onNavigate } : {})}
-          className="flex items-center gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-surface-sunken"
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-surface-sunken"
         >
           <span
             aria-hidden
@@ -108,6 +108,7 @@ export function SidebarNav({
             {household.name}
           </span>
         </Link>
+        <SignOutButton />
       </div>
     </div>
   );
@@ -137,6 +138,27 @@ function NavLink({
     >
       <IconComponent className={cn("size-[18px]", active ? "text-accent" : "text-ink-tertiary")} />
       <span className="flex-1 truncate">{item.label}</span>
+    </Link>
+  );
+}
+
+/**
+ * Sign out.
+ *
+ * A link rather than a button on purpose: signing out is a navigation to the public
+ * side of the product, and rendering it as one means middle-click and "open in new
+ * tab" behave the way a person expects. Killing the refresh token is the server's
+ * half of this (doc 06 §1) and arrives with the session wiring.
+ */
+function SignOutButton() {
+  return (
+    <Link
+      href="/sign-in"
+      aria-label="Sign out"
+      title="Sign out"
+      className="shrink-0 rounded-md p-2 text-ink-tertiary transition-colors hover:bg-surface-sunken hover:text-ink"
+    >
+      <Icon.Logout className="size-[18px]" />
     </Link>
   );
 }
