@@ -2,7 +2,13 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    ports: ["54329:5432"]
+    # Bound to the IPv4 loopback explicitly, and on a port chosen to be unlikely to
+    # collide. A bare "54329:5432" publishes on the wildcard address only; any host
+    # postgres holding the *specific* loopback addresses on the same port wins every
+    # `localhost` connection, silently, because a specific bind beats a wildcard one.
+    # That happened here: a stray PG18 instance shadowed this container for a whole
+    # session and the integration suite was scoring green against the wrong server.
+    ports: ["127.0.0.1:55432:5432"]
     environment:
       POSTGRES_USER: autobureau
       POSTGRES_PASSWORD: local_dev_only
@@ -17,7 +23,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports: ["63790:6379"]
+    ports: ["127.0.0.1:63790:6379"]
 
 volumes:
   pgdata:

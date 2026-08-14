@@ -20,7 +20,11 @@
       "dependsOn": [
         "^build"
       ],
-      "cache": false
+      "cache": false,
+      "env": [
+        "DATABASE_URL",
+        "DATABASE_ADMIN_URL"
+      ]
     },
     "typecheck": {
       "dependsOn": [

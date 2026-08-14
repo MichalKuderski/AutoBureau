@@ -22,7 +22,7 @@ let appPrisma: PrismaClient;
 let db: Database;
 
 beforeAll(async () => {
-  bootstrapDatabase();
+  await bootstrapDatabase();
   await grantAppUserLogin();
 
   admin = adminClient();

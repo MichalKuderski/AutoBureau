@@ -87,6 +87,9 @@ export default tseslint.config(
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-non-null-assertion": "off",
+      // A suite that cannot say which server it proved something about has not proved
+      // it. Diagnostic output from test harnesses is signal, not noise.
+      "no-console": "off",
     },
   },
 
