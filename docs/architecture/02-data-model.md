@@ -303,7 +303,11 @@ outbox_events (  -- doc 07 §2; the only bridge from transactions to async work
 audit_log (      -- append-only; INSERT-only grants; no UPDATE/DELETE for any app role
   id bigserial PK,
   household_id uuid NULL, actor_type actor_type NOT NULL,  -- user | agent | system
-  actor_id uuid NULL,
+  actor_id uuid NULL DEFAULT app.current_user_id(),        -- ADR-009 D5; CHECK below
+  -- CHECK (actor_type <> 'user' OR actor_id IS NOT NULL): a user-attributed row cannot
+  -- be written without an authenticated principal (invariant 9, enforced by the DB).
+  -- system/agent rows insert without one, as background jobs require. Add the
+  -- constraint NOT VALID + VALIDATE separately: this is a large table (§10).
   action text NOT NULL,                     -- 'obligation.dismissed', 'approval.approved', 'export.requested'
   target_type text NOT NULL, target_id uuid NULL,
   meta jsonb NOT NULL DEFAULT '{}',         -- diffs for sensitive mutations; PII-scrubbed (doc 10 §3)

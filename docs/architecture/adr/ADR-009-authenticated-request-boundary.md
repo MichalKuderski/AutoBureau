@@ -1,6 +1,8 @@
 # ADR-009: The authenticated request boundary (session transport, household resolution, route protection, CSRF)
 
 **Status:** Accepted (2026-08-14) · **Date:** 2026-08-14
+**Amended:** 2026-08-14 — D5 added: the principal GUC and the phase-1 self-read policies that make D1
+implementable, plus a database-enforced audit actor.
 **Supersedes in part:** ADR-002 §Decision ¶1 (auth-session half only) · doc 01 §4.1 (same clause)
 **Relates to:** doc 06 (authN/authZ) · doc 12 §4 (application security) · doc 03 §1 (API conventions) · PRD F1
 
@@ -99,10 +101,91 @@ Two rejections:
   set a custom header from an HTML form nor survive preflight from `fetch`. A token would add
   server-side state for no additional property.
 
+### D5 — A principal GUC and two phase-1 self-read policies; the audit actor is enforced by the database
+
+**Amendment (2026-08-14).** D1 as written above is not implementable against the shipped policy set,
+and this was measured, not inferred: `household_users` is scoped by
+`household_id = app.current_household()`, so `app_user` reading it with no household scope returns
+**zero rows** — via Prisma and via raw SQL alike. D1 needs to *count* a principal's memberships
+before any household is chosen, and doc 03 §2's `/v1/me` ("profile + memberships") and
+`/v1/households` ("list mine") need the same enumeration. The only workaround available today —
+scope to the candidate, then check — cannot run at all when there is no candidate, and violates A7
+when there is one.
+
+**The request runs in two phases, and the database can tell them apart.**
+
+*Phase 1 — principal-only resolution.* A second transaction-local setting, `request.user_id`, is
+established with no household set. Read through `app.current_user_id()`, defined exactly like
+`app.current_household()` (`NULLIF(current_setting(..., true), '')::uuid`), so an unset principal is
+NULL and every predicate keyed on it evaluates to NULL — the same fail-closed posture. Two
+**SELECT-only** policies are added; the existing policies are not modified:
+
+```sql
+CREATE POLICY self_membership_read ON household_users FOR SELECT
+  USING (user_id = app.current_user_id() AND app.current_household() IS NULL);
+
+CREATE POLICY self_households_read ON households FOR SELECT
+  USING (app.current_household() IS NULL AND EXISTS (
+    SELECT 1 FROM household_users hu
+    WHERE hu.household_id = households.id AND hu.user_id = app.current_user_id()));
+```
+
+*Phase 2 — household-scoped work.* Once a household is validated and set, both settings are live.
+
+**The `app.current_household() IS NULL` guard is load-bearing, not defensive styling.** Postgres
+policies are permissive and OR together. Without the guard, phase 2 returns the *union* of the
+selected household's members and the principal's memberships elsewhere — measured as 3 rows where 2
+were correct, the extra row being the principal's own membership in another household. It is not a
+cross-user leak (another user's foreign membership stayed invisible), but it silently falsifies the
+rule that everything visible under household scope belongs to that household, and code written
+against that rule would be wrong in a way tests rarely catch. With the guard, the self-read policies
+switch off the instant a household is selected: 2 rows, zero rows outside the selected household.
+
+**A7 is preserved, not amended.** Validation happens in phase 1, before any household GUC exists;
+the household setting is only ever assigned a household the principal is already known to belong
+to. A forged candidate is rejected in phase 1 and never opens a scope.
+
+**The audit actor becomes a database constraint.** `audit_log.actor_id` defaults to
+`app.current_user_id()`, and a check constraint requires user-attributed rows to carry one:
+
+```sql
+ALTER TABLE audit_log ALTER COLUMN actor_id SET DEFAULT app.current_user_id();
+ALTER TABLE audit_log ADD CONSTRAINT audit_user_actor_requires_id
+  CHECK (actor_type <> 'user' OR actor_id IS NOT NULL) NOT VALID;
+ALTER TABLE audit_log VALIDATE CONSTRAINT audit_user_actor_requires_id;
+```
+
+This converts FOUNDING_PRINCIPLES invariant 9 from a convention a handler author can forget into
+something Postgres refuses: a user-attributed audit row cannot be written without an authenticated
+principal. Background work is unaffected — `actor_type='system'` rows insert with no principal, as
+the dispatcher and deletion-cascade jobs require. The domain-verb enrichment described in doc 02 §9
+(`obligation.dismissed` rather than `obligation.updated`) rides on top of this floor and is a
+separate decision, still open.
+
+**Two properties this does *not* claim.** The principal GUC is not a second gate on household data —
+a caller setting only the household setting reads that household exactly as it does today; the
+principal setting enables phase-1 enumeration and the audit default, nothing more. And phase 2 still
+exposes the selected household's full member list, which follows from the pre-existing
+`household_isolation` policy and is required for member management (doc 06 §3). Both are
+within-tenant, and neither is introduced here.
+
+**Migration note.** `audit_log` is among the largest tables at 100k households (doc 02 §10). The
+constraint must be added `NOT VALID` and validated in a second statement, or the `ADD CONSTRAINT`
+takes an ACCESS EXCLUSIVE lock for a full table scan. Both forms were exercised.
+
+**Rejected: a `SECURITY DEFINER` membership lookup.** A definer function taking a user id would need
+no policy changes, but it has no principal to check its argument against — `app_user` calling it
+with *any* user id returned that user's memberships in the probe. That moves membership authorization
+into the application layer alone, which is the exact class of bug RLS exists to backstop (ADR-002
+¶3), and it creates a privilege-bypass primitive that the CI grep for `unsafeAcrossAllHouseholds`
+cannot see.
+
 ## Consequences
 
 - ✅ The four gaps that would have been filled by convention are now filled by decision, each with
   an acceptance test attached (doc 11 §3 style: the invariant, not the implementation).
+- ✅ D5 makes D1 implementable as frozen, and unblocks `/v1/me` and `/v1/households`. Verified
+  against real Postgres before adoption: 33 checks, no failures, on a disposable database.
 - ✅ CSP is unchanged. No control is weakened to make authentication convenient.
 - ⚠️ `apiFetch` must attach the CSRF header on `DELETE` as well as the other unsafe methods; the
   current conditional is an F1 implementation task.
@@ -126,3 +209,7 @@ Two rejections:
 | A6 | CSRF | Every unsafe method without the custom header → `403`, `DELETE` included |
 | A7 | Ordering | The scope GUC is set only after membership validation succeeds |
 | A8 | No privileged credential in the browser | Production bundle contains no `DATABASE_ADMIN_URL`, `service_role`, or connection string |
+| A9 | Phase 1 enumerates only the principal's own memberships | Single → 1, zero → 0, ambiguous → 2; another user's rows → 0; phase 1 returns no household data (items → 0) |
+| A10 | Phase 2 admits no union | Unfiltered `household_users` under a household scope returns that household's members only; the principal's memberships elsewhere are absent |
+| A11 | The audit actor is enforced by the database | `actor_id` defaults to the principal; a `user` row without a principal is rejected; a `system` row without a principal is accepted |
+| A12 | Self-read policies do not widen writes | Phase-1 self-grant of a membership rejected; phase-1 role escalation affects 0 rows |

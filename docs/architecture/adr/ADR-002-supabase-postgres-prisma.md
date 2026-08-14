@@ -13,7 +13,7 @@ Adopt Supabase for **Postgres + Auth + Storage**, Prisma as the only ORM, with a
 
 1. **The browser never queries the database.** All data access goes through `/v1`. *(The auth-session clause originally here — client-side supabase-js holding the session — is superseded by ADR-009 D2: a browser SDK cannot write the `HttpOnly` cookies doc 06 §1 mandates. Signed storage operations are unaffected.)*
 2. Prisma connects as a non-superuser `app_user` role through the transaction pooler; a scoped client extension injects `household_id` filters and wraps **every unit of work in an explicit `$transaction` opening with `SET LOCAL request.household_id`** (doc 06 §4–5; review A1/F-01 — the wrapper is mandatory: `SET LOCAL` is transaction-scoped, and session-level `SET` leaks across pooled connections). Transactions stay short (no external I/O inside); pool-wait p95 is paged; escape hatch: relocate `/v1` to a long-lived Node service, unchanged code.
-3. **RLS stays enabled on every household-scoped table** and policies check the transaction-local setting — a second wall that catches scope bugs, raw-SQL mistakes, and any future direct-access surface.
+3. **RLS stays enabled on every household-scoped table** and policies check the transaction-local setting — a second wall that catches scope bugs, raw-SQL mistakes, and any future direct-access surface. *(ADR-009 D5 adds a second transaction-local setting, `request.user_id`, used only to resolve which household a request belongs to before one is selected, and to attribute audit rows. Household policies are unchanged.)*
 4. `service_role` confined to migrations + two named jobs; CI-greppable.
 5. RLS policies, triggers, and extensions live as SQL migrations in the same stream as Prisma migrations.
 
