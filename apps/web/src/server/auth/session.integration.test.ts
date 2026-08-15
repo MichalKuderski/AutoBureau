@@ -3,6 +3,9 @@ import type { AddressInfo } from "node:net";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { SignJWT, exportJWK, generateKeyPair, type JSONWebKeySet } from "jose";
+import type { PrismaClient } from "@prisma/client";
+import { adminClient, assertExpectedServer, grantAppUserLogin } from "@/test/integration/database";
 
 /**
  * ADR-009 A3 — "no token reaches the browser", proven at the HTTP boundary.
@@ -17,11 +20,23 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  */
 
 const ORIGIN = "https://app.autobureau.com";
-const ACCESS = "header.access-payload.signature";
-const ROTATED = "header.rotated-payload.signature";
+const ISSUER = "https://auth.example.test/v1";
+const AUDIENCE = "autobureau";
+const SUBJECT = "0192f5a1-0000-7000-8000-0000000000e1";
+const EMAIL = "session@example.test";
 const REFRESH = "refresh-token-value";
 const NEW_REFRESH = "rotated-refresh-value";
 const CSRF_HEADER = "x-autobureau-request";
+
+/**
+ * Real signed tokens, because sign-in now verifies what it is about to store and mirrors
+ * the identity it finds inside. An opaque string would fail before the transport under
+ * test was reached — the provider is still contract-shaped, but its tokens are genuine.
+ */
+let ACCESS = "";
+let ROTATED = "";
+let jwks: JSONWebKeySet;
+let admin: PrismaClient;
 
 let provider: Server;
 let providerCalls: Array<{ path: string; apikey: string | undefined; auth: string | undefined }> = [];
@@ -29,6 +44,24 @@ let providerCalls: Array<{ path: string; apikey: string | undefined; auth: strin
 let providerMode: "ok" | "reject" = "ok";
 
 beforeAll(async () => {
+  await assertExpectedServer();
+  await grantAppUserLogin();
+  admin = adminClient();
+
+  const { publicKey, privateKey } = await generateKeyPair("RS256", { extractable: true });
+  jwks = { keys: [{ ...(await exportJWK(publicKey)), kid: "k1", alg: "RS256", use: "sig" }] };
+  const mint = (): Promise<string> =>
+    new SignJWT({ email: EMAIL })
+      .setProtectedHeader({ alg: "RS256", kid: "k1" })
+      .setIssuedAt()
+      .setIssuer(ISSUER)
+      .setAudience(AUDIENCE)
+      .setSubject(SUBJECT)
+      .setExpirationTime("1h")
+      .sign(privateKey);
+  ACCESS = await mint();
+  ROTATED = await mint();
+
   provider = createServer((req, res) => {
     providerCalls.push({
       path: req.url ?? "",
@@ -36,6 +69,11 @@ beforeAll(async () => {
       auth: req.headers["authorization"] as string | undefined,
     });
     const url = req.url ?? "";
+    if (url.startsWith("/jwks.json")) {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(jwks));
+      return;
+    }
     if (url.startsWith("/logout")) {
       res.writeHead(204).end();
       return;
@@ -59,8 +97,8 @@ beforeAll(async () => {
   await new Promise<void>((resolve) => provider.listen(0, "127.0.0.1", resolve));
   const port = (provider.address() as AddressInfo).port;
 
-  process.env["AUTH_ISSUER"] = `http://127.0.0.1:${port}`;
-  process.env["AUTH_AUDIENCE"] = "autobureau";
+  process.env["AUTH_ISSUER"] = ISSUER;
+  process.env["AUTH_AUDIENCE"] = AUDIENCE;
   process.env["AUTH_JWKS_URL"] = `http://127.0.0.1:${port}/jwks.json`;
   process.env["AUTH_API_URL"] = `http://127.0.0.1:${port}`;
   process.env["AUTH_ANON_KEY"] = "publishable-anon-key";
@@ -69,6 +107,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await admin?.user.deleteMany({ where: { id: SUBJECT } });
+  await admin?.$disconnect();
   await new Promise<void>((resolve) => provider.close(() => resolve()));
 });
 
@@ -126,6 +166,42 @@ describe("A3 · sign-in puts tokens in cookies and nowhere else", () => {
     await POST(signInRequest({ email: "a@example.test", password: "pw" }));
     expect(providerCalls[0]?.apikey).toBe("publishable-anon-key");
     expect(providerCalls[0]?.path).toContain("grant_type=password");
+  });
+
+  it("mirrors the verified identity before the session exists", async () => {
+    await admin.user.deleteMany({ where: { id: SUBJECT } });
+    const { POST } = await import("@/app/v1/auth/sign-in/route");
+    const response = await POST(signInRequest({ email: "a@example.test", password: "pw" }));
+
+    expect(response.status).toBe(204);
+    const user = await admin.user.findUniqueOrThrow({ where: { id: SUBJECT } });
+    expect(user.email).toBe(EMAIL);
+    expect(await admin.userProfile.count({ where: { userId: SUBJECT } })).toBe(1);
+  });
+
+  it("issues nothing when the provider's own token does not verify", async () => {
+    // The provider is reachable and answers 200, but with a token this deployment does
+    // not accept. Storing it would hand out a session that fails on the next request.
+    const foreign = await generateKeyPair("RS256", { extractable: true });
+    const unusable = await new SignJWT({ email: EMAIL })
+      .setProtectedHeader({ alg: "RS256", kid: "k1" })
+      .setIssuedAt()
+      .setIssuer(ISSUER)
+      .setAudience(AUDIENCE)
+      .setSubject(SUBJECT)
+      .setExpirationTime("1h")
+      .sign(foreign.privateKey);
+
+    const good = ACCESS;
+    ACCESS = unusable;
+    try {
+      const { POST } = await import("@/app/v1/auth/sign-in/route");
+      const response = await POST(signInRequest({ email: "a@example.test", password: "pw" }));
+      expect(response.status).toBeGreaterThanOrEqual(400);
+      expect(cookiesOf(response)).toHaveLength(0);
+    } finally {
+      ACCESS = good;
+    }
   });
 
   it("refuses without the CSRF header", async () => {

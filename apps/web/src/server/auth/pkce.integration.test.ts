@@ -2,6 +2,9 @@ import { createHash, randomUUID } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { SignJWT, exportJWK, generateKeyPair, type JSONWebKeySet } from "jose";
+import type { PrismaClient } from "@prisma/client";
+import { adminClient, assertExpectedServer, grantAppUserLogin } from "@/test/integration/database";
 import { CSRF_HEADER } from "@/lib/csrf";
 import { decodePending, verifierCookieName } from "@/server/auth/pkce";
 import type { AuthConfig } from "@/server/auth/config";
@@ -20,8 +23,16 @@ import type { AuthConfig } from "@/server/auth/config";
  */
 
 const ORIGIN = "https://app.autobureau.com";
-const ACCESS = "header.access.signature";
+const ISSUER = "https://auth.example.test/v1";
+const AUDIENCE = "autobureau";
+const SUBJECT = "0192f5a1-0000-7000-8000-0000000000e2";
+const EMAIL = "pkce@example.test";
 const REFRESH = "refresh-value";
+
+/** Real signed token: redemption verifies and mirrors before it issues cookies. */
+let ACCESS = "";
+let jwks: JSONWebKeySet;
+let admin: PrismaClient;
 
 interface Pending {
   challenge: string;
@@ -48,6 +59,21 @@ function s256(verifier: string): string {
 }
 
 beforeAll(async () => {
+  await assertExpectedServer();
+  await grantAppUserLogin();
+  admin = adminClient();
+
+  const { publicKey, privateKey } = await generateKeyPair("RS256", { extractable: true });
+  jwks = { keys: [{ ...(await exportJWK(publicKey)), kid: "k1", alg: "RS256", use: "sig" }] };
+  ACCESS = await new SignJWT({ email: EMAIL })
+    .setProtectedHeader({ alg: "RS256", kid: "k1" })
+    .setIssuedAt()
+    .setIssuer(ISSUER)
+    .setAudience(AUDIENCE)
+    .setSubject(SUBJECT)
+    .setExpirationTime("1h")
+    .sign(privateKey);
+
   provider = createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://local");
     let body = "";
@@ -60,6 +86,12 @@ beforeAll(async () => {
           return {};
         }
       };
+
+      if (url.pathname === "/jwks.json") {
+        return void res
+          .writeHead(200, { "content-type": "application/json" })
+          .end(JSON.stringify(jwks));
+      }
 
       if (url.pathname === "/otp") {
         const payload = json();
@@ -108,8 +140,8 @@ beforeAll(async () => {
   await new Promise<void>((resolve) => provider.listen(0, "127.0.0.1", resolve));
   const port = (provider.address() as AddressInfo).port;
 
-  process.env["AUTH_ISSUER"] = `http://127.0.0.1:${port}`;
-  process.env["AUTH_AUDIENCE"] = "autobureau";
+  process.env["AUTH_ISSUER"] = ISSUER;
+  process.env["AUTH_AUDIENCE"] = AUDIENCE;
   process.env["AUTH_JWKS_URL"] = `http://127.0.0.1:${port}/jwks.json`;
   process.env["AUTH_API_URL"] = `http://127.0.0.1:${port}`;
   process.env["AUTH_ANON_KEY"] = "publishable-anon-key";
@@ -118,6 +150,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await admin?.user.deleteMany({ where: { id: SUBJECT } });
+  await admin?.$disconnect();
   await new Promise<void>((resolve) => provider.close(() => resolve()));
 });
 

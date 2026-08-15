@@ -357,3 +357,118 @@ describe("A16 · actions no write-interceptor can observe", () => {
     ).rejects.toBeInstanceOf(AuditError);
   });
 });
+
+// ─────────────────────── D8 · household-less identity audit ───────────────────────
+
+describe("A18 · a principal may audit its own household-less work", () => {
+  it("writes a NULL-household row attributed by the database", async () => {
+    const before = await auditCount();
+    await runAsUser(U_SINGLE, () =>
+      db.withIdentity(U_SINGLE, (tx) =>
+        tx.user.update({ where: { id: U_SINGLE }, data: { status: "active" } }),
+      ),
+    );
+    expect(await auditCount()).toBe(before + 1);
+
+    const row = await lastAudit();
+    expect(row?.householdId).toBeNull();
+    expect(row?.actorId).toBe(U_SINGLE);
+    expect(row?.actorType).toBe("user");
+  });
+
+  it("keeps writes inside the transaction — a failure leaves nothing", async () => {
+    const before = await auditCount();
+    await expect(
+      runAsUser(U_SINGLE, () =>
+        db.withIdentity(U_SINGLE, async (tx) => {
+          await tx.user.update({ where: { id: U_SINGLE }, data: { status: "suspended" } });
+          throw new Error("identity failure after the write");
+        }),
+      ),
+    ).rejects.toThrow("identity failure");
+
+    expect((await admin.user.findUniqueOrThrow({ where: { id: U_SINGLE } })).status).toBe("active");
+    expect(await auditCount()).toBe(before);
+  });
+});
+
+describe("A19 · the household-less exception cannot be turned into a hole", () => {
+  it("refuses a NULL-household row claiming another actor", async () => {
+    const before = await auditCount();
+    await expect(
+      runAsUser(U_SINGLE, () =>
+        db.withIdentity(U_SINGLE, (tx) =>
+          tx.$executeRaw`INSERT INTO audit_log (household_id, actor_type, actor_id, action, target_type)
+                         VALUES (NULL, 'user', ${U_MULTI}::uuid, 'user.create', 'user')`,
+        ),
+      ),
+    ).rejects.toThrow();
+    expect(await auditCount()).toBe(before);
+  });
+
+  it("refuses a foreign-household row from an identity scope", async () => {
+    // No household is set here, so `household_id = app.current_household()` is NULL and
+    // the new policy requires NULL — naming a real household satisfies neither.
+    await expect(
+      runAsUser(U_SINGLE, () =>
+        db.withIdentity(U_SINGLE, (tx) =>
+          tx.$executeRaw`INSERT INTO audit_log (household_id, actor_type, action, target_type)
+                         VALUES (${H1}::uuid, 'user', 'user.create', 'user')`,
+        ),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("does not let a household scope smuggle in a NULL-household row for someone else", async () => {
+    await expect(
+      runAsUser(U_MULTI, () =>
+        db.withHousehold(H1, (tx) =>
+          tx.$executeRaw`INSERT INTO audit_log (household_id, actor_type, actor_id, action, target_type)
+                         VALUES (NULL, 'user', ${U_SINGLE}::uuid, 'user.create', 'user')`,
+        ),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("keeps NULL-household rows out of ordinary household-scoped reads", async () => {
+    await runAsUser(U_SINGLE, () =>
+      db.withIdentity(U_SINGLE, (tx) =>
+        tx.user.update({ where: { id: U_SINGLE }, data: { status: "active" } }),
+      ),
+    );
+    // audit_read still requires household_id = app.current_household(); NULL never is.
+    const inHousehold = await runAsUser(U_MULTI, () =>
+      db.withHousehold(H1, (tx) => tx.auditLog.findMany({ where: { householdId: null } })),
+    );
+    expect(inHousehold).toEqual([]);
+
+    const inIdentity = await db.withPrincipal(U_SINGLE, (tx) => tx.auditLog.findMany());
+    expect(inIdentity).toEqual([]);
+  });
+});
+
+describe("A20 · the household-scoped audit path is unchanged", () => {
+  it("still records household work with its household", async () => {
+    const before = await auditCount();
+    await runAsUser(U_MULTI, () =>
+      db.withHousehold(H1, (tx) =>
+        tx.item.create({ data: { householdId: H1, kind: "other", name: "after-d8" } }),
+      ),
+    );
+    const row = await lastAudit();
+    expect(await auditCount()).toBe(before + 1);
+    expect(row?.householdId).toBe(H1);
+    expect(row?.actorId).toBe(U_MULTI);
+  });
+
+  it("still refuses a cross-household audit row", async () => {
+    await expect(
+      runAsUser(U_MULTI, () =>
+        db.withHousehold(H1, (tx) =>
+          tx.$executeRaw`INSERT INTO audit_log (household_id, actor_type, action, target_type)
+                         VALUES (${H3}::uuid, 'user', 'item.create', 'item')`,
+        ),
+      ),
+    ).rejects.toThrow();
+  });
+});

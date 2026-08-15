@@ -5,7 +5,10 @@ import {
   decodePending,
   verifierCookieName,
 } from "@/server/auth/pkce";
+import { createJwtVerifier } from "@/server/auth/jwt";
 import { createGoTrueProvider } from "@/server/auth/provider";
+import { getDatabase } from "@/server/db";
+import { mirrorIdentity } from "@/server/identity/mirror";
 import { appendCookies, clearedSessionCookies, sessionCookies } from "@/server/auth/session";
 import { SIGN_IN_PATH, safeDestination } from "@/server/http/public-routes";
 
@@ -64,6 +67,17 @@ export async function GET(request: Request): Promise<Response> {
 
   try {
     const tokens = await createGoTrueProvider(config).exchangeCode(code, pending.verifier);
+
+    // Same order as sign-in: verify, mirror, then issue. A redemption that cannot be
+    // mirrored abandons rather than handing out a session that resolves to nothing.
+    const principal = await createJwtVerifier({
+      jwks: config.jwks,
+      issuer: config.issuer,
+      audience: config.audience,
+      algorithms: config.algorithms,
+    }).verify(tokens.accessToken);
+    await mirrorIdentity(getDatabase(), principal);
+
     return appendCookies(
       new Response(null, {
         status: 303,

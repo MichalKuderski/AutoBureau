@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { authConfigFromEnv } from "@/server/auth/config";
+import { createJwtVerifier, TokenError } from "@/server/auth/jwt";
 import { createGoTrueProvider, ProviderError } from "@/server/auth/provider";
+import { getDatabase } from "@/server/db";
+import { MirrorError, mirrorIdentity } from "@/server/identity/mirror";
 import { appendCookies, sessionCookies } from "@/server/auth/session";
 import { assertSameSiteRequest, CsrfError } from "@/server/http/csrf";
 import { problemResponse } from "@/server/http/problem";
@@ -51,12 +54,38 @@ export async function POST(request: Request): Promise<Response> {
       parsed.data.email,
       parsed.data.password,
     );
+
+    // The token is verified before it is stored. That proves the provider's issuer,
+    // audience and algorithm are ones this deployment accepts *at sign-in*, rather than
+    // handing out a session that fails on the next request — and it is the only
+    // trustworthy source for the subject and email the mirror needs.
+    const principal = await createJwtVerifier({
+      jwks: config.jwks,
+      issuer: config.issuer,
+      audience: config.audience,
+      algorithms: config.algorithms,
+    }).verify(tokens.accessToken);
+
+    // Mirror before the cookies exist. A session whose identity is not in this database
+    // is a session that resolves to 403 on every request; issuing one would be creating
+    // a partially usable identity, which is exactly what must not happen.
+    await mirrorIdentity(getDatabase(), principal);
+
     // 204: nothing to say that the cookies do not already carry.
     return appendCookies(
       new Response(null, { status: 204, headers: { "cache-control": "no-store" } }),
       sessionCookies(config, tokens),
     );
   } catch (cause) {
+    // The provider answered, but with a token this deployment cannot accept, or with an
+    // identity that cannot be mirrored. Both are deployment or provider faults rather
+    // than the caller's, and neither may explain itself: the detail is the same neutral
+    // sentence a transport failure gets, and nothing from the database or the provider
+    // reaches the response.
+    if (cause instanceof TokenError || cause instanceof MirrorError) {
+      if (process.env.NODE_ENV !== "production") console.error("[auth:sign-in]", cause);
+      return problemResponse("unavailable", { detail: "Sign-in is briefly unavailable." });
+    }
     if (cause instanceof ProviderError) {
       if (cause.reason === "rate-limited") {
         return problemResponse("rate-limited", { detail: "Too many attempts — try again shortly." });
@@ -70,7 +99,10 @@ export async function POST(request: Request): Promise<Response> {
         detail: "That email and password don't match an account.",
       });
     }
-    throw cause;
+    // Never surfaced: an unexpected throw could carry a query, a row, or a connection
+    // string in its message.
+    if (process.env.NODE_ENV !== "production") console.error("[auth:sign-in]", cause);
+    return problemResponse("internal");
   }
 }
 

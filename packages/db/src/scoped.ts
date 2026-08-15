@@ -158,6 +158,45 @@ export class Database {
   }
 
   /**
+   * Principal scope with writes permitted — identity mirroring only (ADR-009 D8).
+   *
+   * Deliberately separate from `withPrincipal`. That method is read-only by
+   * construction because deciding *which* household a request belongs to is not a
+   * moment that should change rows, and quietly making it writable would remove a
+   * guard rather than add a capability. This is the one operation that legitimately
+   * writes with no household in scope: the `users` / `user_profiles` rows that mirror
+   * an authenticated principal into this database before any household exists.
+   *
+   * The audit unit it opens carries no household, so the rows it flushes rely on the
+   * `self_audit_insert` policy — which admits them only when `actor_id` matches the
+   * principal established here. Attribution is therefore stamped by the database from
+   * the same setting the policy checks; nothing this process asserts can change it.
+   */
+  async withIdentity<T>(
+    userId: string,
+    fn: (tx: ScopedClient) => Promise<T>,
+    options: ScopedTransactionOptions = {},
+  ): Promise<T> {
+    if (!UUID_RE.test(userId)) {
+      throw new ScopeError(`userId is not a valid UUID: ${JSON.stringify(userId)}`);
+    }
+    return withAuditUnit(null, undefined, (flush) =>
+      this.client.$transaction(
+        async (tx) => {
+          await tx.$executeRaw`SELECT set_config('request.user_id', ${userId}, true)`;
+          const result = await fn(tx as unknown as ScopedClient);
+          await flush(tx as unknown as AuditWriter);
+          return result;
+        },
+        {
+          timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+          maxWait: options.maxWaitMs ?? DEFAULT_MAX_WAIT_MS,
+        },
+      ),
+    );
+  }
+
+  /**
    * Escape hatch for the two jobs that legitimately span households: the outbox
    * dispatcher and the deletion cascade (doc 06 §5). Deliberately verbose and
    * greppable — CI asserts it appears only in allow-listed modules.

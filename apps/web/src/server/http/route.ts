@@ -1,6 +1,7 @@
-import { createDatabase, runAsUser, type Database } from "@autobureau/db";
+import { runAsUser, type Database } from "@autobureau/db";
 import { createJwtVerifier } from "../auth/jwt";
 import { AuthConfigError, authConfigFromEnv, type AuthConfig } from "../auth/config";
+import { DatabaseConfigError, getDatabase } from "../db";
 import {
   RequestContextError,
   membershipsVia,
@@ -57,11 +58,7 @@ function boundaryDeps(options: AuthenticatedRouteOptions): { config: AuthConfig;
   if (options.config && options.db) return { config: options.config, db: options.db };
   if (!cached) {
     const config = options.config ?? authConfigFromEnv();
-    const url = process.env["DATABASE_URL"];
-    if (url === undefined || url.trim() === "") {
-      throw new AuthConfigError("DATABASE_URL is not set.");
-    }
-    cached = { config, db: options.db ?? createDatabase(url) };
+    cached = { config, db: options.db ?? getDatabase() };
   }
   return cached;
 }
@@ -80,7 +77,7 @@ export function authenticated(
     try {
       deps = boundaryDeps(options);
     } catch (cause) {
-      if (cause instanceof AuthConfigError) {
+      if (cause instanceof AuthConfigError || cause instanceof DatabaseConfigError) {
         // Deliberately not `internal`: the deployment is misconfigured, not broken, and
         // the detail names no variable — configuration is not a client's business.
         return problemResponse("unavailable", {

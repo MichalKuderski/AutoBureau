@@ -3,7 +3,8 @@
 **Status:** Accepted (2026-08-14) · **Date:** 2026-08-14
 **Amended:** 2026-08-14 — D5 added: the principal GUC and the phase-1 self-read policies that make D1
 implementable, plus a database-enforced audit actor. D6 (audit domain-verb layer) and D7 (`jose`
-authorization under PRD §12) added the same day.
+authorization under PRD §12) added the same day. D8 (household-less identity audit) added
+2026-08-15.
 **Supersedes in part:** ADR-002 §Decision ¶1 (auth-session half only) · doc 01 §4.1 (same clause)
 **Relates to:** doc 06 (authN/authZ) · doc 12 §4 (application security) · doc 03 §1 (API conventions) · PRD F1
 
@@ -276,6 +277,64 @@ the accepted `algorithms` explicitly, verify `issuer`, `audience`, and expiry ex
 take the algorithm from the token header. Supabase populates the configuration; it is not named in
 the module.
 
+### D8 — Identity mirroring, and the one household-less audit row it needs
+
+**Amendment (2026-08-15).** A Supabase-authenticated principal has no rows in this database.
+`household_users.user_id` is a foreign key to `users.id`, so until something mirrors the principal
+in, every request from a perfectly valid session resolves to `403 no-membership`. Mirroring is
+therefore not a convenience — it is the step between "the session works" and "the product works".
+
+Mirroring is a state mutation, so **FOUNDING_PRINCIPLES invariant 9 requires an audit row for it**.
+It happens before any household exists, and `audit_insert` checks
+`household_id = app.current_household()`, which no NULL household can satisfy. Invariant 9 was
+therefore *unsatisfiable* for identity writes — refused by policy, not merely awkward.
+
+**One additional INSERT policy, and nothing else:**
+
+```sql
+CREATE POLICY self_audit_insert ON audit_log FOR INSERT
+  WITH CHECK (household_id IS NULL AND actor_id = app.current_user_id());
+```
+
+`audit_insert` is untouched. Policies are permissive and OR together, so this adds one narrow
+alternative: a household row with a matching household, or a household-less row for the acting
+principal. A household-less row for *someone else*, or a foreign household, satisfies neither.
+
+**Why this is not a tenancy hole.** It admits rows carrying no household, so there is no tenant to
+cross into. It grants no read: `audit_read` still requires `household_id = app.current_household()`,
+and NULL is never equal to a household, so these rows are write-only to `app_user`. And it cannot
+forge attribution — `actor_id` defaults to `app.current_user_id()` (D5) and the CHECK compares the
+*resulting* row against that same setting, so a caller supplying another id is rejected rather than
+silently corrected.
+
+**`Database.withIdentity` is deliberately separate from `withPrincipal`.** Phase-1 resolution stays
+read-only by construction, because deciding which household a request belongs to is not a moment
+that should change rows; quietly making it writable would remove a guard rather than add a
+capability. `withIdentity` is the one operation that legitimately writes with no household in scope.
+
+**Where mirroring runs:** once, when a session is established — sign-in and callback — not on every
+request. Both routes verify the access token *before* storing it, which proves the provider's
+issuer, audience and algorithm are acceptable at sign-in rather than on the next request, and is the
+only trustworthy source for the subject and email. Cookies are issued only after mirroring succeeds:
+a session whose identity is absent from this database is a partially usable identity, which is
+exactly what must not be created.
+
+**Concurrency is left to Postgres.** Two simultaneous first logins race; the writes lean on
+`users.id` and `user_profiles.user_id` through `INSERT … ON CONFLICT DO NOTHING`. An
+application-level mutex would be a second, weaker copy of a guarantee the database already gives.
+
+**Rejected, as in the original analysis:** privileged mirroring in the request path (violates doc 06
+§5's confinement of `service_role` to migrations and two named jobs); an auth webhook → outbox →
+dispatcher (architecturally respectable, but it buys eventual consistency at exactly the wrong
+moment — first login — and a lost webhook strands a user at 403 with no self-service recovery);
+and declaring identity mutations outside invariant 9 (a rationalisation, not a decision).
+
+**Consequence recorded honestly:** `user_profiles.display_name` is `NOT NULL` with no default, and
+no governing document says what a mirrored profile is called. The verified email address is used as
+the initial value — the only thing the system actually knows at that moment — and onboarding and
+profile settings replace it. If the census (PRD F3) should own that value instead, this is the line
+to change.
+
 ## Consequences
 
 - ✅ The four gaps that would have been filled by convention are now filled by decision, each with
@@ -314,3 +373,6 @@ the module.
 | A15 | Audit is atomic with the domain write | A unit of work that fails after mutating leaves neither domain nor audit rows; two mutations produce two rows; reads produce none |
 | A16 | Audit-only actions are recordable | `secret.revealed` — an action no write-interceptor can observe — is written through the explicit API with the actor still DB-stamped |
 | A17 | JWT verification is complete and pinned | Valid token verifies; invalid signature, expired, wrong issuer, wrong audience, unpinned algorithm, and malformed claims each fail |
+| A18 | A principal may audit its own household-less work | A `NULL`-household row is written with `actor_id` stamped by the database; a failure inside the unit leaves neither the identity rows nor the audit row |
+| A19 | The exception cannot be widened into a hole | A `NULL`-household row claiming another actor is refused; a foreign household from an identity scope is refused; `NULL`-household rows are invisible to household-scoped and principal-scoped reads |
+| A20 | The household-scoped audit path is unchanged | Household work still records its household and actor; a cross-household audit row is still refused |

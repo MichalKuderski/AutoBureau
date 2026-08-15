@@ -91,6 +91,15 @@ export interface JwtVerifierConfig {
 export interface VerifiedPrincipal {
   /** `sub`, lowercased and validated as a UUID — this is `users.id`. */
   readonly userId: string;
+  /**
+   * The `email` claim, when the token carries a usable one.
+   *
+   * Exposed because `users.email` is `NOT NULL` and identity mirroring has no other
+   * source for it: the address must come from the signed token, never from request
+   * input. Optional rather than required — a token without it is still a valid session,
+   * and it is the mirror's job to refuse rather than the verifier's to invent.
+   */
+  readonly email: string | undefined;
   /** Seconds since the epoch. */
   readonly expiresAt: number;
   readonly issuedAt: number | undefined;
@@ -187,8 +196,15 @@ export function createJwtVerifier(config: JwtVerifierConfig): JwtVerifier {
         throw new TokenError("claims", "token subject is not a user id");
       }
 
+      const email =
+        typeof payload["email"] === "string" && payload["email"].length > 0 &&
+        payload["email"].length <= 320
+          ? payload["email"]
+          : undefined;
+
       return {
         userId: subject,
+        email,
         expiresAt: payload.exp,
         issuedAt: typeof payload.iat === "number" ? payload.iat : undefined,
       };
