@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/field";
+import { ApiError, apiFetch } from "@/lib/api-client";
 import { isPlausibleEmail } from "@/lib/password";
 import { OAuthOptions, OrDivider } from "../oauth-options";
 
@@ -35,6 +36,8 @@ export function SignInForm() {
   }>({});
   const [pending, setPending] = useState(false);
   const [linkSentTo, setLinkSentTo] = useState<string | null>(null);
+  /** Form-level failure — the server never says *which* half was wrong, and neither do we. */
+  const [formError, setFormError] = useState<string | null>(null);
 
   if (linkSentTo) {
     return (
@@ -63,7 +66,7 @@ export function SignInForm() {
     );
   }
 
-  const submit = () => {
+  const submit = async () => {
     const nextErrors: typeof errors = {};
     if (!isPlausibleEmail(email)) {
       nextErrors.email = "Enter the address you signed up with.";
@@ -72,15 +75,43 @@ export function SignInForm() {
       nextErrors.password = "Enter your password, or ask for a one-time link instead.";
     }
     setErrors(nextErrors);
+    setFormError(null);
     if (Object.keys(nextErrors).length > 0) return;
 
+    if (mode === "link") {
+      // The magic-link endpoint exists and is provider-verified, but wiring its UI is
+      // deliberately outside this gate. Left as it was rather than half-migrated.
+      setPending(true);
+      window.setTimeout(() => {
+        setPending(false);
+        setLinkSentTo(email.trim());
+      }, 500);
+      return;
+    }
+
     setPending(true);
-    // Supabase Auth replaces this call; the shape of what happens next does not change.
-    window.setTimeout(() => {
+    try {
+      // ADR-009 D2: the session is established server-side. `apiFetch` attaches the D4
+      // CSRF header and `credentials: "same-origin"`; the response carries no token, only
+      // `Set-Cookie`. Nothing token-shaped is read, stored, or inspected on this side.
+      await apiFetch<void>("/auth/sign-in", {
+        method: "POST",
+        body: { email: email.trim(), password },
+      });
+      // The session now lives in cookies the browser will not show us, so the destination
+      // must be re-fetched from the server rather than rendered from anything held here.
+      router.replace("/dashboard");
+      router.refresh();
+    } catch (cause) {
       setPending(false);
-      if (mode === "link") setLinkSentTo(email.trim());
-      else router.push("/dashboard");
-    }, 500);
+      if (cause instanceof ApiError) {
+        // The endpoint already collapses "wrong password" and "no such account" into one
+        // answer; repeating its detail verbatim keeps that property instead of guessing.
+        setFormError(cause.problem.detail ?? "We couldn't sign you in. Please try again.");
+        return;
+      }
+      setFormError("We couldn't sign you in. Please try again.");
+    }
   };
 
   return (
@@ -93,11 +124,17 @@ export function SignInForm() {
         </Link>
       </p>
 
+      {formError ? (
+        <Alert tone="critical" title="Sign-in failed" className="mt-5">
+          {formError}
+        </Alert>
+      ) : null}
+
       <form
         className="mt-6 flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
-          submit();
+          void submit();
         }}
       >
         <TextInput

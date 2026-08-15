@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ObligationOutcome } from "@autobureau/contracts";
+import { apiFetch } from "@/lib/api-client";
 import type {
   DashboardSummary,
   DocumentView,
@@ -44,7 +45,30 @@ export const queryKeys = {
   document: (h: string, id: string) => ["document", h, id] as const,
   timeline: (h: string) => ["timeline", h] as const,
   notifications: (h: string) => ["notifications", h] as const,
+  currentHousehold: () => ["household", "current"] as const,
 };
+
+/** What `GET /v1/households/current` returns — the whole contract, nothing added. */
+export interface CurrentHousehold {
+  id: string;
+  name: string | null;
+  role: "owner" | "member" | "viewer";
+}
+
+/**
+ * The one hook here that already speaks to the real boundary (ADR-009 Gate A).
+ *
+ * Everything else in this file still resolves from fixtures, exactly as the header
+ * describes. This one exists to prove the browser → `/v1` → resolver → RLS path from a
+ * screen rather than from a test: no household id is passed, because the server derives
+ * it from the session and the policy decides which row that is.
+ */
+export function useCurrentHousehold() {
+  return useQuery<CurrentHousehold>({
+    queryKey: queryKeys.currentHousehold(),
+    queryFn: () => apiFetch<CurrentHousehold>("/households/current"),
+  });
+}
 
 export interface ObligationFilters {
   status?: string[];
