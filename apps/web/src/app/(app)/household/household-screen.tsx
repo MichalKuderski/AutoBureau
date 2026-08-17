@@ -12,7 +12,7 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Table, type Column } from "@/components/ui/table";
 import { useHousehold } from "@/providers/household-provider";
-import { useItems } from "@/lib/domain/queries";
+import { useCurrentHousehold, useItems } from "@/lib/domain/queries";
 import { formatDate, formatMasked, formatMoney, initialsOf } from "@/lib/format";
 import type { ItemView } from "@/lib/domain/types";
 import { cn } from "@/lib/cn";
@@ -36,6 +36,12 @@ export function HouseholdScreen() {
 
   const query = useItems(household.id, { search, memberId });
   const items = useMemo(() => query.data ?? [], [query.data]);
+
+  // ADR-009 Gate A: this one value comes from `/v1/households/current` rather than from
+  // the provider, so the screen exercises the authenticated boundary itself. The context
+  // value is the fallback while the request is in flight — same household either way.
+  const current = useCurrentHousehold();
+  const householdName = current.data?.name ?? household.name;
 
   const memberFilters: FilterOption[] = useMemo(
     () => [
@@ -111,7 +117,7 @@ export function HouseholdScreen() {
   return (
     <>
       <PageHeader
-        title="Household"
+        title={householdName}
         description="Everything we're tracking for the people you look after."
         actions={
           <Button variant="primary" size="sm">
