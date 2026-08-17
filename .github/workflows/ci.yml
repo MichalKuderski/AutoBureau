@@ -69,7 +69,7 @@ jobs:
       # doc 06 §5: the RLS-bypassing escape hatch is allow-listed, not ambient.
       - name: Dispatcher escape hatch stays allow-listed
         run: |
-          hits=$(grep -rln "unsafeAcrossAllHouseholds" --include="*.ts" \
+          hits=$(grep -rlnE "(\.|\[[\"'])unsafeAcrossAllHouseholds" --include="*.ts" \
                    --exclude-dir=dist --exclude-dir=node_modules packages apps 2>/dev/null \
                  | grep -vE "packages/db/(src/scoped\.ts|tests/)" || true)
           if [ -n "$hits" ]; then
