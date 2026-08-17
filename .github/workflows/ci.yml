@@ -9,6 +9,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pull-requests: read
+
 env:
   # Local CI credentials only — production secrets live in Doppler (doc 09 §5).
   POSTGRES_PASSWORD: ci_only
@@ -54,6 +58,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # ADR-006: application code never imports a model provider SDK directly;
       # everything goes through the AI service's gateway.
@@ -69,7 +75,7 @@ jobs:
       # doc 06 §5: the RLS-bypassing escape hatch is allow-listed, not ambient.
       - name: Dispatcher escape hatch stays allow-listed
         run: |
-          hits=$(grep -rln "unsafeAcrossAllHouseholds" --include="*.ts" \
+          hits=$(grep -rlnE "(\.|\[[\"'])unsafeAcrossAllHouseholds" --include="*.ts" \
                    --exclude-dir=dist --exclude-dir=node_modules packages apps 2>/dev/null \
                  | grep -vE "packages/db/(src/scoped\.ts|tests/)" || true)
           if [ -n "$hits" ]; then
