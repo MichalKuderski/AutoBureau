@@ -1,23 +1,28 @@
 "use client";
 
-import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Icon } from "@/components/ui/icon";
-import { Alert } from "@/components/ui/alert";
-import { ConfirmDialog } from "@/components/ui/modal";
-import { useToast } from "@/components/ui/toast";
+import { useHousehold } from "@/providers/household-provider";
 import { cn } from "@/lib/cn";
 
 /**
  * Plan and billing.
  *
- * Two product commitments are enforced in this file rather than merely stated:
- * cancellation is one click and does not route through a retention maze
- * (FOUNDING_PRINCIPLES §11), and usage against the free tier is shown honestly
- * *before* a cap is hit, because a silent stop is indistinguishable from a broken
- * product (PRD F14).
+ * Blueprint P0-09. No billing system exists yet — no Stripe, no checkout, no webhooks,
+ * no usage metering (Phase 3, gated on G1: P3-07 through P3-10). This screen used to
+ * fake all of it: a local `useState` let Upgrade/Cancel actually flip the displayed
+ * plan, a toast claimed "You're on Premium" for a change nothing recorded, and a
+ * hardcoded `docsUsed = 7` was shown as a live usage meter — while the sidebar read
+ * the real `household.plan` a few pixels away, so the two could disagree outright.
+ *
+ * The plan shown here is `household.plan`, the same value the sidebar reads — there is
+ * one source of truth, not two. Nothing on this screen can change it, so nothing tries
+ * to. The usage meter is gone rather than replaced with a plausible-looking number:
+ * `entitlements.docs_used_this_period` is a real column (doc 14 §4) that no code path
+ * increments, so reading it would only ever display a default zero as though it were
+ * a measurement.
  */
 
 const PLANS = [
@@ -44,56 +49,11 @@ const PLANS = [
 ] as const;
 
 export function BillingSettings() {
-  const { toast } = useToast();
-  const [plan, setPlan] = useState<"free" | "premium">("free");
-  const [confirmCancel, setConfirmCancel] = useState(false);
-  const docsUsed = 7;
-  const docsCap = 10;
-  const pct = Math.round((docsUsed / docsCap) * 100);
+  const { household } = useHousehold();
+  const plan = household.plan;
 
   return (
     <div className="flex flex-col gap-6">
-      {plan === "free" ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>This month's usage</CardTitle>
-            <CardDescription>
-              Your free plan covers {docsCap} documents a month.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline justify-between">
-              <span className="text-sm text-ink-secondary">Documents processed</span>
-              <span className="tabular-nums text-sm text-ink">
-                {docsUsed} of {docsCap}
-              </span>
-            </div>
-            <div
-              role="meter"
-              aria-valuenow={pct}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`${docsUsed} of ${docsCap} documents used`}
-              className="mt-2 h-2 overflow-hidden rounded-full bg-surface-sunken"
-            >
-              <div
-                className={cn(
-                  "h-full rounded-full transition-[width]",
-                  pct >= 80 ? "bg-warning" : "bg-accent",
-                )}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            {pct >= 80 ? (
-              <Alert tone="warning" title="You're close to this month's limit" className="mt-4">
-                We'll keep watching every deadline you already have. New documents resume on the
-                1st, or upgrade to keep going now.
-              </Alert>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
-
       <div className="grid gap-4 sm:grid-cols-2">
         {PLANS.map((p) => {
           const current = plan === p.id;
@@ -122,23 +82,20 @@ export function BillingSettings() {
                   ))}
                 </ul>
                 {!current ? (
-                  <Button
-                    variant={p.id === "premium" ? "primary" : "secondary"}
-                    onClick={() => {
-                      if (p.id === "premium") {
-                        setPlan("premium");
-                        toast({
-                          tone: "success",
-                          title: "You're on Premium",
-                          description: "Unlimited documents, starting now.",
-                        });
-                      } else {
-                        setConfirmCancel(true);
-                      }
-                    }}
-                  >
-                    {p.id === "premium" ? "Upgrade" : "Switch to Free"}
-                  </Button>
+                  <div>
+                    {/*
+                     * Blueprint P0-09. This button used to call `setPlan` and toast a
+                     * success message for a change nothing recorded — no billing
+                     * system exists to upgrade or downgrade into. Disabled rather than
+                     * removed, so the plan comparison stays legible; the label keeps
+                     * naming the action it would perform, matching the disabled-control
+                     * treatment used elsewhere in settings (P0-03, P0-04).
+                     */}
+                    <Button variant="secondary" disabled>
+                      {p.id === "premium" ? "Upgrade" : "Switch to Free"}
+                    </Button>
+                    <p className="mt-2 text-xs text-ink-tertiary">Not available yet.</p>
+                  </div>
                 ) : null}
               </CardContent>
             </Card>
@@ -150,35 +107,23 @@ export function BillingSettings() {
         <Card>
           <CardHeader>
             <CardTitle>Cancel</CardTitle>
-            <CardDescription>
-              One click. You keep Premium until the end of the period you've paid for, and your
-              data stays exactly as it is.
-            </CardDescription>
+            {/*
+             * Blueprint P0-09. This used to promise "you keep Premium until the end
+             * of the period you've paid for" as though a billing period were being
+             * tracked — nothing is. The confirm dialog behind it is gone along with
+             * the state that only existed to open it, matching P0-04's treatment of
+             * the same shape of problem: there is nothing yet for a confirmation to
+             * gate.
+             */}
+            <CardDescription>Not available yet.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="ghost" onClick={() => setConfirmCancel(true)}>
+            <Button variant="ghost" disabled>
               Cancel Premium
             </Button>
           </CardContent>
         </Card>
       ) : null}
-
-      <ConfirmDialog
-        open={confirmCancel}
-        onClose={() => setConfirmCancel(false)}
-        title="Cancel Premium?"
-        description="You'll keep Premium until the end of your billing period. Nothing is deleted, and we'll keep tracking the deadlines you already have."
-        confirmLabel="Cancel Premium"
-        onConfirm={() => {
-          setPlan("free");
-          setConfirmCancel(false);
-          toast({
-            tone: "info",
-            title: "Premium cancelled",
-            description: "You'll keep access until the period ends.",
-          });
-        }}
-      />
     </div>
   );
 }
