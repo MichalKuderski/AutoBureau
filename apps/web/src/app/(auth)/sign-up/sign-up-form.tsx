@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
 import { assessPassword, isPlausibleEmail } from "@/lib/password";
-import { OAuthOptions, OrDivider } from "../oauth-options";
 
 /**
  * Create an account.
@@ -130,11 +129,6 @@ export function SignUpForm() {
         We prepare the paperwork and watch the dates. Nothing is sent, cancelled, or filed unless
         you do it.
       </p>
-
-      <div className="mt-6 flex flex-col gap-4">
-        <OrDivider />
-        <OAuthOptions next="/onboarding" />
-      </div>
     </>
   );
 }

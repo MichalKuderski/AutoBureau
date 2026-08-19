@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/field";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import { isPlausibleEmail } from "@/lib/password";
-import { OAuthOptions, OrDivider } from "../oauth-options";
 
 /**
  * Sign in.
@@ -189,11 +188,6 @@ export function SignInForm() {
             : "Sign in with a password instead"}
         </Button>
       </form>
-
-      <div className="mt-6 flex flex-col gap-4">
-        <OrDivider />
-        <OAuthOptions next="/dashboard" />
-      </div>
     </>
   );
 }
