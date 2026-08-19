@@ -12,15 +12,16 @@ import { useHousehold } from "@/providers/household-provider";
 /**
  * Your profile — identity, security, and session.
  *
- * Multi-factor is offered rather than demanded until the household holds identifier-
- * grade values, at which point the data itself justifies the friction (doc 06 §1).
- * The copy says why, because a security prompt without a reason reads as nagging.
+ * Two-step verification is shown disabled rather than omitted (blueprint P0-03): no MFA
+ * mechanism exists yet — not TOTP, not WebAuthn, nothing an enrolled factor could check
+ * a code against — so the control must not claim otherwise. Doc 06 §1 sets the eventual
+ * shape (offered once the household holds identifier-grade values, not demanded up
+ * front); this component doesn't get to imply that shape exists before it does.
  */
 export function ProfileSettings() {
   const { viewer } = useHousehold();
   const { toast } = useToast();
   const [name, setName] = useState(viewer.displayName);
-  const [mfa, setMfa] = useState(false);
 
   return (
     <div className="flex flex-col gap-6">
@@ -60,20 +61,22 @@ export function ProfileSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/*
+           * Blueprint P0-03. This was a local boolean that toasted "Two-step
+           * verification on — You'll be asked for a code on new devices." with no MFA
+           * implementation behind it anywhere in the codebase — a security control that
+           * told a user their account was protected when it was not. Disabled rather
+           * than removed: it keeps the row where a returning user expects to find it,
+           * and `Toggle` already carries a truthful disabled state rather than a second
+           * one built for this. `checked` stays `false` and `onChange` is unreachable —
+           * a disabled control fires no click — but the prop is required by the type.
+           */}
           <Toggle
             label="Two-step verification"
-            description="Ask for a code from your authenticator app when signing in on a new device."
-            checked={mfa}
-            onChange={(next) => {
-              setMfa(next);
-              toast({
-                tone: next ? "success" : "info",
-                title: next ? "Two-step verification on" : "Two-step verification off",
-                description: next
-                  ? "You'll be asked for a code on new devices."
-                  : "You can turn this back on at any time.",
-              });
-            }}
+            description="Not available yet — two-step verification is not currently supported."
+            checked={false}
+            disabled
+            onChange={() => {}}
           />
           <div className="border-t border-line pt-4">
             <Button variant="secondary" size="sm">
