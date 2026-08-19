@@ -1,25 +1,22 @@
 "use client";
 
-import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Icon } from "@/components/ui/icon";
-import { ConfirmDialog } from "@/components/ui/modal";
-import { useToast } from "@/components/ui/toast";
 
 /**
  * Privacy & data — export and deletion as product surface, not compliance fine print.
  *
- * This screen is deliberately plain-spoken. It states what we can and cannot see,
- * what deletion actually does, and how long backups persist — because a vague promise
- * from a company holding your passport is worth nothing, and the honesty is the
- * differentiator against an ad-funded incumbent (FOUNDING_PRINCIPLES §11, doc 13 §4).
+ * This screen is deliberately plain-spoken. It states what we can and cannot see, and
+ * — because a vague promise from a company holding your passport is worth nothing, and
+ * a false one is worse — it does not pretend export or deletion work before they do
+ * (blueprint P0-04). Neither has a backend yet: both controls are shown disabled with a
+ * truthful "not available yet" explanation rather than a simulated success state.
+ * Honesty here is the differentiator against an ad-funded incumbent
+ * (FOUNDING_PRINCIPLES §11, doc 13 §4).
  */
 export function PrivacySettings() {
-  const { toast } = useToast();
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
   return (
     <div className="flex flex-col gap-6">
       <Card>
@@ -70,20 +67,20 @@ export function PrivacySettings() {
             Your original documents plus every record we've built from them, in open formats.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button
-            variant="secondary"
-            onClick={() =>
-              toast({
-                tone: "success",
-                title: "Export started",
-                description: "We'll email you a download link — usually within a few minutes.",
-              })
-            }
-          >
-            <Icon.Upload className="size-4 rotate-180" />
-            Request export
-          </Button>
+        <CardContent className="flex flex-col gap-2">
+          <div>
+            {/*
+             * Blueprint P0-04. This used to fire a toast claiming "Export started —
+             * We'll email you a download link" on click, with no export job, no email,
+             * and no file behind it. No export backend exists yet, so the control is
+             * disabled rather than pretending otherwise.
+             */}
+            <Button variant="secondary" disabled>
+              <Icon.Upload className="size-4 rotate-180" />
+              Request export
+            </Button>
+          </div>
+          <p className="text-xs text-ink-tertiary">Not available yet.</p>
         </CardContent>
       </Card>
 
@@ -95,35 +92,25 @@ export function PrivacySettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <Alert tone="warning" title="What deletion actually does">
-            You have 14 days to change your mind. After that we permanently delete your documents
-            and every record derived from them. Encrypted backups age out within 35 days — we say
-            so plainly rather than pretending a backup can be surgically edited.
+          {/*
+           * Blueprint P0-04. The alert used to describe a 14-day grace period and a
+           * 35-day backup expiry as though that policy were already enforced, and
+           * confirming used to toast "Deletion scheduled — we've emailed you the
+           * details." None of it was real: no deletion cascade, no scheduling, no
+           * email. The button is disabled and the confirm dialog is gone — there is
+           * nothing yet for a confirmation to gate.
+           */}
+          <Alert tone="warning" title="Not available yet">
+            Account deletion isn't implemented yet. The button below does nothing — no
+            request is sent, and nothing is scheduled.
           </Alert>
           <div>
-            <Button variant="danger" onClick={() => setConfirmDelete(true)}>
+            <Button variant="danger" disabled>
               Delete account
             </Button>
           </div>
         </CardContent>
       </Card>
-
-      <ConfirmDialog
-        open={confirmDelete}
-        onClose={() => setConfirmDelete(false)}
-        title="Delete your account?"
-        description="We'll stop all reminders immediately and delete everything after 14 days. You can undo this at any point during those 14 days by signing in."
-        confirmLabel="Delete my account"
-        tone="danger"
-        onConfirm={() => {
-          setConfirmDelete(false);
-          toast({
-            tone: "info",
-            title: "Deletion scheduled",
-            description: "Sign in within 14 days to undo. We've emailed you the details.",
-          });
-        }}
-      />
     </div>
   );
 }
