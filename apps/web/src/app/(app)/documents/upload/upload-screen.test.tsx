@@ -170,3 +170,46 @@ describe("Test D · unrelated content on this screen is unaffected", () => {
     expect(screen.getByRole("heading", { name: /add documents/i, level: 1 })).toBeInTheDocument();
   });
 });
+
+/**
+ * Blueprint P0-10. "Identity numbers are stored encrypted" was present tense for a
+ * control with no implementation anywhere in the repository — no code writes to
+ * `item_secrets`. These assertions sit in this file rather than a new one because the
+ * claim lives in the same "What we do with what you send" Alert P0-07 already touched,
+ * and because the fix must not regress P0-07's disabled-upload state alongside it.
+ */
+
+describe("P0-10 Test A · no present-tense encryption claim", () => {
+  it("does not claim identity numbers are currently stored encrypted", () => {
+    renderScreen(<UploadScreen />);
+    expect(screen.queryByText(/numbers are stored\s*\n?\s*encrypted/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/identity numbers are stored encrypted/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("P0-10 Test B · the replacement is accurate commitment tense", () => {
+  it("states encryption as a plan, not a running control", () => {
+    renderScreen(<UploadScreen />);
+    expect(screen.getByText(/the plan is to encrypt them before they're ever stored/i)).toBeInTheDocument();
+    expect(screen.getByText(/that protection isn't built yet/i)).toBeInTheDocument();
+  });
+
+  it("still says full identity numbers are never shown — that part was already true", () => {
+    renderScreen(<UploadScreen />);
+    expect(screen.getByText(/identity numbers are\s*\n?\s*never shown in full/i)).toBeInTheDocument();
+  });
+
+  it("invents no timeline or already-underway claim", () => {
+    renderScreen(<UploadScreen />);
+    const page = document.body.textContent ?? "";
+    expect(page).not.toMatch(/coming soon|next release|within \d+ days|already protected/i);
+  });
+});
+
+describe("P0-10 Test D · P0-07's disabled-upload state is unaffected", () => {
+  it("still offers no file picker and still says uploads aren't available", () => {
+    const { container } = renderScreen(<UploadScreen />);
+    expect(container.querySelectorAll('input[type="file"]')).toHaveLength(0);
+    expect(screen.getByText(/uploads aren't available yet/i)).toBeInTheDocument();
+  });
+});

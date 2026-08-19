@@ -85,7 +85,7 @@ describe("Test C · unrelated privacy content remains intact", () => {
 
     expect(screen.getByRole("heading", { name: "What we can and can't see" })).toBeInTheDocument();
     expect(screen.getByText(/dates, amounts, and who they belong to/i)).toBeInTheDocument();
-    expect(screen.getByText(/encrypted; even our own systems/i)).toBeInTheDocument();
+    expect(screen.getByText(/can't decrypt them/i)).toBeInTheDocument();
     expect(screen.getByText(/sold, shared, or used to train/i)).toBeInTheDocument();
   });
 
@@ -115,5 +115,74 @@ describe("Test D · no fake asynchronous behavior remains", () => {
     for (const button of screen.getAllByRole("button")) {
       expect(button).not.toHaveAttribute("aria-busy", "true");
     }
+  });
+});
+
+/**
+ * Blueprint P0-10.
+ *
+ * The identity-number bullet said passport and account numbers "are encrypted" and
+ * that AutoBureau's own systems "cannot decrypt them" — present tense, for a control
+ * with no code behind it anywhere in the repository. ADR-007 is the real design; its
+ * own status line says "Accepted; not yet implemented." Test A proves the false
+ * present-tense claim is gone. Test B proves the replacement states a commitment
+ * without claiming it already runs. Test C proves the surrounding page — export,
+ * deletion, the rest of the list — is untouched.
+ */
+
+describe("P0-10 Test A · no present-tense encryption claim", () => {
+  it("does not claim identity numbers are currently encrypted", () => {
+    renderScreen(<PrivacySettings />);
+    expect(screen.queryByText(/numbers are encrypted/i)).not.toBeInTheDocument();
+  });
+
+  it("does not claim AutoBureau's systems already cannot decrypt them", () => {
+    renderScreen(<PrivacySettings />);
+    expect(screen.queryByText(/cannot decrypt them/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("P0-10 Test B · the replacement is accurate commitment tense", () => {
+  it("states encryption as a plan, not a running control", () => {
+    renderScreen(<PrivacySettings />);
+    expect(screen.getByText(/the plan is to encrypt passport and account numbers/i)).toBeInTheDocument();
+  });
+
+  it("says plainly that the protection isn't built yet", () => {
+    renderScreen(<PrivacySettings />);
+    expect(screen.getByText(/isn't built yet/i)).toBeInTheDocument();
+  });
+
+  it("invents no timeline, and doesn't claim the work is already underway", () => {
+    renderScreen(<PrivacySettings />);
+    const page = document.body.textContent ?? "";
+    expect(page).not.toMatch(/coming soon|next release|within \d+ days|we're currently encrypting|already protected/i);
+  });
+});
+
+describe("P0-10 Test C · the rest of the privacy page is untouched", () => {
+  it("still states what AutoBureau currently reads and builds", () => {
+    renderScreen(<PrivacySettings />);
+    expect(screen.getByText(/documents you send us, so we can find dates/i)).toBeInTheDocument();
+    expect(screen.getByText(/the registry we build from them/i)).toBeInTheDocument();
+  });
+
+  it("still states the email-inbox and no-training-data limits", () => {
+    renderScreen(<PrivacySettings />);
+    expect(screen.getByText(/your email inbox, unless you connect it/i)).toBeInTheDocument();
+    expect(screen.getByText(/sold, shared, or used to train/i)).toBeInTheDocument();
+  });
+
+  it("still renders five items in the can/can't list", () => {
+    const { container } = renderScreen(<PrivacySettings />);
+    expect(screen.getByRole("heading", { name: "What we can and can't see" })).toBeInTheDocument();
+    expect(container.querySelectorAll("li")).toHaveLength(5);
+  });
+
+  it("still leaves export and deletion disabled with their own P0-04 copy", () => {
+    renderScreen(<PrivacySettings />);
+    expect(screen.getByRole("button", { name: /request export/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /delete account/i })).toBeDisabled();
+    expect(screen.getByText("Not available yet.")).toBeInTheDocument();
   });
 });

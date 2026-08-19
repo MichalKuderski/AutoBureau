@@ -94,10 +94,17 @@ export function UploadScreen() {
             </CardContent>
           </Card>
 
+          {/*
+           * Blueprint P0-10. "Identity numbers are stored encrypted" was present tense
+           * for a control (ADR-007's KMS envelope encryption) that has no code behind
+           * it anywhere in this repository — nothing writes to `item_secrets`. Restated
+           * as the design commitment it actually is.
+           */}
           <Alert tone="info" title="What we do with what you send">
-            We read it to find dates, amounts, and who it belongs to. Identity numbers are stored
-            encrypted and never shown in full. You can delete any document — and everything derived
-            from it — at any time.
+            We read it to find dates, amounts, and who it belongs to. Identity numbers are
+            never shown in full, and the plan is to encrypt them before they're ever stored
+            — that protection isn't built yet. You can delete any document — and everything
+            derived from it — at any time.
           </Alert>
 
           <Card>

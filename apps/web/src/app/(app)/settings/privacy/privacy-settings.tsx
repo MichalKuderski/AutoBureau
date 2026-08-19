@@ -15,6 +15,14 @@ import { Icon } from "@/components/ui/icon";
  * truthful "not available yet" explanation rather than a simulated success state.
  * Honesty here is the differentiator against an ad-funded incumbent
  * (FOUNDING_PRINCIPLES §11, doc 13 §4).
+ *
+ * Blueprint P0-10. The identity-number bullet used to say passport and account numbers
+ * "are encrypted" and that AutoBureau's own systems "cannot decrypt them" — present
+ * tense, on a page whose entire premise is candor. ADR-007 is the real design (KMS
+ * envelope encryption, decrypt capability confined to one audited module) but its own
+ * status line reads "Accepted; not yet implemented" — nothing in this repository writes
+ * to `item_secrets`, and no reveal/decrypt code path exists anywhere. The bullet now
+ * states the commitment without claiming it is already load-bearing.
  */
 export function PrivacySettings() {
   return (
@@ -36,7 +44,7 @@ export function PrivacySettings() {
               },
               {
                 can: false,
-                text: "Full identity numbers. Passport and account numbers are encrypted; even our own systems that read documents cannot decrypt them.",
+                text: "Full identity numbers. The plan is to encrypt passport and account numbers so even our own systems that read documents can't decrypt them — that protection isn't built yet.",
               },
               {
                 can: false,

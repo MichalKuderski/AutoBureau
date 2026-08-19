@@ -77,9 +77,17 @@ export function DocumentStep() {
         />
       </div>
 
+      {/*
+       * Blueprint P0-10. "Identity numbers are stored encrypted" was present tense for
+       * a control that has no implementation anywhere in this repository (ADR-007 is
+       * accepted but not built — no code writes to `item_secrets`). Restated as the
+       * design commitment it actually is, without implementing anything here.
+       */}
       <Alert tone="info" title="What happens to it" className="mt-6">
-        We read it for dates, amounts, and who it belongs to. Identity numbers are stored encrypted
-        and never shown in full. Delete the document and everything we derived from it goes too.
+        We read it for dates, amounts, and who it belongs to. Identity numbers are never
+        shown in full, and the plan is to encrypt them before they're ever stored — that
+        protection isn't built yet. Delete the document and everything we derived from it
+        goes too.
       </Alert>
 
       <StepFooter note="You can forward documents by email later — that's the channel that keeps working when you're busy.">

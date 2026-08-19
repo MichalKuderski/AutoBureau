@@ -25,8 +25,10 @@ import { cn } from "@/lib/cn";
  * designed around (PRD §2, §4).
  *
  * Identifier-grade values are never rendered in full here — only the masked `last4`
- * the API returns. Revealing one is a separate, audited action (ADR-007), which is
- * why there is no "show" affordance in a list context at all.
+ * the API returns. A separate, audited reveal action is the ADR-007 design, not the
+ * current one: no reveal endpoint or decrypt path exists anywhere in this repository
+ * yet (blueprint P0-10). There is no "show" affordance in a list context regardless —
+ * that was true before the audited path existed and stays true once it does.
  */
 export function HouseholdScreen() {
   const { household } = useHousehold();
@@ -237,7 +239,8 @@ function ItemDetail({ item, timeZone }: { item: ItemView; timeZone: string }) {
           </ul>
           <p className="mt-2 flex items-start gap-1.5 text-xs text-ink-tertiary">
             <Icon.Shield className="mt-0.5 size-3 shrink-0" />
-            Stored encrypted. Revealing a full number is recorded in your activity log.
+            Only the last four digits are ever shown here. The plan is to encrypt full
+            values and log every reveal — neither is built yet.
           </p>
         </section>
       ) : null}
