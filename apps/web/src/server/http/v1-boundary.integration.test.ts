@@ -2,10 +2,11 @@ import { randomUUID } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { PrismaClient } from "@prisma/client";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { SignJWT, exportJWK, generateKeyPair, type JSONWebKeySet } from "jose";
 import { adminClient, assertExpectedServer, grantAppUserLogin } from "@/test/integration/database";
 import { CSRF_HEADER, CSRF_HEADER_VALUE } from "@/lib/csrf";
+import { resetLogSink, setLogSink, type LogRecord } from "@/server/observability";
 
 /**
  * ADR-009 A1–A8, end to end over HTTP against PostgreSQL 16.
@@ -387,5 +388,112 @@ describe("A8 · errors leak nothing", () => {
     const real = await body(await GET(get(await token(LONER), { "x-household-id": A })));
     const fake = await body(await GET(get(await token(LONER), { "x-household-id": randomUUID() })));
     expect(real).toEqual(fake);
+  });
+});
+
+// ─────────────────────────── P0-01 · observability at the boundary ───────────────────────────
+
+/**
+ * Blueprint P0-01. The subject is still the shipped handler: these assertions ride the
+ * same real requests as everything above, and prove that a failure crossing this boundary
+ * becomes exactly one redacted, correlated record — while the response the browser sees is
+ * unchanged from what A8 already pins.
+ */
+describe("P0-01 · failures are recorded once, correlated, and redacted", () => {
+  let captured: LogRecord[] = [];
+
+  beforeEach(() => {
+    captured = [];
+    setLogSink((record) => captured.push(record));
+  });
+
+  afterEach(() => resetLogSink());
+
+  it("Test A · an authorization rejection produces one correlated record", async () => {
+    const response = await GET(get(await token(ORPHAN)));
+
+    expect(response.status).toBe(403);
+    expect(captured).toHaveLength(1);
+    const record = captured[0]!;
+    expect(record.event).toBe("http.rejected");
+    expect(record.level).toBe("warn");
+    expect(record.trace_id).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+    expect(record.route).toBe("/v1/households/current");
+    expect(record.method).toBe("GET");
+    expect(record.error_kind).toBe("RequestContextError");
+    expect(record.error_code).toBe("no-membership");
+  });
+
+  it("returns the correlation id on the response so support can quote it", async () => {
+    const response = await GET(get(await token(ORPHAN)));
+    expect(response.headers.get("x-request-id")).toBe(captured[0]!.trace_id);
+  });
+
+  it("correlates a successful request too", async () => {
+    const response = await GET(get(await token(LONER)));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-request-id")).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+  });
+
+  it("adopts a platform-supplied request id end to end", async () => {
+    const supplied = "req-0000000000000001";
+    const response = await GET(get(await token(ORPHAN), { "x-request-id": supplied }));
+    expect(response.headers.get("x-request-id")).toBe(supplied);
+    expect(captured[0]!.trace_id).toBe(supplied);
+  });
+
+  it("attributes a failure to a tenant without naming it", async () => {
+    // OWNER belongs to A and B; naming B resolves, then the capability check refuses.
+    const { authenticated } = await import("@/server/http/route");
+    const ownerOnly = authenticated({ requires: "member.manage" }, async () => ({ ok: true }));
+    await ownerOnly(get(await token(OWNER), { "x-household-id": B }));
+
+    const record = captured[0]!;
+    expect(record.error_kind).toBe("ForbiddenError");
+    expect(record.household).toMatch(/^[0-9a-f]{12}$/);
+    expect(record.household).not.toContain(B);
+    expect(JSON.stringify(record)).not.toContain(B);
+  });
+
+  it("Test B/D · no token, cookie or JWT reaches a record", async () => {
+    const jwt = await token(ORPHAN);
+    await GET(get(jwt, { "x-request-id": "req-0000000000000002" }));
+
+    const serialised = JSON.stringify(captured);
+    expect(serialised).not.toContain(jwt);
+    expect(serialised).not.toMatch(/eyJ[A-Za-z0-9_-]+\./);
+    expect(serialised).not.toContain("ab_session");
+    expect(serialised).not.toMatch(/@example\.test/);
+  });
+
+  it("Test E · the client-facing response is unchanged by logging", async () => {
+    const response = await GET(get(await token(ORPHAN)));
+    const text = JSON.stringify(await body(response));
+
+    expect(response.headers.get("content-type")).toBe("application/problem+json");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(text).toContain("https://autobureau.com/problems/forbidden");
+    // Nothing the record holds may appear in the body.
+    expect(text).not.toContain("RequestContextError");
+    expect(text).not.toContain("no-membership");
+    expect(text).not.toMatch(/stack|prisma|postgres|at Object\./i);
+  });
+
+  it("Test F · one failure yields one record, not one per layer", async () => {
+    const { authenticated } = await import("@/server/http/route");
+    const boom = new Error("handler exploded");
+    const failing = authenticated({}, async () => {
+      throw boom;
+    });
+
+    const response = await failing(get(await token(LONER)));
+
+    expect(response.status).toBe(500);
+    expect(captured.filter((r) => r.error_kind === "Error")).toHaveLength(1);
+    const record = captured.find((r) => r.event === "http.unhandled_error")!;
+    expect(record.stack).toBeDefined();
+    expect(record.household).toMatch(/^[0-9a-f]{12}$/);
+    // The unexpected branch is the only one that returns `internal`.
+    expect(JSON.stringify(await body(response))).toContain("problems/internal");
   });
 });

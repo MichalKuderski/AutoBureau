@@ -7,6 +7,7 @@ import { MirrorError, mirrorIdentity } from "@/server/identity/mirror";
 import { appendCookies, sessionCookies } from "@/server/auth/session";
 import { assertSameSiteRequest, CsrfError } from "@/server/http/csrf";
 import { problemResponse } from "@/server/http/problem";
+import { log, routeOf, traceIdFrom, withTraceHeader } from "@/server/observability";
 
 /**
  * `POST /v1/auth/sign-in` — exchange credentials for a session (ADR-009 D2).
@@ -26,13 +27,28 @@ const CredentialsSchema = z.object({
 });
 
 export async function POST(request: Request): Promise<Response> {
+  const traceId = traceIdFrom(request);
+  const route = routeOf(request);
+
   let config;
   try {
     config = authConfigFromEnv();
-  } catch {
-    return problemResponse("unavailable", {
-      detail: "Authentication is not configured on this deployment.",
+  } catch (cause) {
+    log({
+      event: "auth.not_configured",
+      level: "error",
+      traceId,
+      route,
+      method: request.method,
+      status: 503,
+      error: cause,
     });
+    return withTraceHeader(
+      problemResponse("unavailable", {
+        detail: "Authentication is not configured on this deployment.",
+      }),
+      traceId,
+    );
   }
 
   try {
@@ -83,8 +99,23 @@ export async function POST(request: Request): Promise<Response> {
     // sentence a transport failure gets, and nothing from the database or the provider
     // reaches the response.
     if (cause instanceof TokenError || cause instanceof MirrorError) {
-      if (process.env.NODE_ENV !== "production") console.error("[auth:sign-in]", cause);
-      return problemResponse("unavailable", { detail: "Sign-in is briefly unavailable." });
+      // A deployment or provider fault, not a caller error: the `reason` enum on both of
+      // these becomes `error_code`, which is the field that distinguishes "the provider
+      // issued a token we reject" from "the identity could not be mirrored".
+      log({
+        event: "auth.sign_in_failed",
+        level: "error",
+        traceId,
+        route,
+        method: request.method,
+        status: 503,
+        error: cause,
+        stack: true,
+      });
+      return withTraceHeader(
+        problemResponse("unavailable", { detail: "Sign-in is briefly unavailable." }),
+        traceId,
+      );
     }
     if (cause instanceof ProviderError) {
       if (cause.reason === "rate-limited") {
@@ -100,9 +131,21 @@ export async function POST(request: Request): Promise<Response> {
       });
     }
     // Never surfaced: an unexpected throw could carry a query, a row, or a connection
-    // string in its message.
-    if (process.env.NODE_ENV !== "production") console.error("[auth:sign-in]", cause);
-    return problemResponse("internal");
+    // string in its message. This is the branch a database fault lands in — including the
+    // unique-violation path audit 05 (P1-1) found returning a 500 with no trace of it
+    // anywhere. `error_code` carries the Prisma code, and the message is scrubbed, so the
+    // conflicting value never reaches the record.
+    log({
+      event: "auth.sign_in_error",
+      level: "error",
+      traceId,
+      route,
+      method: request.method,
+      status: 500,
+      error: cause,
+      stack: true,
+    });
+    return withTraceHeader(problemResponse("internal"), traceId);
   }
 }
 
