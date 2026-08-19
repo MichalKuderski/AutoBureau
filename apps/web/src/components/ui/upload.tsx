@@ -49,9 +49,17 @@ function validate(file: File): string | undefined {
 export interface UploadDropzoneProps {
   onFiles?: ((files: File[]) => void) | undefined;
   className?: string | undefined;
+  /**
+   * No storage backend exists yet (blueprint P0-07): a selected file would be
+   * validated, staged, and then discarded. Rather than let that happen behind a
+   * working-looking control, `disabled` replaces the whole interactive surface —
+   * including both hidden file inputs — with a static, truthful placeholder. Asking
+   * the OS for file access only to throw the result away would be its own small lie.
+   */
+  disabled?: boolean | undefined;
 }
 
-export function UploadDropzone({ onFiles, className }: UploadDropzoneProps) {
+export function UploadDropzone({ onFiles, className, disabled = false }: UploadDropzoneProps) {
   const [staged, setStaged] = useState<StagedFile[]>([]);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -71,6 +79,21 @@ export function UploadDropzone({ onFiles, className }: UploadDropzoneProps) {
   }, []);
 
   const valid = staged.filter((s) => !s.error);
+
+  if (disabled) {
+    return (
+      <div
+        className={cn(
+          "flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-line bg-surface-sunken px-6 py-10 text-center",
+          className,
+        )}
+      >
+        <Icon.Upload className="size-6 text-ink-tertiary" />
+        <span className="text-sm font-medium text-ink-secondary">Uploads aren&apos;t available yet</span>
+        <span className="text-xs text-ink-tertiary">We don&apos;t have anywhere to send a document yet.</span>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>

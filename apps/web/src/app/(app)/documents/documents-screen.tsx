@@ -171,7 +171,7 @@ export function DocumentsScreen() {
           description={
             lens === "needs_review"
               ? "Everything we've received has been filed with confidence."
-              : "Forward a bill, snap a photo of a renewal notice, or upload a folder of PDFs — we'll take it from there."
+              : "Forward a bill or renewal notice and we'll take it from there. Uploading isn't available yet."
           }
           action={
             lens === "needs_review"
@@ -210,9 +210,15 @@ export function DocumentsScreen() {
         open={uploadOpen}
         onClose={() => setUploadOpen(false)}
         title="Add documents"
-        description="PDFs, photos, or forwarded email. Up to 25 MB each."
+        description="Not available yet."
       >
-        <UploadDropzone onFiles={() => setUploadOpen(false)} />
+        {/*
+         * Blueprint P0-07. This drawer used to ignore the selected files entirely —
+         * `onFiles={() => setUploadOpen(false)}` discarded its own argument — and the
+         * only feedback was the drawer closing, which read as success. `disabled`
+         * makes the unavailability the thing the user actually sees.
+         */}
+        <UploadDropzone disabled />
       </Modal>
     </>
   );

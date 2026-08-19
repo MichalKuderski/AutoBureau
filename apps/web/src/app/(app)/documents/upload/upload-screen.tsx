@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UploadDropzone } from "@/components/ui/upload";
@@ -11,15 +10,14 @@ import { useToast } from "@/components/ui/toast";
 import { useHousehold } from "@/providers/household-provider";
 
 /**
- * Add documents — the three ingestion paths, ranked by how much value they return
- * for the effort they cost (H1 is the assumption this screen exists to satisfy).
- *
- * Forwarding is presented first and most prominently because it is the only channel
- * that keeps working without the user ever visiting the app again; upload is the
- * fallback, and the camera is the phone-in-a-waiting-room case.
+ * Add documents — three ingestion paths, ranked by how much value they'd return for
+ * the effort they cost (H1 is the assumption this screen exists to satisfy). The
+ * ranking describes the page's intended order, not which paths currently work: only
+ * forwarding has a real channel behind it. Upload and the camera capture are disabled
+ * below — no storage backend exists yet (blueprint P0-07) — rather than staging a file
+ * this screen can only discard.
  */
 export function UploadScreen() {
-  const router = useRouter();
   const { household } = useHousehold();
   const { toast } = useToast();
   const alias = `h-${household.id.slice(0, 6)}@in.autobureau.com`;
@@ -35,21 +33,17 @@ export function UploadScreen() {
         <Card>
           <CardHeader>
             <CardTitle>Upload or photograph</CardTitle>
-            <CardDescription>
-              PDFs, photos, or a forwarded email saved to your device.
-            </CardDescription>
+            <CardDescription>Not available yet.</CardDescription>
           </CardHeader>
           <CardContent>
-            <UploadDropzone
-              onFiles={(files) => {
-                toast({
-                  tone: "success",
-                  title: `${files.length} ${files.length === 1 ? "document" : "documents"} received`,
-                  description: "We'll let you know if anything needs a second look.",
-                });
-                router.push("/documents");
-              }}
-            />
+            {/*
+             * Blueprint P0-07. This control used to stage a file, toast "N documents
+             * received," and route to /documents as though the file had gone
+             * somewhere — no storage backend exists, so it discarded every file it
+             * accepted. `disabled` replaces the file picker with a truthful
+             * placeholder rather than pretending the drop succeeded.
+             */}
+            <UploadDropzone disabled />
           </CardContent>
         </Card>
 
