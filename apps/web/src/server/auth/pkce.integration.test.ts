@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { SignJWT, exportJWK, generateKeyPair, type JSONWebKeySet } from "jose";
 import type { PrismaClient } from "@prisma/client";
 import { adminClient, assertExpectedServer, grantAppUserLogin } from "@/test/integration/database";
@@ -256,6 +256,103 @@ describe("requesting a link starts a PKCE authorization", () => {
     );
     expect(response.status).toBe(403);
     expect(cookiesOf(response)).toHaveLength(0);
+  });
+});
+
+describe("the request the sign-in form makes is the one this endpoint accepts", () => {
+  /**
+   * Blueprint P0-06, step 10 — the seam the component tests cannot cover.
+   *
+   * `sign-in-form.test.tsx` proves the form calls `apiFetch` correctly against a stubbed
+   * `fetch`; the tests above prove the handler behaves correctly against hand-built
+   * Requests. Neither notices if the two contracts drift apart. Here the *real*
+   * `apiFetch` — the same function the form calls, with its own CSRF header, its own
+   * body serialisation, its own 204 handling — is pointed at the *real* route handler,
+   * which in turn reaches the same contract-shaped provider used everywhere else in this
+   * file. No second implementation of the endpoint exists anywhere in this block.
+   */
+  const realFetch = globalThis.fetch;
+  let seen: RequestInit | undefined;
+
+  const post = async (email: string): Promise<void> => {
+    const { apiFetch } = await import("@/lib/api-client");
+    return apiFetch<void>("/auth/magic-link", { method: "POST", body: { email } });
+  };
+
+  beforeEach(() => {
+    seen = undefined;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      // The handler reaches the provider through this same global. Only the app's own
+      // relative `/v1` calls are bridged; absolute URLs are the provider's, and go out
+      // over the real socket to the stub server this file already runs.
+      if (!url.startsWith("/")) return realFetch(input as RequestInfo, init);
+      seen = init;
+      const { POST } = await import("@/app/v1/auth/magic-link/route");
+      return POST(new Request(`${ORIGIN}${url}`, init));
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("is accepted, and carries the address through to the provider", async () => {
+    await expect(post("form@example.test")).resolves.toBeUndefined();
+
+    // Proof the body satisfied the endpoint's schema rather than being rejected as a
+    // 400 that a resolved promise would have hidden: the provider saw the address.
+    expect(lastOtp.email).toBe("form@example.test");
+    expect(lastOtp.method).toBe("S256");
+    expect(lastOtp.redirectTo).toBe(`${ORIGIN}/auth/callback`);
+  });
+
+  it("sets the verifier cookie the emailed link will need", async () => {
+    const { POST } = await import("@/app/v1/auth/magic-link/route");
+    await post("form@example.test");
+    // Replayed through the handler directly, because a Set-Cookie is invisible to
+    // `apiFetch` by design — the browser, not the caller, is what stores it.
+    const response = await POST(new Request(`${ORIGIN}/v1/auth/magic-link`, seen));
+    expect(named(response, verifierCookieName(config))).toContain("HttpOnly");
+  });
+
+  it("is refused if the header apiFetch attaches is stripped from it", async () => {
+    await post("form@example.test");
+    const { [CSRF_HEADER]: _csrf, ...rest } = seen?.headers as Record<string, string>;
+    const { POST } = await import("@/app/v1/auth/magic-link/route");
+
+    // The same request in every other respect. This is what makes the CSRF assertion in
+    // the component test load-bearing rather than incidental.
+    const response = await POST(new Request(`${ORIGIN}/v1/auth/magic-link`, { ...seen, headers: rest }));
+    expect(response.status).toBe(403);
+    expect(cookiesOf(response)).toHaveLength(0);
+  });
+
+  it("gives the client the same answer for an address the provider refuses", async () => {
+    // The property the UI depends on: there is no failure the client could render
+    // differently, because there is no different answer to render.
+    await expect(post("known@example.test")).resolves.toBeUndefined();
+    otpMode = "reject";
+    try {
+      await expect(post("unknown@example.test")).resolves.toBeUndefined();
+    } finally {
+      otpMode = "ok";
+    }
+  });
+
+  it("tells the client it was rate limited, and nothing else", async () => {
+    const { ApiError } = await import("@/lib/api-client");
+    otpMode = "rate-limit";
+    try {
+      await expect(post("form@example.test")).rejects.toBeInstanceOf(ApiError);
+      const caught = await post("form@example.test").catch((e: unknown) => e);
+      const problem = JSON.stringify((caught as InstanceType<typeof ApiError>).problem);
+      expect((caught as InstanceType<typeof ApiError>).status).toBe(429);
+      // Nothing the provider said, and nothing about how we reach it.
+      expect(problem).not.toMatch(/gotrue|apikey|publishable-anon-key|127\.0\.0\.1|\/otp/i);
+    } finally {
+      otpMode = "ok";
+    }
   });
 });
 

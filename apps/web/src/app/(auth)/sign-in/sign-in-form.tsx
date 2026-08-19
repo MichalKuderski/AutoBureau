@@ -18,9 +18,16 @@ import { isPlausibleEmail } from "@/lib/password";
  * an edge case, which is why the link option sits in the form rather than behind a
  * "trouble signing in?" footnote.
  *
- * The transport lands with Supabase Auth (doc 06 §1). What is already production
- * shape here is the contract: what the form collects, what it refuses, what it says
- * when it refuses, and where each path ends up.
+ * BOTH PATHS POST TO `/v1` (blueprint P0-06). The link path used to `setTimeout` and
+ * then claim an email had been sent; `POST /v1/auth/magic-link` had existed and been
+ * tested the whole time, and was never called. The confirmation screen was therefore a
+ * lie told to precisely the person least equipped to notice it.
+ *
+ * NEITHER PATH TELLS THE USER WHETHER AN ACCOUNT EXISTS, and that is not this
+ * component's doing — it is the endpoints'. Sign-in collapses "wrong password" and "no
+ * such account" into one refusal; magic-link answers 204 whether or not the provider
+ * recognised the address. Both branches below surface the server's own message rather
+ * than deriving their own, which is what keeps that property from being undone here.
  */
 export function SignInForm() {
   const router = useRouter();
@@ -42,6 +49,12 @@ export function SignInForm() {
     return (
       <>
         <h1 className="text-2xl leading-tight">Check your email</h1>
+        {/* Both halves of this sentence are enforced, not asserted. "Fifteen minutes" is
+            PRD §19 F1 and is held to by the PKCE verifier cookie's own Max-Age
+            (`server/auth/pkce.ts` VERIFIER_TTL_SECONDS): once it lapses the browser stops
+            sending it, and `/auth/callback` fails closed with nothing to redeem. "Works
+            once" is the same cookie being cleared on every redemption attempt, successful
+            or not — proved by the replay case in `pkce.integration.test.ts`. */}
         <p className="mt-2 text-sm text-ink-secondary text-pretty">
           We&apos;ve sent a sign-in link to <strong className="text-ink">{linkSentTo}</strong>. It
           works once and expires in fifteen minutes.
@@ -66,6 +79,14 @@ export function SignInForm() {
   }
 
   const submit = async () => {
+    // Redundant, deliberately. `Button` disables itself while `loading`, and that alone
+    // stops every duplicate the tests can construct — removing this line leaves them all
+    // green. It stays because the cost of being wrong is asymmetric: a second magic-link
+    // request overwrites the first one's verifier cookie, silently killing the link
+    // already sitting in the user's inbox, and a disabled attribute is a rendering
+    // artefact while this is not.
+    if (pending) return;
+
     const nextErrors: typeof errors = {};
     if (!isPlausibleEmail(email)) {
       nextErrors.email = "Enter the address you signed up with.";
@@ -78,13 +99,30 @@ export function SignInForm() {
     if (Object.keys(nextErrors).length > 0) return;
 
     if (mode === "link") {
-      // The magic-link endpoint exists and is provider-verified, but wiring its UI is
-      // deliberately outside this gate. Left as it was rather than half-migrated.
+      const address = email.trim();
       setPending(true);
-      window.setTimeout(() => {
+      try {
+        // The magic-link endpoint is called through apiFetch so the established CSRF and
+        // same-origin credential handling remain centralized.
+        await apiFetch<void>("/auth/magic-link", { method: "POST", body: { email: address } });
+      } catch (cause) {
         setPending(false);
-        setLinkSentTo(email.trim());
-      }, 500);
+        // Every failure that reaches here is a fact about the *request* — rate limiting,
+        // an unverifiable origin, a malformed body, the deployment being unconfigured or
+        // the provider unreachable. None is a fact about the address: the endpoint
+        // answers 204 for one it could not send to, so there is no "no such account"
+        // branch to render and none may be invented here.
+        setFormError(
+          cause instanceof ApiError
+            ? (cause.problem.detail ?? "We couldn't send the link. Please try again.")
+            : "We couldn't send the link. Please try again.",
+        );
+        return;
+      }
+      // Cleared before the confirmation replaces the form, so that "Use a password
+      // instead" comes back to a live submit button rather than a stuck spinner.
+      setPending(false);
+      setLinkSentTo(address);
       return;
     }
 
@@ -124,7 +162,11 @@ export function SignInForm() {
       </p>
 
       {formError ? (
-        <Alert tone="critical" title="Sign-in failed" className="mt-5">
+        <Alert
+          tone="critical"
+          title={mode === "password" ? "Sign-in failed" : "We couldn't send the link"}
+          className="mt-5"
+        >
           {formError}
         </Alert>
       ) : null}
@@ -181,6 +223,9 @@ export function SignInForm() {
           onClick={() => {
             setMode(mode === "password" ? "link" : "password");
             setErrors({});
+            // The failure belonged to the path being left. Carrying it over would leave
+            // the other path's heading sitting above a message about this one.
+            setFormError(null);
           }}
         >
           {mode === "password"
