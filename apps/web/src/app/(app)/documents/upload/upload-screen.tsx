@@ -20,7 +20,12 @@ import { useHousehold } from "@/providers/household-provider";
 export function UploadScreen() {
   const { household } = useHousehold();
   const { toast } = useToast();
-  const alias = `h-${household.id.slice(0, 6)}@in.autobureau.com`;
+  // Blueprint P0-08. This used to be synthesised from the household id
+  // (`h-${household.id.slice(0, 6)}@in.autobureau.com`) — a plausible-looking address
+  // nothing was listening on, told to users forwarding household mail. `emailAlias` is
+  // the canonical value the server actually provisions; it is `null` until it does, and
+  // there is no substitute for it here.
+  const alias = household.emailAlias;
 
   return (
     <>
@@ -52,27 +57,40 @@ export function UploadScreen() {
             <CardHeader>
               <CardTitle>Forward it instead</CardTitle>
               <CardDescription>
-                The one that keeps working when you're busy — set it once and forget it.
+                {alias
+                  ? "The one that keeps working when you're busy — set it once and forget it."
+                  : "Not set up for this household yet."}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              <div className="flex items-center gap-2 rounded-md border border-line bg-surface-sunken px-3 py-2.5">
-                <code className="min-w-0 flex-1 truncate font-mono text-sm text-ink">{alias}</code>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    void navigator.clipboard?.writeText(alias);
-                    toast({ tone: "success", title: "Copied", description: "Address copied." });
-                  }}
-                >
-                  Copy
-                </Button>
-              </div>
-              <p className="text-sm text-ink-secondary text-pretty">
-                Forward a bill or renewal notice from any inbox. Set up a rule in your mail app and
-                the whole thing runs without you.
-              </p>
+              {alias ? (
+                <>
+                  <div className="flex items-center gap-2 rounded-md border border-line bg-surface-sunken px-3 py-2.5">
+                    <code className="min-w-0 flex-1 truncate font-mono text-sm text-ink">{alias}</code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(alias);
+                        toast({ tone: "success", title: "Copied", description: "Address copied." });
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                  <p className="text-sm text-ink-secondary text-pretty">
+                    Forward a bill or renewal notice from any inbox. Set up a rule in your mail app
+                    and the whole thing runs without you.
+                  </p>
+                </>
+              ) : (
+                // No fallback address is synthesised here — see the note above `alias`.
+                // The dashed border echoes the disabled dropzone above it, so the page
+                // reads as one honest "not yet" rather than two differently-styled ones.
+                <div className="rounded-md border border-dashed border-line px-3 py-2.5 text-sm text-ink-tertiary">
+                  Forwarding address not available yet.
+                </div>
+              )}
             </CardContent>
           </Card>
 

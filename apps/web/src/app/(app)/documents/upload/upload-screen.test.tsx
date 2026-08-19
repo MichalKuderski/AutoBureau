@@ -1,18 +1,39 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderScreen } from "@/test/render";
 import { UploadScreen } from "./upload-screen";
 
 /**
- * Blueprint P0-07.
+ * Blueprint P0-07 and P0-08.
  *
- * This screen used to stage a dropped file, toast "N documents received," and route
- * to /documents — full success theatre for a file that was discarded the instant the
- * handler ran, since no storage backend exists. These assertions are about what a
- * user reading this screen could reasonably conclude: not that the dropzone renders,
- * but that nothing on it claims a document went anywhere.
+ * P0-07: this screen used to stage a dropped file, toast "N documents received," and
+ * route to /documents — full success theatre for a file that was discarded the instant
+ * the handler ran, since no storage backend exists.
+ *
+ * P0-08: the forwarding address next to it was worse in one respect — it was not
+ * discarded, it was invented. `h-${household.id.slice(0, 6)}@in.autobureau.com` was
+ * computed client-side from data that has nothing to do with mail routing, and the
+ * page told users to forward household bills to it. The fixture's `emailAlias` happens
+ * to look like that same pattern (`h-4kq7x@in.autobureau.com`), so several assertions
+ * below deliberately use a household override with a visibly different shape — the
+ * point is that the screen renders whatever `emailAlias` says, not that it happens to
+ * produce a plausible-looking string.
  */
+
+const writeText = vi.fn();
+
+beforeEach(() => {
+  Object.defineProperty(navigator, "clipboard", {
+    value: { writeText },
+    configurable: true,
+  });
+  writeText.mockClear();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("Test A · dedicated upload does not claim success", () => {
   it("offers no working file picker", () => {
@@ -40,17 +61,103 @@ describe("Test A · dedicated upload does not claim success", () => {
   });
 });
 
-describe("Test D · unrelated content on this screen is unaffected", () => {
-  it("still renders the forwarding alias and its copy control", async () => {
-    renderScreen(<UploadScreen />);
+describe("P0-08 Test A · the canonical alias renders", () => {
+  it("displays exactly household.emailAlias, not a derived string", () => {
+    renderScreen(<UploadScreen />, { household: { emailAlias: "real@example.test" } });
     expect(screen.getByRole("heading", { name: /forward it instead/i })).toBeInTheDocument();
-    expect(screen.getByText(/@in\.autobureau\.com/)).toBeInTheDocument();
+    expect(screen.getByText("real@example.test")).toBeInTheDocument();
+  });
 
-    const copy = screen.getByRole("button", { name: /copy/i });
-    await userEvent.click(copy);
+  it("copies exactly that value and shows the existing success toast", async () => {
+    renderScreen(<UploadScreen />, { household: { emailAlias: "real@example.test" } });
+    await userEvent.click(screen.getByRole("button", { name: /copy/i }));
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText).toHaveBeenCalledWith("real@example.test");
     expect(await screen.findByText("Copied")).toBeInTheDocument();
   });
 
+  it("keeps the forwarding instructions once a real destination exists", () => {
+    renderScreen(<UploadScreen />, { household: { emailAlias: "real@example.test" } });
+    expect(screen.getByText(/forward a bill or renewal notice from any inbox/i)).toBeInTheDocument();
+  });
+});
+
+describe("P0-08 Test B · no fabricated fallback, ever", () => {
+  it("does not derive an address from the household id, whatever the id is", () => {
+    renderScreen(<UploadScreen />, {
+      household: { id: "9f8e7d6c-0000-0000-0000-000000000000", emailAlias: "real@example.test" },
+    });
+    // The old formula: `h-${id.slice(0, 6)}@in.autobureau.com`. If it were still
+    // running, this id would produce "h-9f8e7d@in.autobureau.com" somewhere on the page.
+    expect(screen.queryByText(/h-9f8e7d@in\.autobureau\.com/)).not.toBeInTheDocument();
+    expect(screen.getByText("real@example.test")).toBeInTheDocument();
+  });
+
+  it("renders only the canonical value even when it happens to resemble the old pattern", () => {
+    // The fixture's default emailAlias ("h-4kq7x@in.autobureau.com") happens to match
+    // the shape the removed formula produced. Pairing it with a household id whose
+    // first six characters differ proves the string on screen tracks emailAlias, not id.
+    renderScreen(<UploadScreen />, { household: { id: "zzzzzz00-0000-0000-0000-000000000000" } });
+    expect(screen.getByText("h-4kq7x@in.autobureau.com")).toBeInTheDocument();
+    expect(screen.queryByText(/h-zzzzzz@in\.autobureau\.com/)).not.toBeInTheDocument();
+  });
+});
+
+describe("P0-08 Test C · a missing alias is stated truthfully", () => {
+  it("renders no email-like forwarding address", () => {
+    renderScreen(<UploadScreen />, { household: { emailAlias: null } });
+    expect(screen.queryByText(/@in\.autobureau\.com/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/@/)).not.toBeInTheDocument();
+  });
+
+  it("offers no Copy button for a nonexistent address", () => {
+    renderScreen(<UploadScreen />, { household: { emailAlias: null } });
+    expect(screen.queryByRole("button", { name: /copy/i })).not.toBeInTheDocument();
+  });
+
+  it("states plainly that the address is not available", () => {
+    renderScreen(<UploadScreen />, { household: { emailAlias: null } });
+    expect(screen.getByText(/forwarding address not available yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/not set up for this household yet/i)).toBeInTheDocument();
+  });
+
+  it("does not instruct the user to forward mail anywhere", () => {
+    renderScreen(<UploadScreen />, { household: { emailAlias: null } });
+    expect(screen.queryByText(/forward a bill or renewal notice from any inbox/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/set up a rule in your mail app/i)).not.toBeInTheDocument();
+  });
+
+  it("does not invent an activation promise", () => {
+    renderScreen(<UploadScreen />, { household: { emailAlias: null } });
+    const page = document.body.textContent ?? "";
+    expect(page).not.toMatch(/coming soon|activate.*shortly|being prepared|contact support/i);
+  });
+});
+
+describe("P0-08 Test D · copy never fires without a real address", () => {
+  it("performs no clipboard write when there is nothing to copy", async () => {
+    renderScreen(<UploadScreen />, { household: { emailAlias: null } });
+    // There is no Copy button in this state (Test C), so nothing to click — the
+    // assertion that matters is that mounting and interacting with the rest of the
+    // page never reaches the clipboard.
+    await userEvent.click(screen.getByRole("heading", { name: /add documents/i, level: 1 }));
+    expect(writeText).not.toHaveBeenCalled();
+  });
+});
+
+describe("P0-08 Test E · P0-07's upload-unavailable state is undisturbed", () => {
+  it("still offers no file picker, with a present or an absent alias alike", () => {
+    for (const emailAlias of ["real@example.test", null] as const) {
+      const { container, unmount } = renderScreen(<UploadScreen />, { household: { emailAlias } });
+      expect(container.querySelectorAll('input[type="file"]')).toHaveLength(0);
+      expect(screen.getByText(/uploads aren't available yet/i)).toBeInTheDocument();
+      unmount();
+    }
+  });
+});
+
+describe("Test D · unrelated content on this screen is unaffected", () => {
   it("still renders the data-handling policy and the useful-documents list", () => {
     renderScreen(<UploadScreen />);
     expect(screen.getByText(/what we do with what you send/i)).toBeInTheDocument();
