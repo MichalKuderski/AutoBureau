@@ -42,6 +42,14 @@ let provider: Server;
 let providerCalls: Array<{ path: string; apikey: string | undefined; auth: string | undefined }> = [];
 /** Flipped by tests to make the provider refuse. */
 let providerMode: "ok" | "reject" = "ok";
+/**
+ * Flipped by tests to make revocation fail specifically.
+ *
+ * Separate from `providerMode` because `/logout` is matched before it, and because the
+ * property under test is the opposite one: a token grant that fails must not issue a
+ * session, whereas a revocation that fails must still end the local one.
+ */
+let logoutMode: "ok" | "fail" = "ok";
 
 beforeAll(async () => {
   await assertExpectedServer();
@@ -75,7 +83,7 @@ beforeAll(async () => {
       return;
     }
     if (url.startsWith("/logout")) {
-      res.writeHead(204).end();
+      res.writeHead(logoutMode === "fail" ? 500 : 204).end();
       return;
     }
     if (providerMode === "reject") {
@@ -276,6 +284,35 @@ describe("A3 · sign-out clears both cookies", () => {
       new Request(`${ORIGIN}/v1/auth/sign-out`, { method: "POST" }),
     );
     expect(response.status).toBe(403);
+  });
+
+  /**
+   * P0-02 Case C. The endpoint's documented promise is that "a user who pressed sign-out
+   * must end up signed out of this origin even when the provider is unreachable", and the
+   * client now depends on it: a 204 is what the UI treats as proof the local session is
+   * gone. If revocation failure ever started propagating, the button would begin claiming
+   * a success it had not been given, which is the defect this whole task removes.
+   */
+  it("clears the local session even when the provider refuses to revoke", async () => {
+    logoutMode = "fail";
+    try {
+      const { POST } = await import("@/app/v1/auth/sign-out/route");
+      const response = await POST(
+        new Request(`${ORIGIN}/v1/auth/sign-out`, {
+          method: "POST",
+          headers: { [CSRF_HEADER]: "1", cookie: `ab_session=${ACCESS}` },
+        }),
+      );
+
+      expect(response.status).toBe(204);
+      const cookies = cookiesOf(response);
+      expect(cookies).toHaveLength(2);
+      for (const cookie of cookies) expect(cookie).toContain("Max-Age=0");
+      // The attempt is still made — best-effort is not no-effort.
+      expect(providerCalls.at(-1)?.path).toContain("/logout");
+    } finally {
+      logoutMode = "ok";
+    }
   });
 });
 

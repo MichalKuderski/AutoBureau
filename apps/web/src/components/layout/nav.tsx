@@ -1,9 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/icon";
+import { Spinner } from "@/components/ui/spinner";
+import { useToast } from "@/components/ui/toast";
+import { apiFetch } from "@/lib/api-client";
 import { useHousehold } from "@/providers/household-provider";
 import { initialsOf } from "@/lib/format";
 
@@ -143,23 +148,75 @@ function NavLink({
 }
 
 /**
- * Sign out.
+ * Sign out (blueprint P0-02).
  *
- * A link rather than a button on purpose: signing out is a navigation to the public
- * side of the product, and rendering it as one means middle-click and "open in new
- * tab" behave the way a person expects. Killing the refresh token is the server's
- * half of this (doc 06 §1) and arrives with the session wiring.
+ * A button, not a link. The previous version navigated to `/sign-in` and called nothing,
+ * so the cookies stayed valid and the refresh token stayed live at the provider — a
+ * person who signed out on a shared family device left the household's documents open to
+ * whoever used it next. Signing out is a state mutation, and the loss the old comment was
+ * protecting (middle-click, open-in-new-tab) is the correct loss for an action.
+ *
+ * WHAT COUNTS AS SUCCESS IS THE SERVER'S DEFINITION, NOT THIS COMPONENT'S.
+ * `POST /v1/auth/sign-out` answers 204 and expires both cookies whenever it runs at all,
+ * including when the provider's own `/logout` fails — `provider.signOut` swallows that by
+ * design, because a user who pressed sign-out must end up signed out of this origin even
+ * when the provider is unreachable. So a 204 is proof the local session is gone.
+ *
+ * Anything else is not. A 403 (CSRF) or 503 (unconfigured) returns before any cookie is
+ * cleared, and a network failure never reached the server, so those keep the user where
+ * they are and say so. Navigating to `/sign-in` on a failed request would be the same
+ * false-success this task exists to remove.
  */
-function SignOutButton() {
+export function SignOutButton() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [pending, setPending] = useState(false);
+
+  const signOut = async () => {
+    if (pending) return;
+    setPending(true);
+    try {
+      await apiFetch<void>("/auth/sign-out", { method: "POST" });
+    } catch {
+      // The session may well still be live; the only honest thing is to stay put.
+      setPending(false);
+      toast({
+        tone: "critical",
+        title: "We couldn't sign you out",
+        description: "You're still signed in. Check your connection and try again.",
+      });
+      return;
+    }
+
+    // The cookies are gone, so anything cached under them is stale by definition —
+    // dropping it here stops a household's data outliving its session in memory.
+    queryClient.clear();
+    // `replace` so the authenticated page is not a Back target, and `refresh` to discard
+    // the router cache, which would otherwise re-render the last authenticated payload
+    // client-side without asking the server. Same pairing the sign-in form already uses.
+    router.replace("/sign-in");
+    router.refresh();
+    // `pending` deliberately stays true: the component is unmounting, and a second press
+    // during navigation would post again with cookies that no longer exist.
+  };
+
   return (
-    <Link
-      href="/sign-in"
-      aria-label="Sign out"
+    <button
+      type="button"
+      onClick={() => void signOut()}
+      disabled={pending}
+      aria-busy={pending || undefined}
+      aria-label={pending ? "Signing out…" : "Sign out"}
       title="Sign out"
-      className="shrink-0 rounded-md p-2 text-ink-tertiary transition-colors hover:bg-surface-sunken hover:text-ink"
+      className="shrink-0 rounded-md p-2 text-ink-tertiary transition-colors hover:bg-surface-sunken hover:text-ink disabled:pointer-events-none disabled:opacity-60"
     >
-      <Icon.Logout className="size-[18px]" />
-    </Link>
+      {pending ? (
+        <Spinner className="size-[18px]" />
+      ) : (
+        <Icon.Logout className="size-[18px]" />
+      )}
+    </button>
   );
 }
 

@@ -497,3 +497,124 @@ describe("P0-01 · failures are recorded once, correlated, and redacted", () => 
     expect(JSON.stringify(await body(response))).toContain("problems/internal");
   });
 });
+
+// ─────────────────────────── P0-02 · sign-out ends the session ───────────────────────────
+
+/**
+ * Blueprint P0-02, proven where it actually matters.
+ *
+ * The component test shows the request is made; it cannot show the session ended, because
+ * a mocked `replace()` proves only that navigation was requested. This does the whole
+ * chain against the shipped handlers and a real database: authenticated, then signed out,
+ * then the *same* request refused — with the cookie jar advanced exactly the way a browser
+ * would advance it.
+ */
+function applySetCookies(current: string, setCookies: readonly string[]): string {
+  // A minimal cookie jar. `Max-Age=0` is how the endpoint expires a cookie and how a
+  // browser is told to drop it, so honouring that is the whole point of the model.
+  const jar = new Map<string, string>();
+  for (const pair of current.split(";")) {
+    const eq = pair.indexOf("=");
+    if (eq > 0) jar.set(pair.slice(0, eq).trim(), pair.slice(eq + 1).trim());
+  }
+  for (const raw of setCookies) {
+    const [nameValue = "", ...attributes] = raw.split(";");
+    const eq = nameValue.indexOf("=");
+    if (eq < 0) continue;
+    const name = nameValue.slice(0, eq).trim();
+    const value = nameValue.slice(eq + 1).trim();
+    const expired = attributes.some((a) => /^\s*max-age\s*=\s*0\s*$/i.test(a));
+    if (expired || value === "") jar.delete(name);
+    else jar.set(name, value);
+  }
+  return [...jar].map(([name, value]) => `${name}=${value}`).join("; ");
+}
+
+describe("P0-02 · after sign-out the server no longer recognises the browser", () => {
+  it("authenticated → sign out → the same request is refused", async () => {
+    const access = await token(LONER);
+    const jarBefore = `${COOKIE}=${access}`;
+
+    // 1. The session works.
+    const before = await GET(get(access));
+    expect(before.status).toBe(200);
+
+    // 2. Sign out through the shipped endpoint.
+    const { POST } = await import("@/app/v1/auth/sign-out/route");
+    const signedOut = await POST(
+      new Request(`${ORIGIN}/v1/auth/sign-out`, {
+        method: "POST",
+        headers: { [CSRF_HEADER]: CSRF_HEADER_VALUE, cookie: jarBefore },
+      }),
+    );
+    expect(signedOut.status).toBe(204);
+
+    // 3. The browser applies what it was told. Both cookies are gone.
+    const jarAfter = applySetCookies(jarBefore, signedOut.headers.getSetCookie());
+    expect(jarAfter).toBe("");
+
+    // 4. The next request carries what the browser now actually has.
+    const after = await GET(
+      new Request(`${ORIGIN}/v1/households/current`, {
+        headers: jarAfter === "" ? {} : { cookie: jarAfter },
+      }),
+    );
+    expect(after.status).toBe(401);
+    expect(JSON.stringify(await body(after))).toContain("problems/unauthorized");
+  });
+
+  it("Case B · a Back navigation to a protected page is denied by middleware", async () => {
+    // Back re-requests the document, so the honest question is what middleware decides
+    // for a browser holding the post-sign-out jar — not whether a bfcache frame exists.
+    const { authConfigFromEnv } = await import("@/server/auth/config");
+    const { createJwtVerifier } = await import("@/server/auth/jwt");
+    const { evaluate } = await import("@/middleware");
+    const { NextRequest } = await import("next/server");
+
+    const authConfig = authConfigFromEnv();
+    const deps = {
+      config: authConfig,
+      verifier: createJwtVerifier({
+        jwks: authConfig.jwks,
+        issuer: authConfig.issuer,
+        audience: authConfig.audience,
+        algorithms: authConfig.algorithms,
+      }),
+    };
+
+    const signedIn = await evaluate(
+      new NextRequest(`${ORIGIN}/dashboard`, {
+        headers: { cookie: `${COOKIE}=${await token(LONER)}` },
+      }),
+      deps,
+    );
+    expect(signedIn.kind).toBe("allow");
+
+    // The same navigation, with the jar the browser holds after sign-out.
+    const signedOut = await evaluate(new NextRequest(`${ORIGIN}/dashboard`), deps);
+    expect(signedOut.kind).toBe("redirect");
+    expect(signedOut).toMatchObject({ to: expect.stringContaining("/sign-in") });
+  });
+
+  it("Case D · leaving a household page really does leave it", async () => {
+    // The household read is RLS-scoped, so "still authenticated" and "can still read this
+    // household" are the same question. After sign-out it is answered 401, not 200.
+    const access = await token(OWNER);
+    const scoped = get(access, { "x-household-id": A });
+    expect((await GET(scoped)).status).toBe(200);
+
+    const { POST } = await import("@/app/v1/auth/sign-out/route");
+    const signedOut = await POST(
+      new Request(`${ORIGIN}/v1/auth/sign-out`, {
+        method: "POST",
+        headers: { [CSRF_HEADER]: CSRF_HEADER_VALUE, cookie: `${COOKIE}=${access}` },
+      }),
+    );
+    expect(applySetCookies(`${COOKIE}=${access}`, signedOut.headers.getSetCookie())).toBe("");
+
+    const after = await GET(
+      new Request(`${ORIGIN}/v1/households/current`, { headers: { "x-household-id": A } }),
+    );
+    expect(after.status).toBe(401);
+  });
+});
