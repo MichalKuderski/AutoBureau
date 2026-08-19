@@ -122,10 +122,18 @@ export function HouseholdScreen() {
         title={householdName}
         description="Everything we're tracking for the people you look after."
         actions={
-          <Button variant="primary" size="sm">
-            <Icon.Plus className="size-4" />
-            Add item
-          </Button>
+          // Blueprint P0-11. No onClick, no request, nothing — the screen's primary
+          // CTA did nothing when pressed. No item-creation endpoint or mutation exists
+          // anywhere in this repository. Disabled with an adjacent caption rather than
+          // a bare disabled button with no explanation, matching the treatment used
+          // for the other three P0-11 controls.
+          <div className="flex flex-col items-end gap-1">
+            <Button variant="primary" size="sm" disabled>
+              <Icon.Plus className="size-4" />
+              Add item
+            </Button>
+            <p className="text-xs text-ink-tertiary">Not available yet.</p>
+          </div>
         }
       />
 

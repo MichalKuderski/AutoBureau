@@ -121,10 +121,17 @@ export function HouseholdSettings() {
               </li>
             ))}
           </ul>
-          <Button variant="secondary" size="sm" className="mt-4">
+          {/*
+           * Blueprint P0-11. No onClick, no request, nothing. Onboarding's `addMember`
+           * only edits a local draft before a household exists — there is no
+           * add-member flow for a household that's already been created. Disabled
+           * rather than removed.
+           */}
+          <Button variant="secondary" size="sm" className="mt-4" disabled>
             <Icon.Plus className="size-4" />
             Add someone
           </Button>
+          <p className="mt-2 text-xs text-ink-tertiary">Not available yet.</p>
         </CardContent>
       </Card>
     </div>

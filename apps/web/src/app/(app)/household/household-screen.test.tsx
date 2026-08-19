@@ -103,3 +103,35 @@ describe("P0-10 Test C · the masked value and surrounding detail are unaffected
     expect(screen.queryByText("Identifiers")).not.toBeInTheDocument();
   });
 });
+
+/**
+ * Blueprint P0-11.
+ *
+ * "Add item" is this screen's primary CTA and had no `onClick` at all — pressing it
+ * produced no request, no dialog, no toast, no anything. No item-creation endpoint or
+ * mutation exists anywhere in this repository. These assertions prove the button is
+ * now genuinely non-interactive, not merely styled to look that way.
+ */
+
+describe("P0-11 · Add item is not actionable", () => {
+  it("is a disabled button, not merely styled to look inactive", async () => {
+    renderScreen(<HouseholdScreen />);
+    const button = await screen.findByRole("button", { name: /add item/i });
+    expect(button).toBeDisabled();
+  });
+
+  it("states plainly that it is not available", async () => {
+    renderScreen(<HouseholdScreen />);
+    await screen.findByRole("button", { name: /add item/i });
+    expect(screen.getByText("Not available yet.")).toBeInTheDocument();
+  });
+
+  it("produces no dialog, toast, or new row when clicked", async () => {
+    renderScreen(<HouseholdScreen />);
+    const button = await screen.findByRole("button", { name: /add item/i });
+    // A disabled control fires no click; this is the click a user would attempt.
+    await userEvent.click(button);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByText(/item added|item created/i)).not.toBeInTheDocument();
+  });
+});

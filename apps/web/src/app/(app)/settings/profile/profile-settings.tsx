@@ -78,10 +78,18 @@ export function ProfileSettings() {
             disabled
             onChange={() => {}}
           />
+          {/*
+           * Blueprint P0-11. This button had no onClick at all — clicking it produced
+           * no request, no navigation, no error, nothing. No password-change endpoint
+           * or mutation exists anywhere in this repository (the only auth endpoints
+           * are sign-in, sign-out, and magic-link). Disabled rather than removed, so
+           * the row stays where a returning user expects to find it.
+           */}
           <div className="border-t border-line pt-4">
-            <Button variant="secondary" size="sm">
+            <Button variant="secondary" size="sm" disabled>
               Change password
             </Button>
+            <p className="mt-2 text-xs text-ink-tertiary">Not available yet.</p>
           </div>
         </CardContent>
       </Card>
@@ -99,10 +107,16 @@ export function ProfileSettings() {
               <span className="block text-xs text-ink-tertiary">Active now</span>
             </div>
           </div>
+          {/*
+           * Blueprint P0-11. Same defect as "Change password" above: no onClick, no
+           * request, no error. `POST /v1/auth/sign-out` (P0-02) ends only the current
+           * session; nothing revokes every other one. Disabled rather than removed.
+           */}
           <div>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" disabled>
               Sign out everywhere else
             </Button>
+            <p className="mt-2 text-xs text-ink-tertiary">Not available yet.</p>
           </div>
         </CardContent>
       </Card>

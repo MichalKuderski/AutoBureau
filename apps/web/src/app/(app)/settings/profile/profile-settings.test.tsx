@@ -89,3 +89,59 @@ describe("Test C · unrelated settings remain intact", () => {
     expect(screen.getByText(/your data belongs to you/i)).toBeInTheDocument();
   });
 });
+
+/**
+ * Blueprint P0-11.
+ *
+ * "Change password" and "Sign out everywhere else" rendered as ordinary, clickable
+ * buttons with no `onClick` at all — pressing either produced no request, no toast,
+ * no error, no anything. A user has no way to tell that from a button that works.
+ * These assertions prove both are now genuinely non-interactive at the DOM level,
+ * not just visually muted, and that pressing them still produces nothing observable.
+ */
+
+describe("P0-11 Test A · Change password is not actionable", () => {
+  it("is a disabled button, not merely styled to look inactive", () => {
+    renderScreen(<ProfileSettings />);
+    const button = screen.getByRole("button", { name: /change password/i });
+    expect(button).toBeDisabled();
+  });
+
+  it("states plainly that it is not available", () => {
+    renderScreen(<ProfileSettings />);
+    const button = screen.getByRole("button", { name: /change password/i });
+    expect(button.parentElement).toHaveTextContent(/not available yet/i);
+  });
+
+  it("produces no toast, error, or navigation when clicked", async () => {
+    renderScreen(<ProfileSettings />);
+    const button = screen.getByRole("button", { name: /change password/i });
+    // A disabled control fires no click; this is the click a user would attempt.
+    await userEvent.click(button);
+    expect(screen.queryByText(/password (changed|updated|reset)/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("P0-11 Test B · Sign out everywhere else is not actionable", () => {
+  it("is a disabled button, not merely styled to look inactive", () => {
+    renderScreen(<ProfileSettings />);
+    const button = screen.getByRole("button", { name: /sign out everywhere else/i });
+    expect(button).toBeDisabled();
+  });
+
+  it("states plainly that it is not available", () => {
+    renderScreen(<ProfileSettings />);
+    const button = screen.getByRole("button", { name: /sign out everywhere else/i });
+    expect(button.parentElement).toHaveTextContent(/not available yet/i);
+  });
+
+  it("produces no toast, error, or session-ending behavior when clicked", async () => {
+    renderScreen(<ProfileSettings />);
+    const button = screen.getByRole("button", { name: /sign out everywhere else/i });
+    await userEvent.click(button);
+    expect(screen.queryByText(/signed out|sessions? (ended|revoked|cleared)/i)).not.toBeInTheDocument();
+    // The current-session row must still read as active — nothing was touched.
+    expect(screen.getByText("This device")).toBeInTheDocument();
+    expect(screen.getByText("Active now")).toBeInTheDocument();
+  });
+});
