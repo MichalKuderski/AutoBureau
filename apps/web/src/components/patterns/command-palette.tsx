@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/icon";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { useHousehold } from "@/providers/household-provider";
-import { useDocuments, useItems, useObligations } from "@/lib/domain/queries";
+import { useObligations } from "@/lib/domain/queries";
 import { formatDueLabel } from "@/lib/format";
 
 /**
@@ -19,11 +19,20 @@ import { formatDueLabel } from "@/lib/format";
  * Implements the full combobox pattern (WAI-ARIA 1.2): the input keeps focus while
  * arrow keys move a virtual cursor via `aria-activedescendant`, so screen readers
  * announce the highlighted option without focus ever leaving the text field.
+ *
+ * BLUEPRINT P0-14. Document and item search results used to link to `/documents/{id}`
+ * and `/household/{id}` — routes that do not exist; every click 404'd. Both screens
+ * (P0-07, P0-10) resolve an item's detail through a drawer opened from a table row, not
+ * a URL, and no per-item route is planned before the fixture → API cutover (P2-03).
+ * Rather than invent one now, search stops promising a destination it doesn't have:
+ * these two result groups are gone, not merely hidden behind a disabled state, because
+ * there is nothing between "search finds it" and "search cannot take you there" for a
+ * dead route to soften. Obligations are untouched — `/obligations/[id]` is real.
  */
 
 interface Result {
   id: string;
-  group: "Obligations" | "Documents" | "Items" | "Go to";
+  group: "Obligations" | "Go to";
   title: string;
   /** Explicitly nullable: under exactOptionalPropertyTypes an absent subtitle and an
    *  undefined one are different types, and the builders below produce the latter. */
@@ -66,8 +75,6 @@ export function CommandPalette() {
   useFocusTrap(panelRef, open, () => setOpen(false));
 
   const { data: obligations = [] } = useObligations(household.id, { search: query });
-  const { data: documents = [] } = useDocuments(household.id, { search: query });
-  const { data: items = [] } = useItems(household.id, { search: query });
 
   useEffect(() => {
     const reset = () => {
@@ -114,33 +121,13 @@ export function CommandPalette() {
           icon: Icon.Obligations,
         });
       }
-      for (const d of documents.slice(0, 4)) {
-        out.push({
-          id: d.id,
-          group: "Documents",
-          title: d.title ?? "Untitled document",
-          subtitle: d.member_name ?? d.doc_type ?? undefined,
-          href: `/documents/${d.id}`,
-          icon: Icon.Documents,
-        });
-      }
-      for (const i of items.slice(0, 4)) {
-        out.push({
-          id: i.id,
-          group: "Items",
-          title: i.name,
-          subtitle: i.vendor_name ?? i.member_name ?? undefined,
-          href: `/household/${i.id}`,
-          icon: Icon.Household,
-        });
-      }
     }
 
     const dest = q
       ? DESTINATIONS.filter((d) => d.title.toLowerCase().includes(q))
       : DESTINATIONS;
     return [...out, ...dest];
-  }, [query, obligations, documents, items, household.timezone]);
+  }, [query, obligations, household.timezone]);
 
   // Keep the highlighted option scrolled into view as the cursor moves.
   useEffect(() => {
@@ -198,7 +185,7 @@ export function CommandPalette() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search obligations, documents, people…"
+            placeholder="Search obligations, or jump to a page…"
             className="h-12 w-full bg-transparent text-base text-ink outline-none placeholder:text-ink-tertiary"
           />
           <kbd className="hidden shrink-0 rounded border border-line bg-surface-sunken px-1.5 py-0.5 font-mono text-2xs text-ink-tertiary sm:block">

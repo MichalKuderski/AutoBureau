@@ -540,7 +540,9 @@ export const TIMELINE: TimelineEntry[] = [
     kind: "document_added",
     title: "Renewal notice — auto policy",
     detail: "Arrived by email · needs your review",
-    href: "/documents/d-7",
+    // Blueprint P0-14. Was "/documents/d-7" — no per-document route exists yet
+    // (that's P2-03, after the fixture → API cutover). `Timeline` already renders a
+    // plain, unlinked row when `href` is absent, so omitting it is the whole fix.
   },
   {
     id: "t-2",
@@ -575,7 +577,8 @@ export const TIMELINE: TimelineEntry[] = [
     title: "Medicare — Elena",
     detail: "From the enrollment notice you uploaded",
     member_name: "Elena Reyes",
-    href: "/household/i-2",
+    // Blueprint P0-14. Was "/household/i-2" — same reasoning as t-1 above: no
+    // per-item route exists yet, so no href is the truthful state.
   },
   {
     id: "t-6",
@@ -594,7 +597,10 @@ export const NOTIFICATIONS: NotificationView[] = [
     body: "We read the auto policy renewal notice but weren't confident about the renewal date.",
     created_at: iso(-1),
     read_at: null,
-    href: "/documents/d-7",
+    // Blueprint P0-14. Was "/documents/d-7" — no per-document route exists yet
+    // (P2-03). `NotificationsScreen` already renders a plain, unlinked row when
+    // `href` is null, so this is the whole fix.
+    href: null,
   },
   {
     id: "n-2",
