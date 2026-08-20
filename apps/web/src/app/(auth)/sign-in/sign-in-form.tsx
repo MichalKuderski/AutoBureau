@@ -7,6 +7,8 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/field";
 import { ApiError, apiFetch } from "@/lib/api-client";
+import { DEFAULT_DESTINATION, safeDestination } from "@/server/http/public-routes";
+import { dynamicHref } from "@/lib/routes";
 import { isPlausibleEmail } from "@/lib/password";
 
 /**
@@ -28,8 +30,17 @@ import { isPlausibleEmail } from "@/lib/password";
  * such account" into one refusal; magic-link answers 204 whether or not the provider
  * recognised the address. Both branches below surface the server's own message rather
  * than deriving their own, which is what keeps that property from being undone here.
+ *
+ * ONLY THE PASSWORD PATH REDIRECTS FROM HERE (blueprint P0-13). That is not an
+ * oversight: the magic-link path never navigates on submit at all — it renders "Check
+ * your email", and the eventual redirect happens server-side in `/auth/callback`, from
+ * the destination stored in the PKCE cookie when the link was requested. That
+ * destination is the magic-link endpoint's own concern (P0-06), validated by the same
+ * `safeDestination` on the way in and again on the way out, and this component does not
+ * reach into it. The consequence, recorded rather than hidden: a user who arrives at
+ * `?next=/obligations` and then chooses the emailed link lands on `/dashboard`.
  */
-export function SignInForm() {
+export function SignInForm({ next = DEFAULT_DESTINATION }: { next?: string } = {}) {
   const router = useRouter();
   const [mode, setMode] = useState<"password" | "link">("password");
   const [email, setEmail] = useState("");
@@ -137,7 +148,15 @@ export function SignInForm() {
       });
       // The session now lives in cookies the browser will not show us, so the destination
       // must be re-fetched from the server rather than rendered from anything held here.
-      router.replace("/dashboard");
+      //
+      // Blueprint P0-13. `next` was already validated by `page.tsx` before it became a
+      // prop; it is validated again here, immediately before navigation. That is the
+      // same entry-and-exit shape the PKCE flow already uses for its stored destination
+      // (`magic-link/route.ts` on the way in, `auth/callback/route.ts` on the way out),
+      // and for the same reason: it is the check nearest the actual navigation, so it
+      // holds however this component is constructed. Both calls are the one
+      // `safeDestination` — the rules are not written twice.
+      router.replace(dynamicHref(safeDestination(next)));
       router.refresh();
     } catch (cause) {
       setPending(false);

@@ -396,3 +396,165 @@ describe("P0-06 Test F · the password path is untouched", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Blueprint P0-13.
+ *
+ * P0-12 gave an expired session a way out: `/sign-in?next=<where you were>`. The form
+ * on the other end ignored it and went to `/dashboard` regardless, so the recovery link
+ * recovered the session but not the task — the user still had to find their way back.
+ *
+ * The destination is now honoured, and every assertion below involving a hostile value
+ * passes `next` straight into the component as a prop. That is deliberate: it bypasses
+ * `page.tsx` entirely, so what these prove is the form's *own* guard rather than the
+ * page's. The page's guard is proved separately, in `page.test.tsx`.
+ */
+
+async function signInWithPassword(): Promise<void> {
+  await userEvent.type(screen.getByLabelText("Email"), "someone@example.test");
+  await userEvent.type(screen.getByLabelText("Password"), "correct horse battery staple");
+  await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+}
+
+describe("P0-13 Test A · a valid destination is honoured", () => {
+  it("lands on /obligations when that is where the user was sent from", async () => {
+    renderScreen(<SignInForm next="/obligations" />);
+    await signInWithPassword();
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/obligations"));
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("P0-13 Test B · a destination's query string survives", () => {
+  it("preserves the full internal path and query", async () => {
+    renderScreen(<SignInForm next="/obligations?member=m-1" />);
+    await signInWithPassword();
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/obligations?member=m-1"));
+  });
+});
+
+describe("P0-13 Test C · no destination falls back to the existing default", () => {
+  it("goes to /dashboard when the prop is absent entirely", async () => {
+    renderScreen(<SignInForm />);
+    await signInWithPassword();
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/dashboard"));
+  });
+
+  it("goes to /dashboard for an empty destination", async () => {
+    renderScreen(<SignInForm next="" />);
+    await signInWithPassword();
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/dashboard"));
+  });
+});
+
+describe("P0-13 Tests D–H · a hostile destination can never leave this origin", () => {
+  it.each([
+    ["absolute https URL", "https://evil.example/pwn"],
+    ["absolute http URL", "http://evil.example/pwn"],
+    ["protocol-relative", "//evil.example"],
+    ["backslash escape", "/\\evil.example"],
+    ["mixed backslash", "/obligations\\..\\evil"],
+    ["newline control character", "/obligations\n"],
+    ["carriage-return control character", "/obligations\r\nLocation: https://evil.example"],
+    ["null control character", "/obligations\u0000"],
+    ["tab control character", "/obligations\t"],
+    ["delete control character", "/obligations\u007f"],
+    ["the refresh route itself", "/auth/refresh"],
+    ["the refresh route with a trailing slash", "/auth/refresh/"],
+    ["the refresh route carrying its own next", "/auth/refresh?next=/obligations"],
+    ["a bare scheme", "javascript:alert(1)"],
+    ["a relative path with no leading slash", "evil.example"],
+  ])("%s resolves to /dashboard", async (_label, hostile) => {
+    renderScreen(<SignInForm next={hostile} />);
+    await signInWithPassword();
+
+    await waitFor(() => expect(replace).toHaveBeenCalledTimes(1));
+    expect(replace).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("never hands the router anything that is not an internal path", async () => {
+    renderScreen(<SignInForm next="https://evil.example/pwn" />);
+    await signInWithPassword();
+
+    await waitFor(() => expect(replace).toHaveBeenCalledTimes(1));
+    const [destination] = replace.mock.calls[0] as [string];
+    expect(destination.startsWith("/")).toBe(true);
+    expect(destination.startsWith("//")).toBe(false);
+    expect(destination).not.toContain("evil.example");
+  });
+});
+
+describe("P0-13 Test I · existing authentication behaviour is untouched", () => {
+  it("navigates nowhere when the credentials are refused, whatever next says", async () => {
+    fetchMock.mockImplementation(() =>
+      PROBLEM(401, "That email and password don't match an account."),
+    );
+    renderScreen(<SignInForm next="/obligations" />);
+    await signInWithPassword();
+
+    expect(await screen.findByText(/sign-in failed/i)).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("navigates nowhere when the request fails outright", async () => {
+    fetchMock.mockImplementation(() => Promise.reject(new TypeError("network")));
+    renderScreen(<SignInForm next="/obligations" />);
+    await signInWithPassword();
+
+    // `apiFetch` turns a network failure into an `ApiError` (503) carrying its own
+    // detail, so the form surfaces that rather than its non-`ApiError` fallback — which
+    // is unreachable through `apiFetch` by construction. What matters here either way:
+    // a failure that never reached the server cannot move the user to `next`.
+    expect(await screen.findByText(/sign-in failed/i)).toBeInTheDocument();
+    expect(screen.getByText(/check your connection/i)).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("still refuses to submit without a password, whatever next says", async () => {
+    renderScreen(<SignInForm next="/obligations" />);
+    await userEvent.type(screen.getByLabelText("Email"), "someone@example.test");
+    await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
+  });
+});
+
+describe("P0-13 Test J · the magic-link path is untouched", () => {
+  it("still reaches the endpoint and still shows the confirmation", async () => {
+    renderScreen(<SignInForm next="/obligations" />);
+    await requestLink("someone@example.test");
+
+    expect(await screen.findByRole("heading", { name: /check your email/i })).toBeInTheDocument();
+    const [url] = lastRequest();
+    expect(url).toBe("/v1/auth/magic-link");
+  });
+
+  it("still sends only the address — the destination is the endpoint's own concern", async () => {
+    renderScreen(<SignInForm next="/obligations" />);
+    await requestLink("someone@example.test");
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [, init] = lastRequest();
+    // Pinned deliberately. The magic-link destination lives in the PKCE cookie the
+    // endpoint sets, validated server-side on the way in and again in `/auth/callback`
+    // on the way out (P0-06). P0-13 does not reach into that mechanism, and this
+    // assertion is what would fail if a later change quietly started doing so.
+    expect(JSON.parse(init.body as string)).toEqual({ email: "someone@example.test" });
+  });
+
+  it("does not navigate on submit — the redirect belongs to the emailed link", async () => {
+    renderScreen(<SignInForm next="/obligations" />);
+    await requestLink("someone@example.test");
+    await screen.findByRole("heading", { name: /check your email/i });
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});
