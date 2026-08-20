@@ -1,7 +1,10 @@
 "use client";
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { ApiError } from "@/lib/api-client";
+import { SIGN_IN_PATH, safeDestination } from "@/server/http/public-routes";
+import { dynamicHref } from "@/lib/routes";
 import { Button } from "./button";
 import { cn } from "@/lib/cn";
 
@@ -17,13 +20,27 @@ export function ErrorState({
   title,
   description,
   onRetry,
+  showSignIn,
   className,
 }: {
   title: string;
   description?: string;
   onRetry?: () => void;
+  /**
+   * Blueprint P0-12. "Your session ended" used to leave only "Try again" — which
+   * fails identically, because the request that produced it was never the problem,
+   * the expired session was. `showSignIn` swaps that dead end for a real recovery
+   * path: `/sign-in?next=<here>`, so the user lands back where they were once
+   * re-authenticated. Retry is suppressed rather than shown alongside it — a request
+   * that 401'd once will 401 again until the session is repaired, so offering both
+   * would be offering one button that cannot work.
+   */
+  showSignIn?: boolean;
   className?: string;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
   return (
     <div
       role="alert"
@@ -50,7 +67,23 @@ export function ErrorState({
       {description ? (
         <p className="mt-1.5 max-w-md text-sm text-ink-secondary text-pretty">{description}</p>
       ) : null}
-      {onRetry ? (
+      {showSignIn ? (
+        <Button
+          variant="primary"
+          className="mt-5"
+          onClick={() => {
+            // `safeDestination` is the one open-redirect guard this app has (ADR-009
+            // D3) — middleware's own `/sign-in?next=` redirect uses it the same way.
+            // `pathname` never carries a query string here: none of this app's
+            // screens encode meaningful state there, so there is nothing to lose by
+            // reading only `usePathname()` rather than adding `useSearchParams()`.
+            const next = encodeURIComponent(safeDestination(pathname));
+            router.push(dynamicHref(`${SIGN_IN_PATH}?next=${next}`));
+          }}
+        >
+          Sign in again
+        </Button>
+      ) : onRetry ? (
         <Button variant="secondary" className="mt-5" onClick={onRetry}>
           Try again
         </Button>
@@ -60,12 +93,15 @@ export function ErrorState({
 }
 
 /** Maps a thrown value to copy a person can act on. */
-export function describeError(error: unknown): { title: string; description: string } {
+export function describeError(
+  error: unknown,
+): { title: string; description: string; showSignIn?: boolean } {
   if (error instanceof ApiError) {
     if (error.isAuth) {
       return {
         title: "Your session ended",
         description: "Sign in again to pick up where you left off.",
+        showSignIn: true,
       };
     }
     if (error.isCapExceeded) {
@@ -140,7 +176,9 @@ export class ErrorBoundary extends Component<BoundaryProps, BoundaryState> {
     const { error } = this.state;
     if (!error) return this.props.children;
     if (this.props.fallback) return this.props.fallback(error, this.reset);
-    const { title, description } = describeError(error);
-    return <ErrorState title={title} description={description} onRetry={this.reset} />;
+    // Spread rather than destructure `title`/`description` alone, so a caught
+    // `ApiError` gets the same P0-12 sign-in recovery the `query.isError` path does —
+    // one function deciding the recovery action, not two copies of that decision.
+    return <ErrorState {...describeError(error)} onRetry={this.reset} />;
   }
 }
