@@ -32,7 +32,7 @@ AutoBureau's data profile (identity documents, insurance, medical bills, financi
 
 ## 4. Application security
 
-- CSP (nonce-based, no `unsafe-inline`), Trusted Types where supported; all state-changing routes same-site-cookie + custom-header checked (CSRF).
+- CSP: `script-src` is nonce-based with no `unsafe-inline` — a fresh 128-bit nonce per request, minted in middleware and carried by both our inline theme script and the App Router's own streamed payload scripts (ADR-010, implemented). `style-src` still permits `unsafe-inline` (Tailwind/React inline styles) and Trusted Types is **not** implemented; both are named here rather than folded into the line above, because this section was previously cited as satisfied while the shipped header read `script-src 'self' 'unsafe-inline'`. All state-changing routes same-site-cookie + custom-header checked (CSRF).
 - SSRF: outbound fetches in workers go through a URL validator (deny private ranges/metadata IPs); the pipeline fetches only from our own storage.
 - File handling: parse in worker sandbox only; serve originals exclusively via signed URLs with `Content-Disposition: attachment` + `X-Content-Type-Options: nosniff` (stored XSS via SVG/HTML uploads is blocked by the allowlist anyway).
 - Dependency policy: renovate weekly, security patches within 72 h SLA, majors monthly batch.

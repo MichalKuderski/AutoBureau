@@ -40,6 +40,7 @@ see `docs/product/pre-g1-backlog.md`.
 | [007](adr/ADR-007-field-level-encryption.md) | KMS envelope encryption for identifier-grade PII | Accepted · not yet impl. |
 | [008](adr/ADR-008-rest-openapi-first.md) | Versioned REST + OpenAPI-first contracts (over tRPC/GraphQL) | Accepted · implemented |
 | [009](adr/ADR-009-authenticated-request-boundary.md) | Authenticated request boundary: server-side session, household resolution, route protection, CSRF | Accepted · not yet impl. |
+| [010](adr/ADR-010-per-request-csp-nonce.md) | Per-request CSP nonce in middleware; `script-src 'unsafe-inline'` removed | Accepted · implemented |
 
 ## Where I pushed back on the brief
 

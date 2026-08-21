@@ -3,6 +3,7 @@ import { problem } from "@autobureau/contracts";
 import { authConfigFromEnv, type AuthConfig } from "@/server/auth/config";
 import { readCookie } from "@/server/auth/context";
 import { TokenError, createJwtVerifier, type JwtVerifier } from "@/server/auth/jwt";
+import { NONCE_HEADER, buildCsp, createNonce } from "@/server/http/csp";
 import {
   DEFAULT_DESTINATION,
   SIGN_IN_PATH,
@@ -120,20 +121,46 @@ function deps(): MiddlewareDeps | null {
   return cached;
 }
 
+/**
+ * The routing decision, plus the one security header that has to be built per request.
+ *
+ * The decision is `evaluate`'s alone and is taken first, exactly as before — the CSP is
+ * layered onto whatever response that produces, and cannot change which response that
+ * is. Every branch gets the header, redirects included: a redirect carries no document
+ * today, but a policy that is only present on the happy path is one refactor away from
+ * being absent where it matters.
+ */
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const decision = await evaluate(request, deps());
 
-  switch (decision.kind) {
-    case "allow":
-      return NextResponse.next();
-    case "redirect":
-      return NextResponse.redirect(new URL(decision.to, request.nextUrl.origin));
-    case "unauthorized":
-      return NextResponse.json(problem("unauthorized", { detail: "Sign in to continue." }), {
-        status: 401,
-        headers: { "content-type": "application/problem+json", "cache-control": "no-store" },
-      });
-  }
+  const nonce = createNonce();
+  const csp = buildCsp({ nonce, allowEval: process.env.NODE_ENV === "development" });
+
+  const response = ((): NextResponse => {
+    switch (decision.kind) {
+      case "allow": {
+        // Two readers, one value. `x-nonce` is for our own inline theme script, which the
+        // root layout stamps; `content-security-policy` on the *request* is how Next
+        // learns the nonce for the RSC payload scripts it inlines itself. Both come from
+        // the `nonce` above, so the script the browser receives and the policy it
+        // enforces are the same value by construction.
+        const headers = new Headers(request.headers);
+        headers.set(NONCE_HEADER, nonce);
+        headers.set("content-security-policy", csp);
+        return NextResponse.next({ request: { headers } });
+      }
+      case "redirect":
+        return NextResponse.redirect(new URL(decision.to, request.nextUrl.origin));
+      case "unauthorized":
+        return NextResponse.json(problem("unauthorized", { detail: "Sign in to continue." }), {
+          status: 401,
+          headers: { "content-type": "application/problem+json", "cache-control": "no-store" },
+        });
+    }
+  })();
+
+  response.headers.set("content-security-policy", csp);
+  return response;
 }
 
 /** Test seam: the module-level cache would otherwise outlive an environment change. */

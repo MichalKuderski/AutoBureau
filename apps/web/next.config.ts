@@ -1,25 +1,18 @@
 import type { NextConfig } from "next";
 
 /**
- * Security headers are set here rather than in middleware so they apply to every
- * response including static assets (doc 12 §4). CSP is nonce-based in production;
- * `unsafe-eval` is permitted only in development for React Refresh.
+ * The constant security headers (doc 12 §4).
+ *
+ * These are set here rather than in middleware so they apply to every response including
+ * the static assets the middleware matcher skips — `nosniff` and HSTS earn their keep on
+ * an asset response, so they belong where nothing can route around them.
+ *
+ * **Content-Security-Policy is not in this list, and cannot be.** It is built per request
+ * in `src/server/http/csp.ts` and applied by `src/middleware.ts`, because it carries a
+ * per-request nonce and this function is evaluated once at build time. A previous version
+ * of this comment claimed the policy was nonce-based while the emitted header read
+ * `script-src 'self' 'unsafe-inline'`; see ADR-010 for what changed and why.
  */
-const isDev = process.env.NODE_ENV === "development";
-
-const csp = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self'",
-  "connect-src 'self'",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "object-src 'none'",
-].join("; ");
-
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -30,7 +23,6 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
-          { key: "Content-Security-Policy", value: csp },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
