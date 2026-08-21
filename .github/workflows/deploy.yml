@@ -1,0 +1,207 @@
+name: Deploy
+
+# Deployment is separate from `ci.yml` on purpose: CI answers "is this commit correct?",
+# and must keep answering that for forks and for commits nobody intends to ship. This
+# workflow answers "does this commit become a running deployment?", which needs secrets
+# and an approval gate. Merging them would hand deployment credentials to every PR run.
+#
+# GitHub Actions is the single deployment authority — `vercel.json` sets
+# `github.enabled: false` so Vercel's own Git integration cannot also deploy. Two
+# triggers would mean a push could reach production without passing the gates below.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        required: true
+        default: staging
+        type: choice
+        options: [staging, production]
+
+concurrency:
+  # Never two deployments to the same target at once; a queued production deploy that
+  # overtakes its predecessor is how a rollback gets silently undone.
+  group: deploy-${{ github.ref }}-${{ github.event.inputs.environment || 'auto' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ── preview ────────────────────────────────────────────────────────────────────────
+  # Every PR gets a real deployment and the same smoke suite production gets. A preview
+  # that is never asserted against is decoration.
+  preview:
+    name: preview
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: preview
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: npm install --global vercel@latest
+
+      - name: Pull Vercel preview configuration
+        run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build
+        run: vercel build --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy prebuilt artifact
+        id: deploy
+        # The URL is written to the step output, never echoed with the token beside it.
+        run: |
+          url="$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Smoke the preview
+        run: node scripts/smoke-deployment.mjs "${{ steps.deploy.outputs.url }}"
+
+  # ── staging ────────────────────────────────────────────────────────────────────────
+  # Migrations run before the code that depends on them, and staging is where a
+  # migration is proved. Deploy order is always: migrate (expand) → deploy (doc 09 §4).
+  staging:
+    name: staging
+    if: github.event_name == 'push' || github.event.inputs.environment == 'staging'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Direct connection, not the pooled one: `migrate deploy` takes advisory locks and
+      # issues DDL, and transaction-mode pooling breaks both.
+      - name: Apply migrations (expand)
+        run: pnpm --filter @autobureau/db exec prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}
+
+      - run: npm install --global vercel@latest
+
+      - name: Pull Vercel staging configuration
+        run: vercel pull --yes --environment=production --git-branch=main --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+
+      - name: Build
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+
+      - name: Deploy prebuilt artifact
+        id: deploy
+        run: |
+          url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+
+      - name: Smoke staging
+        run: node scripts/smoke-deployment.mjs "${{ steps.deploy.outputs.url }}"
+
+  # ── production ─────────────────────────────────────────────────────────────────────
+  # Gated by a GitHub protected environment: the approval is the promotion. Production is
+  # never deployed by a push alone — a human names the commit that ships (doc 09 §2/§4).
+  production:
+    name: production
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations (expand)
+        run: pnpm --filter @autobureau/db exec prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_MIGRATION_DATABASE_URL }}
+
+      - run: npm install --global vercel@latest
+
+      - name: Pull Vercel production configuration
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy prebuilt artifact
+        id: deploy
+        run: |
+          url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Smoke production
+        run: node scripts/smoke-deployment.mjs "${{ steps.deploy.outputs.url }}"
+
+      # A failed smoke is a failed deployment, and the response is immediate: the previous
+      # production deployment is promoted back. This is Vercel's own instant rollback
+      # (doc 09 §4) — a pointer move between immutable deployments, not a rebuild — so it
+      # touches no schema and needs no migration to be reversed.
+      - name: Roll back on smoke failure
+        if: failure() && steps.deploy.outcome == 'success'
+        run: |
+          echo "::error::Production smoke failed — rolling back to the previous deployment."
+          vercel rollback --yes --token="$VERCEL_TOKEN"
+          node scripts/smoke-deployment.mjs "https://${{ vars.PRODUCTION_HOST }}"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
