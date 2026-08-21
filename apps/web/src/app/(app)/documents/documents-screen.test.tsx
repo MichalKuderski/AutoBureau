@@ -89,3 +89,39 @@ describe("Test D · the rest of the documents screen is unaffected", () => {
     expect(screen.getByRole("button", { name: /add documents/i })).toBeInTheDocument();
   });
 });
+
+/**
+ * Blueprint P0-16 — WCAG 2.1.1.
+ *
+ * Document review is the core product loop the audit named: a `<tr onClick>` with no
+ * keyboard path meant a keyboard-only user could see a document that needed review and
+ * never reach it. These assertions drive the real screen with Tab and Enter, the way
+ * that user actually would, rather than calling the row's click handler directly.
+ */
+describe("Test F · a document row is reachable and operable by keyboard", () => {
+  it("is a real tab stop, and Enter opens the same review drawer a click opens", async () => {
+    renderScreen(<DocumentsScreen />);
+    const title = await screen.findByText("Renewal notice — auto policy");
+    const row = title.closest("tr");
+    expect(row).not.toBeNull();
+
+    // Whatever precedes it in tab order (search, filters, the row itself) — landing here
+    // by repeated Tab is the same path a keyboard user takes, not a shortcut this test
+    // invents. Capped so a real regression fails the assertion below instead of hanging.
+    for (let i = 0; i < 20 && document.activeElement !== row; i += 1) {
+      await userEvent.tab();
+    }
+    expect(row).toHaveFocus();
+
+    await userEvent.keyboard("{Enter}");
+    const drawer = await screen.findByRole("dialog", { name: /renewal notice/i });
+    expect(within(drawer).getByText(/dana reyes/i)).toBeInTheDocument();
+  });
+
+  it("still opens on a pointer click, unchanged", async () => {
+    renderScreen(<DocumentsScreen />);
+    const title = await screen.findByText("Renewal notice — auto policy");
+    await userEvent.click(title);
+    expect(await screen.findByRole("dialog", { name: /renewal notice/i })).toBeInTheDocument();
+  });
+});

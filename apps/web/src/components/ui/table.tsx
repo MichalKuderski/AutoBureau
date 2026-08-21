@@ -118,9 +118,33 @@ export function Table<T>({
             <tr
               key={rowKey(row)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
+              // No `role` override: a `<tr>` announced as "button" would lose its row/cell
+              // relationship to assistive tech (the very thing a real `<table>` was chosen
+              // for), and WCAG 2.1.1 asks only that the action be reachable and operable by
+              // keyboard, not that the element's role change. `tabIndex` plus a same-callback
+              // key handler is the smallest change that satisfies that without pretending
+              // this is a button.
+              tabIndex={onRowClick ? 0 : undefined}
+              onKeyDown={
+                onRowClick
+                  ? (event) => {
+                      // Guards a future cell that nests its own interactive element (a
+                      // button/link inside a `<td>`): its own Enter/Space must not also
+                      // fire the row action. No current consumer nests one, but the guard
+                      // costs nothing and keeps that combination from silently double-firing.
+                      if (event.target !== event.currentTarget) return;
+                      if (event.key !== "Enter" && event.key !== " ") return;
+                      // Space's default is scrolling the page — the one browser behavior a
+                      // key press must not trigger here.
+                      event.preventDefault();
+                      onRowClick(row);
+                    }
+                  : undefined
+              }
               className={cn(
                 "border-b border-line last:border-0",
-                onRowClick && "cursor-pointer hover:bg-surface-sunken",
+                onRowClick &&
+                  "cursor-pointer hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
               )}
             >
               {columns.map((col) => (

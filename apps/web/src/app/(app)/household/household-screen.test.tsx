@@ -135,3 +135,33 @@ describe("P0-11 · Add item is not actionable", () => {
     expect(screen.queryByText(/item added|item created/i)).not.toBeInTheDocument();
   });
 });
+
+/**
+ * Blueprint P0-16 — WCAG 2.1.1.
+ *
+ * Household item detail is the other core loop the audit named. Same defect as
+ * Documents, same fix, same shared `Table` — these assertions exercise this screen
+ * directly rather than assuming the component-level fix covers both consumers.
+ */
+describe("P0-16 · an item row is reachable and operable by keyboard", () => {
+  it("is a real tab stop, and Enter opens the same detail drawer a click opens", async () => {
+    renderScreen(<HouseholdScreen />);
+    const name = await screen.findByText("Passport — Mateo");
+    const row = name.closest("tr");
+    expect(row).not.toBeNull();
+
+    for (let i = 0; i < 20 && document.activeElement !== row; i += 1) {
+      await userEvent.tab();
+    }
+    expect(row).toHaveFocus();
+
+    await userEvent.keyboard("{Enter}");
+    const drawer = await screen.findByRole("dialog", { name: /passport — mateo/i });
+    expect(within(drawer).getByText("Mateo Reyes")).toBeInTheDocument();
+  });
+
+  it("still opens on a pointer click, unchanged", async () => {
+    await openPassportDetail();
+    expect(screen.getByRole("dialog", { name: /passport — mateo/i })).toBeInTheDocument();
+  });
+});
