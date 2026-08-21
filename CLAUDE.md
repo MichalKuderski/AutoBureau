@@ -8,7 +8,7 @@ Read before writing code. The governing documents outrank any instinct about wha
 0. `FOUNDING_PRINCIPLES.md` — **the constitution.** Mission, invariants, decision hierarchy, and the
    things we will never do. Read it first; it outranks everything below and every instinct.
 1. `docs/product/PRD-v1.md` — **product scope.** Anything not in it is out of scope for v1.
-2. `docs/architecture/` (v0.2.0-review + `review/2026-07-23-principal-panel-review.md`) — **engineering constraints.** ADRs 001–008 in `adr/`.
+2. `docs/architecture/` (v0.2.0-review + `review/2026-07-23-principal-panel-review.md`) — **engineering constraints.** ADRs 001–010 in `adr/`.
 3. `docs/strategy/` — why the company is shaped this way (red-team, ledger thesis, blueprint, competitive).
 4. `ops/assumptions.yaml` — the machine-readable hypothesis registry (source of truth; schema-validated
    in CI). `ops/assumption-ledger.md` holds the updating rules and evidence index.
@@ -86,7 +86,7 @@ A test that passes on the admin connection proves nothing.
 ## Repository map
 
 ```
-apps/                 (not yet created — walking skeleton lands here post-G1)
+apps/web/             Next.js App Router — UI and domain API
 packages/contracts/   Zod schemas, event taxonomy, canonical hashing — source of truth for shapes
 packages/db/          Prisma schema, RLS migrations, scoped client, outbox
 docs/                 governing documents (above) + TRACEABILITY.md
