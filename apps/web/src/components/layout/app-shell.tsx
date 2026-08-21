@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { SidebarNav, MobileTabBar, NAV_ITEMS } from "./nav";
 import { TopBar } from "./top-bar";
 
@@ -27,6 +28,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [navOpenFor, setNavOpenFor] = useState<string | null>(null);
   const mobileNavOpen = navOpenFor === pathname;
   const setMobileNavOpen = (next: boolean) => setNavOpenFor(next ? pathname : null);
+
+  // The drawer already declared `role="dialog"` / `aria-modal="true"` without actually
+  // trapping focus or handling Escape — semantics the implementation didn't back up.
+  // `useFocusTrap` is the same hook `Modal` and the command palette already use for
+  // this; reusing it here rather than hand-rolling a second trap is what makes those
+  // declared semantics true. `drawerRef` only ever points at something while
+  // `mobileNavOpen` is true — same shape as `Modal`'s `panelRef`, which the hook is
+  // written to tolerate (it no-ops when there is no node to trap).
+  const drawerRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(drawerRef, mobileNavOpen, () => setMobileNavOpen(false));
 
   return (
     <div className="min-h-dvh bg-canvas">
@@ -75,6 +86,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           />
           <div
+            ref={drawerRef}
             role="dialog"
             aria-modal="true"
             aria-label="Navigation"
