@@ -150,6 +150,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Before the user: the callback bootstraps a household (P1-02) and
+  // `households.created_by` has no cascade, so the user cannot be deleted while it exists.
+  await admin?.household.deleteMany({ where: { createdBy: SUBJECT } });
   await admin?.user.deleteMany({ where: { id: SUBJECT } });
   await admin?.$disconnect();
   await new Promise<void>((resolve) => provider.close(() => resolve()));

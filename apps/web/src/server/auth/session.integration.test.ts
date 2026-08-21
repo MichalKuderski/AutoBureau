@@ -115,6 +115,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Before the user: sign-in bootstraps a household (P1-02) and `households.created_by`
+  // has no cascade, so the user cannot be deleted while it exists.
+  await admin?.household.deleteMany({ where: { createdBy: SUBJECT } });
   await admin?.user.deleteMany({ where: { id: SUBJECT } });
   await admin?.$disconnect();
   await new Promise<void>((resolve) => provider.close(() => resolve()));
@@ -177,6 +180,9 @@ describe("A3 · sign-in puts tokens in cookies and nowhere else", () => {
   });
 
   it("mirrors the verified identity before the session exists", async () => {
+    // Sign-in now also bootstraps a household (P1-02), and `households.created_by` has no
+    // cascade — so the household this subject created has to go before the user can.
+    await admin.household.deleteMany({ where: { createdBy: SUBJECT } });
     await admin.user.deleteMany({ where: { id: SUBJECT } });
     const { POST } = await import("@/app/v1/auth/sign-in/route");
     const response = await POST(signInRequest({ email: "a@example.test", password: "pw" }));
@@ -185,6 +191,29 @@ describe("A3 · sign-in puts tokens in cookies and nowhere else", () => {
     const user = await admin.user.findUniqueOrThrow({ where: { id: SUBJECT } });
     expect(user.email).toBe(EMAIL);
     expect(await admin.userProfile.count({ where: { userId: SUBJECT } })).toBe(1);
+  });
+
+  it("admits the identity it just mirrored — household, owner membership, entitlement", async () => {
+    // Blueprint P1-02, proved through the real route rather than the module: before this,
+    // a session issued here resolved `no-membership` on every subsequent request.
+    await admin.household.deleteMany({ where: { createdBy: SUBJECT } });
+    await admin.user.deleteMany({ where: { id: SUBJECT } });
+
+    const { POST } = await import("@/app/v1/auth/sign-in/route");
+    expect((await POST(signInRequest({ email: "a@example.test", password: "pw" }))).status).toBe(204);
+
+    const households = await admin.household.findMany({ where: { createdBy: SUBJECT } });
+    expect(households).toHaveLength(1);
+    const memberships = await admin.householdUser.findMany({ where: { userId: SUBJECT } });
+    expect(memberships).toHaveLength(1);
+    expect(memberships[0]!.role).toBe("owner");
+    expect(memberships[0]!.householdId).toBe(households[0]!.id);
+    expect(await admin.entitlement.count({ where: { householdId: households[0]!.id } })).toBe(1);
+
+    // Signing in again converges rather than accumulating a second household.
+    expect((await POST(signInRequest({ email: "a@example.test", password: "pw" }))).status).toBe(204);
+    expect(await admin.household.count({ where: { createdBy: SUBJECT } })).toBe(1);
+    expect(await admin.householdUser.count({ where: { userId: SUBJECT } })).toBe(1);
   });
 
   it("issues nothing when the provider's own token does not verify", async () => {

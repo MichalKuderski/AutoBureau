@@ -9,6 +9,7 @@ import { createJwtVerifier } from "@/server/auth/jwt";
 import { createGoTrueProvider } from "@/server/auth/provider";
 import { getDatabase } from "@/server/db";
 import { mirrorIdentity } from "@/server/identity/mirror";
+import { ensureHousehold } from "@/server/identity/bootstrap";
 import { appendCookies, clearedSessionCookies, sessionCookies } from "@/server/auth/session";
 import { SIGN_IN_PATH, safeDestination } from "@/server/http/public-routes";
 
@@ -68,15 +69,19 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const tokens = await createGoTrueProvider(config).exchangeCode(code, pending.verifier);
 
-    // Same order as sign-in: verify, mirror, then issue. A redemption that cannot be
-    // mirrored abandons rather than handing out a session that resolves to nothing.
+    // Same order as sign-in: verify, mirror, admit, then issue. A redemption that cannot
+    // be mirrored abandons rather than handing out a session that resolves to nothing.
     const principal = await createJwtVerifier({
       jwks: config.jwks,
       issuer: config.issuer,
       audience: config.audience,
       algorithms: config.algorithms,
     }).verify(tokens.accessToken);
-    await mirrorIdentity(getDatabase(), principal);
+    const db = getDatabase();
+    await mirrorIdentity(db, principal);
+    // Blueprint P1-02. A mirrored principal with no household resolves `no-membership`
+    // on every request, so the session is only worth issuing once one exists.
+    await ensureHousehold(db, principal.userId);
 
     return appendCookies(
       new Response(null, {

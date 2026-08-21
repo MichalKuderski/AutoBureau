@@ -4,6 +4,7 @@ import { createJwtVerifier, TokenError } from "@/server/auth/jwt";
 import { createGoTrueProvider, ProviderError } from "@/server/auth/provider";
 import { getDatabase } from "@/server/db";
 import { MirrorError, mirrorIdentity } from "@/server/identity/mirror";
+import { ensureHousehold } from "@/server/identity/bootstrap";
 import { appendCookies, sessionCookies } from "@/server/auth/session";
 import { assertSameSiteRequest, CsrfError } from "@/server/http/csrf";
 import { problemResponse } from "@/server/http/problem";
@@ -85,7 +86,14 @@ export async function POST(request: Request): Promise<Response> {
     // Mirror before the cookies exist. A session whose identity is not in this database
     // is a session that resolves to 403 on every request; issuing one would be creating
     // a partially usable identity, which is exactly what must not happen.
-    await mirrorIdentity(getDatabase(), principal);
+    const db = getDatabase();
+    await mirrorIdentity(db, principal);
+
+    // Blueprint P1-02, and the same sentence applies: a mirrored principal belonging to
+    // no household also resolves to 403 on every request. The identity is only complete
+    // once it can enter the application, so the household is established here too —
+    // still before the cookies exist.
+    await ensureHousehold(db, principal.userId);
 
     // 204: nothing to say that the cookies do not already carry.
     return appendCookies(
