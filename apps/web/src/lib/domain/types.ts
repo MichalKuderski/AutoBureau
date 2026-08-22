@@ -17,11 +17,14 @@ import type {
 
 export type { DocumentMeta, Household, HouseholdMember, Item, Obligation };
 
-/** Cursor-paginated envelope — every list endpoint returns this (doc 03 §1). */
-export interface Page<T> {
-  data: T[];
-  next_cursor: string | null;
-}
+/**
+ * Cursor-paginated envelope — every list endpoint returns this (doc 03 §1, ADR-011).
+ *
+ * Re-exported rather than redeclared. It is a *wire* shape, so it belongs in
+ * `packages/contracts`, which doc 03 names as the source of truth; a second definition
+ * here was one edit away from disagreeing with the schema the server validates against.
+ */
+export type { Page } from "@autobureau/contracts";
 
 export interface Provenance {
   document_id: string;

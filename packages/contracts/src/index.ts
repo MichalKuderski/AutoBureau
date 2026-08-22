@@ -22,5 +22,13 @@ export {
   AUDIT_ACTIONS, AuditActionSchema, ACTOR_TYPES, ActorTypeSchema,
   type AuditAction, type ActorType,
 } from "./audit.js";
+export {
+  PageSchema, PAGE_LIMIT_DEFAULT, PAGE_LIMIT_MAX, PageLimitSchema,
+  encodeCursor, decodeCursor, cursorFingerprintInput, CursorError,
+  SortDirectionSchema, ORDERING_RULE, nullableUpdate,
+  IDEMPOTENCY_HEADER, IdempotencyKeySchema, idempotencyDisposition,
+  idempotencyFingerprintInput,
+  type Page, type CursorKeyset, type SortDirection, type IdempotencyDisposition,
+} from "./http.js";
 export * from "./domain/common.js";
 export * from "./domain/entities.js";

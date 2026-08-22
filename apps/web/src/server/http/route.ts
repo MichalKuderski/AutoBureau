@@ -55,6 +55,41 @@ export interface AuthenticatedRouteOptions {
 export type RouteHandler = (input: HandlerInput) => Promise<unknown>;
 
 /**
+ * A response a handler wants shaped rather than defaulted (ADR-011).
+ *
+ * Returning a plain value still means "200 with this body", which is what every existing
+ * handler does and keeps doing. This exists for the cases that ADR-011 fixes a status
+ * for — 201 with a `Location`, 202 for work that has only been accepted, 204 for a
+ * delete — because a handler previously had no way to say any of them.
+ *
+ * A class rather than a tagged object: a domain payload that happened to carry `status`
+ * and `body` keys would otherwise be silently reinterpreted as an envelope, and the
+ * failure would be a 204 where a resource was meant to be.
+ */
+export class RouteResponse {
+  constructor(
+    readonly status: number,
+    readonly body: unknown,
+    readonly headers: Readonly<Record<string, string>> = {},
+  ) {}
+}
+
+/** 201 with the created representation. `Location` when the resource has a URL. */
+export function created(body: unknown, location?: string): RouteResponse {
+  return new RouteResponse(201, body, location === undefined ? {} : { location });
+}
+
+/** 202: accepted, not done. The body carries whatever handle tracks the work. */
+export function accepted(body: unknown): RouteResponse {
+  return new RouteResponse(202, body);
+}
+
+/** 204: nothing to say. Used by DELETE, which says it by having succeeded. */
+export function noContent(): RouteResponse {
+  return new RouteResponse(204, undefined);
+}
+
+/**
  * Lazily built so a missing environment variable becomes a 503 on the first request
  * rather than a crash at module load — which would take the whole deployment down,
  * including the pages that need no authentication at all.
@@ -138,7 +173,9 @@ export function authenticated(
       const payload = await runAsUser(ctx.userId, () =>
         handler({ request, ctx, db: deps.db }),
       );
-      return withTraceHeader(jsonResponse(payload ?? null), traceId);
+      // Nothing above this line moved. The only change is that a handler may now name a
+      // status and headers; a plain value still means 200, exactly as before.
+      return withTraceHeader(toResponse(payload), traceId);
     } catch (cause) {
       return withTraceHeader(
         toProblem(cause, { traceId, route, method, household }),
@@ -146,6 +183,26 @@ export function authenticated(
       );
     }
   };
+}
+
+/**
+ * A handler's return value as a response.
+ *
+ * `no-store` and `content-type` come from `jsonResponse`, so a shaped response cannot
+ * accidentally become cacheable — every `/v1` body is household data. A 204 carries no
+ * body at all, which is what the status means.
+ */
+function toResponse(payload: unknown): Response {
+  if (!(payload instanceof RouteResponse)) return jsonResponse(payload ?? null);
+  if (payload.status === 204) {
+    return new Response(null, {
+      status: 204,
+      headers: { "cache-control": "no-store", ...payload.headers },
+    });
+  }
+  const response = jsonResponse(payload.body ?? null, payload.status);
+  for (const [name, value] of Object.entries(payload.headers)) response.headers.set(name, value);
+  return response;
 }
 
 /** What the error mapper needs to record a failure. Never reaches the response body. */
