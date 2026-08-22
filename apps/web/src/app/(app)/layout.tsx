@@ -5,12 +5,17 @@ import { CommandPalette } from "@/components/patterns/command-palette";
 import {
   HouseholdProvider,
   type ActiveHousehold,
+  type HouseholdOption,
   type Viewer,
 } from "@/providers/household-provider";
+import { HouseholdChooser } from "@/components/layout/household-chooser";
+import { activeHouseholdFrom } from "@/lib/active-household";
 import { authConfigFromEnv } from "@/server/auth/config";
 import {
+  HOUSEHOLD_HEADER,
   RequestContextError,
   membershipsVia,
+  readCookie,
   resolveRequestContext,
 } from "@/server/auth/context";
 import { createJwtVerifier } from "@/server/auth/jwt";
@@ -38,8 +43,42 @@ import { SIGN_IN_PATH } from "@/server/http/public-routes";
  */
 
 type Resolution =
-  | { readonly kind: "ready"; readonly household: ActiveHousehold; readonly viewer: Viewer }
+  | {
+      readonly kind: "ready";
+      readonly household: ActiveHousehold;
+      readonly viewer: Viewer;
+      readonly households: readonly HouseholdOption[];
+    }
+  /** More than one membership and no usable preference — the person picks (P1-03). */
+  | { readonly kind: "choose"; readonly households: readonly HouseholdOption[] }
   | { readonly kind: "sign-in" };
+
+/**
+ * The principal's own households, by name, read in phase 1 (P1-03).
+ *
+ * Only reached when the resolver refused to guess between several memberships, so the
+ * cost is paid by the case that needs it. The token is verified again here rather than
+ * plumbed out of the rejection: `resolveRequestContext` deliberately reports *why* it
+ * refused and nothing about who was asking, and widening that to carry a subject would
+ * make an error type into an identity channel.
+ *
+ * `withPrincipal` sets `request.user_id` and no household, which is exactly the condition
+ * `self_households_read` is guarded on — so this sees this principal's households and no
+ * others. Nothing the browser sent is consulted.
+ */
+async function ownHouseholds(
+  db: ReturnType<typeof getDatabase>,
+  deps: { verifier: ReturnType<typeof createJwtVerifier>; cookieName: string },
+  requestHeaders: Headers,
+): Promise<readonly HouseholdOption[]> {
+  const token = readCookie(requestHeaders.get("cookie"), deps.cookieName);
+  if (token === null) return [];
+  const { userId } = await deps.verifier.verify(token);
+  const rows = await db.withPrincipal(userId, (tx) =>
+    tx.household.findMany({ select: { id: true, name: true }, orderBy: { createdAt: "asc" } }),
+  );
+  return rows.map((row) => ({ id: row.id, name: row.name }));
+}
 
 /**
  * Kept separate from the component so `redirect()` is never called inside a `try`.
@@ -60,18 +99,55 @@ async function resolve(): Promise<Resolution> {
 
   const requestHeaders = await headers();
 
+  const deps = {
+    verifier: createJwtVerifier({
+      jwks: config.jwks,
+      issuer: config.issuer,
+      audience: config.audience,
+      algorithms: config.algorithms,
+    }),
+    memberships: membershipsVia(db),
+    cookieName: config.cookieName,
+  };
+
+  /**
+   * The one place the selection cookie becomes a candidate (P1-03).
+   *
+   * A browser sends cookies on a document navigation and never a custom header, so the
+   * preference arrives as a cookie and is translated here into the `X-Household-Id`
+   * `resolveRequestContext` already reads. The resolver is untouched: it still decides,
+   * and this only hands it something to decide about.
+   */
+  const request = (candidate: string | null): Request => {
+    const forwarded = new Headers(requestHeaders);
+    if (candidate) forwarded.set(HOUSEHOLD_HEADER, candidate);
+    return new Request("http://localhost/", { headers: forwarded });
+  };
+
+  const preference = activeHouseholdFrom(requestHeaders.get("cookie"));
+
   let ctx;
   try {
-    ctx = await resolveRequestContext(new Request("http://localhost/", { headers: requestHeaders }), {
-      verifier: createJwtVerifier({
-        jwks: config.jwks,
-        issuer: config.issuer,
-        audience: config.audience,
-        algorithms: config.algorithms,
-      }),
-      memberships: membershipsVia(db),
-      cookieName: config.cookieName,
-    });
+    try {
+      ctx = await resolveRequestContext(request(preference), deps);
+    } catch (cause) {
+      // A preference the server refuses is discarded, not fatal. Membership can be
+      // revoked, a cookie can be edited, and an id can go stale between sessions — in
+      // every one of those cases the honest reading is "this preference is no longer
+      // meaningful", not "this person may never load the application again".
+      //
+      // The retry names NO candidate, so it cannot widen access by construction: it
+      // resolves the sole membership, or raises `ambiguous-household`, or raises
+      // `no-membership`. The `/v1` boundary does none of this and stays strict — a
+      // refused header there is still a 403, because that is an authorization answer
+      // rather than a stale preference.
+      const refusedPreference =
+        preference !== null &&
+        cause instanceof RequestContextError &&
+        (cause.reason === "not-a-member" || cause.reason === "malformed-household");
+      if (!refusedPreference) throw cause;
+      ctx = await resolveRequestContext(request(null), deps);
+    }
   } catch (cause) {
     // Only the unauthenticated case redirects: that is the single HTML behaviour D3
     // specifies. Every other rejection — `no-membership` above all — is left to
@@ -84,8 +160,25 @@ async function resolve(): Promise<Resolution> {
     if (cause instanceof RequestContextError && cause.reason === "unauthenticated") {
       return { kind: "sign-in" };
     }
+    // `ambiguous-household` is the one rejection P1-03 can answer. It is not a failure:
+    // the resolver refusing to guess between two real memberships is D1 working, and the
+    // only thing missing was somewhere to express the choice. Without this the resolver
+    // would be right and the person would be permanently stuck — unable to reach the
+    // switcher that would have unstuck them. The list below is read in phase 1, where the
+    // self-read policies let a principal see its own households and nothing else, so this
+    // enumerates memberships rather than trusting anything the browser said.
+    if (cause instanceof RequestContextError && cause.reason === "ambiguous-household") {
+      return { kind: "choose", households: await ownHouseholds(db, deps, requestHeaders) };
+    }
     throw cause;
   }
+
+  // Phase 1, before the household scope opens: which households this principal belongs
+  // to. It is what the switcher offers, and it is also how the client decides whether a
+  // selection needs naming at all — one membership names nothing (P1-03).
+  const households = await db.withPrincipal(ctx.userId, (tx) =>
+    tx.household.findMany({ select: { id: true, name: true }, orderBy: { createdAt: "asc" } }),
+  );
 
   // One short scoped transaction, no network I/O inside it. RLS is what scopes the
   // household rows: the queries name no household id and the policy decides.
@@ -117,6 +210,7 @@ async function resolve(): Promise<Resolution> {
 
   return {
     kind: "ready",
+    households: households.map((h) => ({ id: h.id, name: h.name })),
     viewer: {
       id: ctx.userId,
       displayName: profile?.displayName ?? email,
@@ -145,9 +239,17 @@ async function resolve(): Promise<Resolution> {
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const resolved = await resolve();
   if (resolved.kind === "sign-in") redirect(SIGN_IN_PATH);
+  // No shell, because there is no household to render one for yet. This is the whole
+  // recovery path for a multi-household principal: choose, and the next server render
+  // resolves normally.
+  if (resolved.kind === "choose") return <HouseholdChooser households={resolved.households} />;
 
   return (
-    <HouseholdProvider household={resolved.household} viewer={resolved.viewer}>
+    <HouseholdProvider
+      household={resolved.household}
+      viewer={resolved.viewer}
+      households={resolved.households}
+    >
       <AppShell>{children}</AppShell>
       <CommandPalette />
     </HouseholdProvider>

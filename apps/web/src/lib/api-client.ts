@@ -60,12 +60,49 @@ function newIdempotencyKey(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+/**
+ * The household this client names on requests, or `null` when naming one is unnecessary
+ * (blueprint P1-03).
+ *
+ * THIS IS THE SERVER'S ANSWER, NOT THE BROWSER'S PREFERENCE. `HouseholdProvider`
+ * publishes it, and what the provider holds came out of `resolveRequestContext` during
+ * the server render — so the value echoed back here is one the server has already
+ * validated against membership. The selection *cookie* is what the browser gets to
+ * choose; this is what the server made of it.
+ *
+ * Module-level rather than threaded through every call because `apiFetch` is the single
+ * door to `/v1` and the header has exactly one attach point below. The alternative —
+ * every `queries.ts` hook passing `householdId` — is the duplication this file's own
+ * header warns against ("so a screen cannot accidentally query without tenant scope").
+ */
+let activeHouseholdId: string | null = null;
+
+/**
+ * Publish the active household. Called by `HouseholdProvider` and nowhere else.
+ *
+ * `null` means "no selection is required" — a principal with exactly one membership.
+ * That case sends no header at all, so a single-household request is byte-identical to
+ * what it was before P1-03, and `resolveRequestContext` resolves the sole membership by
+ * the same path it always did.
+ */
+export function setActiveHousehold(householdId: string | null): void {
+  activeHouseholdId = householdId;
+}
+
+/** Test seam: module state would otherwise leak between cases. */
+export function resetActiveHousehold(): void {
+  activeHouseholdId = null;
+}
+
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, householdId, signal, idempotencyKey } = options;
 
   const headers: Record<string, string> = { Accept: "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
-  if (householdId) headers["X-Household-Id"] = householdId;
+  // An explicit option still wins — it is what the type has always offered — but the
+  // published selection is the default, so no call site has to remember.
+  const scope = householdId ?? activeHouseholdId;
+  if (scope) headers["X-Household-Id"] = scope;
   // ADR-009 D4: unconditional on every unsafe method, DELETE included. Idempotency-Key
   // below is deliberately NOT the CSRF signal — it is semantic, and it is skipped for
   // DELETE, which would have left the destructive method the only unprotected one.

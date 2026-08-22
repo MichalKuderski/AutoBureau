@@ -220,16 +220,55 @@ export function SignOutButton() {
   );
 }
 
+/**
+ * The active household, and — when there is more than one — the way to change it
+ * (blueprint P1-03).
+ *
+ * A single membership renders exactly what it always did: a label, not a control. There
+ * is nothing to switch to, and a dropdown that opens onto one option is a worse label.
+ *
+ * `select()` writes a preference and refreshes. It sets no local state, so what this
+ * shows is always the household the *server* resolved on the last render — a selection
+ * the server refuses can never leave the sidebar naming a household the person cannot
+ * actually see. That is also why there is no pending state: the refresh is the feedback.
+ *
+ * P2-04 owns the real switcher — search, keyboard menu, per-household detail. This is the
+ * minimum that makes multi-household usable, and deliberately no more.
+ */
 function HouseholdSwitcher() {
-  const { household } = useHousehold();
+  const { household, households, select } = useHousehold();
   const memberCount = household.members.length;
+  const summary = `${memberCount} ${memberCount === 1 ? "member" : "members"} · ${
+    household.plan === "premium" ? "Premium" : "Free"
+  }`;
+
+  if (households.length <= 1) {
+    return (
+      <div className="mx-2 mb-1 rounded-md border border-line bg-surface-sunken/60 px-3 py-2">
+        <p className="truncate text-sm font-medium text-ink">{household.name}</p>
+        <p className="text-2xs text-ink-tertiary">{summary}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-2 mb-1 rounded-md border border-line bg-surface-sunken/60 px-3 py-2">
-      <p className="truncate text-sm font-medium text-ink">{household.name}</p>
-      <p className="text-2xs text-ink-tertiary">
-        {memberCount} {memberCount === 1 ? "member" : "members"} ·{" "}
-        {household.plan === "premium" ? "Premium" : "Free"}
-      </p>
+      <label htmlFor="household-switcher" className="sr-only">
+        Active household
+      </label>
+      <select
+        id="household-switcher"
+        value={household.id}
+        onChange={(e) => select(e.target.value)}
+        className="w-full truncate bg-transparent text-sm font-medium text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+      >
+        {households.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.name}
+          </option>
+        ))}
+      </select>
+      <p className="text-2xs text-ink-tertiary">{summary}</p>
     </div>
   );
 }
