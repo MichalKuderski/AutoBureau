@@ -37,6 +37,7 @@ model User {
   memberships      HouseholdUser[]
   members          HouseholdMember[]
   createdHouseholds Household[]      @relation("household_creator")
+  idempotencyKeys  IdempotencyKey[]
 
   @@map("users")
 }
@@ -70,8 +71,53 @@ model Household {
   items       Item[]
   obligations Obligation[]
   entitlement Entitlement?
+  idempotencyKeys IdempotencyKey[]
 
   @@map("households")
+}
+
+enum IdempotencyState {
+  in_flight
+  completed
+}
+
+/// Server-side idempotency records (ADR-011 D13, ADR-012).
+///
+/// INFRASTRUCTURE, NOT DOMAIN DATA. Written only by the `/v1` request boundary and read
+/// only by it; no endpoint exposes these rows, and nothing joins to them. They are here
+/// rather than in Redis because Redis is provisioned in no deployed environment (ADR-012).
+///
+/// `response_body` holds a completed response verbatim, so a row can contain whatever
+/// household data that endpoint returned. It is therefore scoped by RLS to *both* the
+/// household and the principal that created it — stricter than every other table, because
+/// a replay is an answer to one person's request, not the household's shared state.
+model IdempotencyKey {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId     String           @map("household_id") @db.Uuid
+  userId          String           @map("user_id") @db.Uuid
+  /// Client-supplied and opaque; 1–255 characters (ADR-011 D13).
+  key             String           @db.VarChar(255)
+  method          String           @db.VarChar(16)
+  /// Request target: pathname plus query string.
+  path            String
+  /// SHA-256 hex of the canonical `idempotencyFingerprintInput` payload.
+  fingerprint     String           @db.Char(64)
+  state           IdempotencyState
+  responseStatus  Int?             @map("response_status")
+  responseBody    String?          @map("response_body")
+  responseHeaders Json?            @map("response_headers")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt     DateTime?        @map("completed_at") @db.Timestamptz(6)
+  expiresAt       DateTime         @map("expires_at") @db.Timestamptz(6)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The uniqueness that makes the claim atomic. Household and principal are part of the
+  /// key, so one principal's key can never collide with — or replay — another's.
+  @@unique([householdId, userId, key])
+  @@index([householdId, userId, expiresAt])
+  @@map("idempotency_keys")
 }
 
 enum HouseholdRole {

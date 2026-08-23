@@ -10,6 +10,7 @@ import {
 } from "../auth/context";
 import { ForbiddenError, assertCan, type Capability } from "../auth/policy";
 import { CsrfError, assertSameSiteRequest } from "./csrf";
+import { withIdempotency } from "./idempotency";
 import {
   householdRef,
   log,
@@ -29,6 +30,10 @@ import { jsonResponse, problemResponse } from "./problem";
  *   3. household     — the candidate validated against membership (D1)
  *   4. authorization — centralized `can()`, before any data is touched
  *   5. attribution   — `runAsUser`, so every mutation the handler makes is attributed
+ *   5.5 idempotency  — an honored POST claims its key before the handler runs (P1-05).
+ *                      Numbered rather than renumbered: nothing above it moved, and it
+ *                      sits below authorization on purpose, so a key can never be a side
+ *                      channel that reaches the store without one.
  *   6. handler       — which opens `withHousehold` with an already-validated id
  *
  * Nothing below step 3 can run for a request that failed it, so a rejected request never
@@ -170,12 +175,19 @@ export function authenticated(
 
       if (options.requires) assertCan(ctx, options.requires);
 
-      const payload = await runAsUser(ctx.userId, () =>
-        handler({ request, ctx, db: deps.db }),
+      // Step 5.5 (P1-05): idempotency. Inserted here and nowhere else — after
+      // authorization, so a key can never be a side channel around the boundary, and
+      // inside `runAsUser`, because the store's RLS policy checks the principal that
+      // `withHousehold` sets from the audit actor. For anything other than an honored
+      // POST carrying a key this is a straight call through to the handler.
+      const response = await runAsUser(ctx.userId, () =>
+        withIdempotency({ request, ctx, db: deps.db, traceId, route }, async () =>
+          // Nothing above this line moved. The only change is that a handler may now name
+          // a status and headers; a plain value still means 200, exactly as before.
+          toResponse(await handler({ request, ctx, db: deps.db })),
+        ),
       );
-      // Nothing above this line moved. The only change is that a handler may now name a
-      // status and headers; a plain value still means 200, exactly as before.
-      return withTraceHeader(toResponse(payload), traceId);
+      return withTraceHeader(response, traceId);
     } catch (cause) {
       return withTraceHeader(
         toProblem(cause, { traceId, route, method, household }),
