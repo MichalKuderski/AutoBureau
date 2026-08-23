@@ -1,6 +1,6 @@
 # ADR-012 — Idempotency records live in Postgres, not Redis
 
-**Status:** Proposed · implemented in `apps/web/src/server/http/idempotency.ts` (blueprint P1-05)
+**Status:** Accepted · implemented in `apps/web/src/server/http/idempotency.ts` (blueprint P1-05)
 **Date:** 2026-08-23
 **Supersedes:** the store named in `03-api-design.md` §1 ("keys stored 24h in Redis"). It
 supersedes nothing else: **ADR-011 D13 remains the authoritative idempotency contract** and

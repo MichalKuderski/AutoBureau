@@ -42,7 +42,7 @@ see `docs/product/pre-g1-backlog.md`.
 | [009](adr/ADR-009-authenticated-request-boundary.md) | Authenticated request boundary: server-side session, household resolution, route protection, CSRF | Accepted · not yet impl. |
 | [010](adr/ADR-010-per-request-csp-nonce.md) | Per-request CSP nonce in middleware; `script-src 'unsafe-inline'` removed | Accepted · implemented |
 | [011](adr/ADR-011-v1-domain-api-conventions.md) | `/v1` domain API conventions: envelope, keyset cursors, filters, PATCH, statuses, idempotency contract | Accepted · implemented |
-| [012](adr/ADR-012-idempotency-storage.md) | Idempotency records in Postgres, not Redis; atomic claim by unique index | Proposed · implemented |
+| [012](adr/ADR-012-idempotency-storage.md) | Idempotency records in Postgres, not Redis; atomic claim by unique index | Accepted · implemented |
 
 ## Where I pushed back on the brief
 
