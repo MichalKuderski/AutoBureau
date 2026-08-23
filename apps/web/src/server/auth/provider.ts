@@ -19,7 +19,32 @@ import type { SessionTokens } from "./session";
  * contract-shaped local server in the tests. What is proved is our client — its headers,
  * its parsing, its error mapping, and that it never leaks a provider response. Whether
  * the real provider agrees is the first thing to check once a project exists.
+ *
+ * EVERY CALL IS BOUNDED (blueprint P1-06). Before this, none of the three `fetchImpl`
+ * calls carried an `AbortSignal`, so a hung GoTrue left the request open until the
+ * platform's own timeout — turning a dependency outage into an availability outage for
+ * sign-in, refresh, and the magic-link request alike. `PROVIDER_TIMEOUT_MS` is not an
+ * SLO: it is a deadline on one outbound call, chosen to outlast ordinary provider and
+ * mobile-network latency while still bounding a genuine hang. No architecture document
+ * prescribes a value, so 10 seconds is this module's own choice — generous next to a
+ * token exchange's usual sub-second reply, short next to the minutes a stuck connection
+ * would otherwise cost. All three calls share it: nothing here suggests sign-in, refresh,
+ * and the OTP request need different budgets, and a single constant is one fewer place
+ * for that judgement call to drift.
+ *
+ * A timeout aborts the `fetch`, which rejects with a `DOMException`/`AbortError` — caught
+ * by the same `catch` that already handles a network failure, so it becomes the existing
+ * `unavailable` classification rather than a distinct error path. Callers do not change:
+ * they already treat "the provider could not be reached" and "the provider hung" as the
+ * same fault, because from here they are indistinguishable and equally not the caller's
+ * problem to solve.
  */
+
+/**
+ * The deadline on one outbound provider call. See the module header for why 10s and why
+ * shared — this is deliberately the only place the number is written.
+ */
+const PROVIDER_TIMEOUT_MS = 10_000;
 
 export type ProviderRejection =
   /** Wrong password, unknown user, unconfirmed email — one outcome, on purpose. */
@@ -67,6 +92,8 @@ function mapStatus(status: number, fallback: ProviderRejection): ProviderRejecti
 export function createGoTrueProvider(
   config: AuthConfig,
   fetchImpl: typeof fetch = fetch,
+  /** Test seam, same purpose as `fetchImpl` above: production always takes the default. */
+  timeoutMs: number = PROVIDER_TIMEOUT_MS,
 ): AuthProvider {
   const headers = {
     "content-type": "application/json",
@@ -85,8 +112,12 @@ export function createGoTrueProvider(
         method: "POST",
         headers,
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
       });
     } catch {
+      // Network failure and timeout land here identically: `AbortSignal.timeout` rejects
+      // the fetch the same way a DNS failure or a connection reset would, and both are
+      // "the provider could not be reached" from a caller's point of view.
       throw new ProviderError("unavailable", "the identity provider could not be reached");
     }
 
@@ -135,6 +166,7 @@ export function createGoTrueProvider(
               code_challenge: codeChallenge,
               code_challenge_method: "S256",
             }),
+            signal: AbortSignal.timeout(timeoutMs),
           },
         );
       } catch {
@@ -152,10 +184,12 @@ export function createGoTrueProvider(
       try {
         // Best effort by design. The cookies are cleared regardless of what the provider
         // says, because a user who pressed sign-out must end up signed out of this
-        // origin even when the provider is unreachable.
+        // origin even when the provider is unreachable. Bounded all the same: a hang
+        // here has no error to swallow until the timeout fires it.
         await fetchImpl(`${config.apiUrl}/logout`, {
           method: "POST",
           headers: { ...headers, authorization: `Bearer ${accessToken}` },
+          signal: AbortSignal.timeout(timeoutMs),
         });
       } catch {
         /* deliberately swallowed — see above */
