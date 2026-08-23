@@ -41,7 +41,7 @@ let admin: PrismaClient;
 let provider: Server;
 let providerCalls: Array<{ path: string; apikey: string | undefined; auth: string | undefined }> = [];
 /** Flipped by tests to make the provider refuse. */
-let providerMode: "ok" | "reject" = "ok";
+let providerMode: "ok" | "reject" | "down" | "throttled" = "ok";
 /**
  * Flipped by tests to make revocation fail specifically.
  *
@@ -89,6 +89,19 @@ beforeAll(async () => {
     if (providerMode === "reject") {
       res.writeHead(400, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: "invalid_grant", error_description: "Wrong password" }));
+      return;
+    }
+    // P1-07: the two shapes that mean "the provider, not the token". A 5xx maps to
+    // `unavailable` and a 429 to `rate-limited`; both are transient, and neither is
+    // evidence that a refresh token was revoked.
+    if (providerMode === "down") {
+      res.writeHead(500, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "server_error" }));
+      return;
+    }
+    if (providerMode === "throttled") {
+      res.writeHead(429, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "over_request_rate_limit" }));
       return;
     }
     const rotating = url.includes("grant_type=refresh_token");
@@ -406,6 +419,275 @@ describe("the refresh route rotates and redirects", () => {
     const response = await refresh("?next=%2Fdashboard", null);
     expect(response.headers.get("location")).toBe(`${ORIGIN}/sign-in`);
     expect(cookiesOf(response)).toHaveLength(2);
+  });
+});
+
+// ─────────── P1-07 · outage is not revocation, and neither one loops ───────────
+//
+// The defect: `/auth/refresh` cleared both cookies on ANY failure, so a single transient
+// GoTrue 5xx signed out every active user at once. The fix must keep the loop guard —
+// which is why every test here asserts termination as well as cookie fate.
+
+describe("P1-07 · refresh distinguishes provider outage from refresh revocation", () => {
+  async function refresh(query: string, cookie: string | null): Promise<Response> {
+    const { GET } = await import("@/app/auth/refresh/route");
+    return GET(
+      new Request(`${ORIGIN}/auth/refresh${query}`, {
+        headers: cookie === null ? {} : { cookie },
+      }),
+    );
+  }
+
+  const NEXT = "?next=%2Fdashboard";
+  const SESSION_COOKIE = `ab_session_refresh=${REFRESH}`;
+  const marker = (r: Response): string | undefined => cookieNamed(r, "ab_session_retry");
+  /** A cleared cookie is the destructive act this task exists to stop mistaking for safety. */
+  const clearsSession = (r: Response): boolean =>
+    cookiesOf(r).some((c) => c.startsWith("ab_session=") && c.includes("Max-Age=0"));
+
+  // TEST A + TEST H · provider 500
+  describe("Test A/H · a provider 5xx retains the session", () => {
+    it("does not clear either session cookie", async () => {
+      providerMode = "down";
+      try {
+        const response = await refresh(NEXT, SESSION_COOKIE);
+        expect(clearsSession(response)).toBe(false);
+        expect(cookieNamed(response, "ab_session_refresh")).toBeUndefined();
+      } finally {
+        providerMode = "ok";
+      }
+    });
+
+    it("answers 503 and — the loop proof — redirects nowhere at all", async () => {
+      providerMode = "down";
+      try {
+        const response = await refresh(NEXT, SESSION_COOKIE);
+        expect(response.status).toBe(503);
+        // A response that is not a redirect cannot be followed, so middleware is never
+        // re-entered and cannot bounce the request back here. This single assertion is
+        // the whole termination argument for the transient branch.
+        expect(response.headers.get("location")).toBeNull();
+        expect(response.status).not.toBe(303);
+        expect(response.headers.get("retry-after")).toBe("15");
+      } finally {
+        providerMode = "ok";
+      }
+    });
+
+    it("does not read as an ended session — 503, never 401", async () => {
+      providerMode = "down";
+      try {
+        // P0-12 renders a 401 as "Your session ended… sign in again". The session has not
+        // ended; saying so would be the outage masquerading as revocation.
+        const response = await refresh(NEXT, SESSION_COOKIE);
+        expect(response.status).not.toBe(401);
+        expect(await response.text()).toContain("still signed in");
+      } finally {
+        providerMode = "ok";
+      }
+    });
+
+    it("sets a cooldown marker that carries no credential", async () => {
+      providerMode = "down";
+      try {
+        const set = marker(await refresh(NEXT, SESSION_COOKIE));
+        expect(set).toBeDefined();
+        expect(set).toContain("HttpOnly");
+        expect(set).toContain("Secure");
+        expect(set).toContain("SameSite=Lax");
+        expect(set).toContain("Path=/auth/refresh");
+        // No token, no subject, no household — the value is a constant.
+        expect(set).not.toContain(REFRESH);
+        expect(set).not.toContain(ACCESS);
+        expect(set).not.toContain(SUBJECT);
+        expect(set).not.toContain(EMAIL);
+      } finally {
+        providerMode = "ok";
+      }
+    });
+  });
+
+  // TEST I · provider 400/401
+  describe("Test I · a refused refresh token still ends the session", () => {
+    it("clears both cookies and goes to sign-in — the original guard, unchanged", async () => {
+      providerMode = "reject";
+      try {
+        const response = await refresh(NEXT, SESSION_COOKIE);
+        expect(response.status).toBe(303);
+        expect(response.headers.get("location")).toBe(`${ORIGIN}/sign-in`);
+        const cookies = cookiesOf(response);
+        expect(cookies).toHaveLength(2);
+        for (const cookie of cookies) expect(cookie).toContain("Max-Age=0");
+      } finally {
+        providerMode = "ok";
+      }
+    });
+
+    it("sets no cooldown marker — there is nothing left to cool down", async () => {
+      providerMode = "reject";
+      try {
+        expect(marker(await refresh(NEXT, SESSION_COOKIE))).toBeUndefined();
+      } finally {
+        providerMode = "ok";
+      }
+    });
+  });
+
+  // A 429 is the judgement call worth pinning: transient, not revocation.
+  describe("a 429 is treated as the provider declining, not as revocation", () => {
+    it("retains the session and answers 503", async () => {
+      providerMode = "throttled";
+      try {
+        const response = await refresh(NEXT, SESSION_COOKIE);
+        expect(response.status).toBe(503);
+        expect(clearsSession(response)).toBe(false);
+        expect(response.headers.get("location")).toBeNull();
+      } finally {
+        providerMode = "ok";
+      }
+    });
+  });
+
+  // TEST C · success
+  describe("Test C · a successful refresh is unchanged, and clears the marker", () => {
+    it("rotates, returns to the destination, and drops any cooldown", async () => {
+      const response = await refresh(NEXT, SESSION_COOKIE);
+      expect(response.status).toBe(303);
+      expect(response.headers.get("location")).toBe(`${ORIGIN}/dashboard`);
+      expect(cookieNamed(response, "ab_session")).toContain(ROTATED);
+      expect(cookieNamed(response, "ab_session_refresh")).toContain(NEW_REFRESH);
+      const cleared = marker(response);
+      expect(cleared).toBeDefined();
+      expect(cleared).toContain("Max-Age=0");
+    });
+
+    it("succeeds even while a stale marker is present, once it is not sent", async () => {
+      // The marker is Path=/auth/refresh and expires on its own; this pins that a
+      // successful refresh is never refused by cooldown state left over from an outage.
+      const response = await refresh(NEXT, SESSION_COOKIE);
+      expect(response.status).toBe(303);
+      expect(cookieNamed(response, "ab_session")).toContain(ROTATED);
+    });
+  });
+
+  // TEST D · missing credential
+  describe("Test D · a missing refresh cookie is not an outage", () => {
+    it("still abandons to sign-in even while the provider is down", async () => {
+      providerMode = "down";
+      try {
+        const response = await refresh(NEXT, null);
+        // Checked before the cooldown and before the provider: no credential at all is
+        // the unauthenticated case, and it keeps its original behaviour.
+        expect(response.status).toBe(303);
+        expect(response.headers.get("location")).toBe(`${ORIGIN}/sign-in`);
+        expect(cookiesOf(response)).toHaveLength(2);
+      } finally {
+        providerMode = "ok";
+      }
+    });
+  });
+
+  // TEST E + TEST F · bounded attempts
+  describe("Test E/F · once the cooldown exists it suppresses further attempts", () => {
+    it("makes no provider call at all while the cooldown marker is presented", async () => {
+      providerMode = "down";
+      try {
+        providerCalls = [];
+        const first = await refresh(NEXT, SESSION_COOKIE);
+        expect(first.status).toBe(503);
+        const attemptsAfterFirst = providerCalls.length;
+        expect(attemptsAfterFirst).toBe(1);
+
+        // Four more requests carrying the marker the first response set.
+        for (let i = 0; i < 4; i += 1) {
+          const repeat = await refresh(NEXT, `${SESSION_COOKIE}; ab_session_retry=1`);
+          expect(repeat.status).toBe(503);
+          expect(repeat.headers.get("location")).toBeNull();
+          expect(clearsSession(repeat)).toBe(false);
+        }
+        // Still one. What this proves is the suppression property — a request that
+        // PRESENTS the marker never reaches the provider — not a distributed lock. See
+        // the sibling test below for the race this deliberately does not close.
+        expect(providerCalls).toHaveLength(attemptsAfterFirst);
+      } finally {
+        providerMode = "ok";
+        providerCalls = [];
+      }
+    });
+
+    it("attempts again once the marker is no longer presented", async () => {
+      // Expiry is the browser's job (Max-Age=15); what is testable here is the server's
+      // half — that an absent marker means a real attempt, so the session recovers by
+      // itself when the provider does.
+      providerCalls = [];
+      const response = await refresh(NEXT, SESSION_COOKIE);
+      expect(providerCalls).toHaveLength(1);
+      expect(response.status).toBe(303);
+      expect(cookieNamed(response, "ab_session")).toContain(ROTATED);
+    });
+
+    it("does NOT guarantee exactly one call — simultaneous requests each attempt once", async () => {
+      // The marker is read from the request and written to the response, with the
+      // provider call in between, so requests issued before the first response carries
+      // it back all observe "no marker". This test exists to pin that honestly rather
+      // than let the suppression test above imply a lock the code does not have.
+      providerMode = "down";
+      try {
+        providerCalls = [];
+        const responses = await Promise.all([
+          refresh(NEXT, SESSION_COOKIE),
+          refresh(NEXT, SESSION_COOKIE),
+          refresh(NEXT, SESSION_COOKIE),
+        ]);
+
+        // Three concurrent requests, none carrying a marker: three attempts. Closing this
+        // would take shared state the architecture does not have, and the blueprint rules
+        // that out here.
+        expect(providerCalls).toHaveLength(3);
+
+        // The invariants that actually matter survive the race untouched: every one of
+        // them terminates, none redirects, and none destroys the session.
+        for (const response of responses) {
+          expect(response.status).toBe(503);
+          expect(response.headers.get("location")).toBeNull();
+          expect(clearsSession(response)).toBe(false);
+          expect(marker(response)).toBeDefined();
+        }
+      } finally {
+        providerMode = "ok";
+        providerCalls = [];
+      }
+    });
+
+    it("a forged marker denies a refresh and grants nothing", async () => {
+      // The marker is HttpOnly, so this needs cookie-write access the browser does not
+      // give script. Pinned anyway: the worst it achieves is a 503 the holder could have
+      // caused by doing nothing, and it never returns a session.
+      providerCalls = [];
+      const response = await refresh(NEXT, `${SESSION_COOKIE}; ab_session_retry=1`);
+      expect(response.status).toBe(503);
+      expect(providerCalls).toHaveLength(0);
+      expect(cookieNamed(response, "ab_session")).toBeUndefined();
+      expect(clearsSession(response)).toBe(false);
+    });
+  });
+
+  // TEST G · P1-06 composition
+  describe("Test G · a provider timeout reaches the same transient branch", () => {
+    it("routes `unavailable` to the outage branch, whatever produced it", async () => {
+      // P1-06 proves a hung provider yields ProviderError("unavailable") — its own suite
+      // owns that, with an injected millisecond budget. What is proved HERE is the other
+      // half: that `unavailable` retains the session. A real 10s hang is not re-run in
+      // this suite, and is not claimed to be.
+      providerMode = "down";
+      try {
+        const response = await refresh(NEXT, SESSION_COOKIE);
+        expect(response.status).toBe(503);
+        expect(clearsSession(response)).toBe(false);
+      } finally {
+        providerMode = "ok";
+      }
+    });
   });
 });
 
