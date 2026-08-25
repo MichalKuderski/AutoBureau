@@ -282,30 +282,64 @@ That is a single-proxy topology: client → Vercel edge → route handler. Doc 1
 the WAF in front of this application is Vercel's. Cloudflare proxies only `in.autobureau.com`,
 `ai.autobureau.com`, and marketing, none of which reach these endpoints.
 
-#### The authoritative source, and its position
+#### The authoritative source, and its position — this ADR's inference, not an inherited rule
+
+**No governing document establishes any of this.** A search of `docs/` and `ops/` finds no mention
+of `X-Forwarded-For`, `Forwarded`, `X-Real-IP`, header ordering, or client-IP derivation anywhere in
+the architecture set. Doc 09 §3 and review A7 fix the **topology** — how many proxies, and which —
+and say nothing about what any of them does to a header. The rule below is therefore **this ADR's
+own inference**, and is labelled as such rather than presented as something the architecture already
+decided.
 
 - **Source:** the `x-forwarded-for` request header, as set by the platform edge.
-- **Position:** the **last** (right-most) value, which under a single-proxy topology is the peer the
-  platform itself observed. A client that sends its own `x-forwarded-for` has its value appended to
-  the left of that, not substituted for it, so reading right-most is what makes a spoofed prefix
-  inert. Reading left-most — the common default, and the common vulnerability — would trust the
-  attacker's string directly.
+- **Position:** the **right-most** value.
 - **Nothing else is read.** Not `Forwarded`, not `x-real-ip`, not any `x-vercel-*` header, not a
   caller-chosen index. One header, one position, written down so it cannot drift.
+
+**The two premises the rule rests on, neither of which any source in this repository states:**
+
+1. **The edge appends rather than passing through.** Under the de-facto `X-Forwarded-For`
+   convention a proxy appends the peer it received the connection from to the right of the list, so
+   a client-supplied prefix is left inert. If the edge instead *replaces* the header, the list holds
+   one value and right-most is still correct. The rule therefore holds under both append and replace
+   semantics, and fails only under pass-through — which is indistinguishable from having no proxy at
+   all, handled below. **This is a convention, not a documented property of this deployment**, and
+   P1-08 must not cite it as one.
+2. **Exactly one appending hop sits in front of the handler.** Right-most is the client only if the
+   platform edge is the *last* appender. An additional internal appending hop would make right-most
+   an internal address rather than a client one. Doc 09 §3 fixes the number of *external* proxies;
+   it says nothing about the platform's own internal routing, and nothing in this repository can
+   count hops at runtime.
+
+**Why right-most is still the correct choice given that uncertainty** — and this part is not
+convention but reasoning about failure direction. Under append semantics, left-most is *whatever the
+client sent*, so a left-most rule hands the bucket key to the attacker outright. Right-most can be
+**wrong**, but it cannot be **chosen by the attacker**: the worst case is bucketing on a fixed
+internal address, which degrades the IP dimension toward useless rather than forging it. Between a
+rule that can be wrong and a rule that can be forged, this ADR takes the one that can be wrong.
+
+**Verification obligation.** Both premises are settled by a single observation against a real
+deployment — recording the raw header shape once, from a request whose true origin is known. That
+observation belongs on doc 09 §9.9's unverified register alongside the other first-deploy unknowns;
+no new infrastructure component is proposed to substitute for it. **Until it is made, the IP
+dimension is implemented and enabled, but its correctness is assumed rather than known**, which is
+why D6 keeps it generous and strictly secondary.
 
 #### Assumption versus enforcement — the distinction the ADR must not blur
 
 | Claim | Status |
 |---|---|
-| The deployed topology is single-proxy, as doc 09 §3 specifies | **Architectural assumption.** Doc 09 §9.2 records that `infra/terraform/` — which would own the Cloudflare and edge configuration — **deliberately does not exist**, so no repository artifact configures or asserts this |
-| The platform edge overwrites/appends `x-forwarded-for` such that the right-most value is the true peer | **Architectural assumption about vendor behaviour.** Doc 09 §9.9 records that **no live deployment has ever run** and there is no Vercel project; this is unverified against a real edge |
-| Vercel's WAF and platform rate limiting are active in front of these endpoints | **Architectural assumption.** Same §9.9: unverified, and not configured by anything in this repository |
+| The deployed topology is single-proxy, as doc 09 §3 specifies | **Stated by the architecture, configured by nothing.** Doc 09 §3 and review A7 fix it; doc 09 §9.2 records that `infra/terraform/` — which would own the Cloudflare and edge configuration — **deliberately does not exist**, so no repository artifact asserts or enforces it |
+| The edge appends (or replaces) `x-forwarded-for` such that the right-most value is the connecting peer | **This ADR's inference from convention. No governing document addresses it at all** — `docs/` and `ops/` contain no mention of forwarded headers. Unverified against a real edge, because doc 09 §9.9 records that **no live deployment has ever run** |
+| The platform edge is the *last* appending hop, so right-most is a client address and not an internal one | **This ADR's inference.** Doc 09 §3 fixes the count of external proxies only; the platform's internal routing is outside every document here |
+| Vercel's WAF and platform rate limiting are active in front of these endpoints | **Stated by doc 09 §3, unverified.** Same §9.9, and not configured by anything in this repository |
 | The right-most `x-forwarded-for` value parses as an IP address | **Enforced by the application.** P1-08 parses it and treats a failure as absence |
 | A missing or unparseable IP never blocks a request | **Enforced by the application** (see below) |
 | The identifier limit holds regardless of the IP | **Enforced by the application** — it is a separate policy on a separate row |
 
-Only the bottom three are things P1-08 can guarantee. The top three are inherited from a deployment
-that does not exist yet, and **P1-08 must not be described as verifying them.**
+Only the bottom three are things P1-08 can guarantee. Of the top four, two are stated by the
+architecture but configured by nothing, and **two are this ADR's own inference with no source behind
+them at all**. **P1-08 must not be described as verifying any of the four.**
 
 #### What happens when the topology is absent or ambiguous
 
@@ -379,9 +413,9 @@ Two rules that are decisions rather than thresholds:
 
 **Thresholds are decided, and the reasoning behind each number is in R1.** They rest on architectural
 judgment rather than repository evidence — there is no traffic to derive them from — so R1 also fixes
-the revision contract: they are constants in one module, never environment variables, and a number
-may be revised by ordinary code review without amending this ADR as long as the *shape* above is
-unchanged.
+the revision contract, which is governed by *direction*: tightening a number is ordinary code review,
+**weakening one requires amending this ADR**, and no threshold may be read from the environment or
+any other runtime-mutable source.
 
 | Policy | Dimension | Limit | Window |
 |---|---|---|---|
@@ -727,16 +761,37 @@ provisional.
   numbers being right:
   1. The five policy names, their dimensions, and fixed-window semantics are fixed by this ADR.
   2. Every attempt is counted; a successful sign-in clears the identifier buckets (D6).
-  3. Thresholds and windows are **constants in one table in one module** — deliberately **not**
-     environment variables. An operator-tunable security control can be widened to infinity without
-     review, and a new environment variable is precisely the acquisition D13 forbids.
-  4. Revising a number is an ordinary code change with a review. It does **not** require amending
-     this ADR, *provided the shape in (1) and (2) is unchanged*. Changing the shape does.
+  3. Thresholds and windows are **constants in one table in one module**. Reading a threshold or a
+     window from `process.env`, from a database row, or from any other runtime-mutable source is
+     **not permitted by any route short of amending this ADR** — an operator must not be able to
+     widen a security control without a code review, and a deployment must not be able to differ
+     from what this ADR says it enforces. Literals in one module make that greppable. It is also
+     what keeps D13's "no new environment variable" true.
+  4. **Revision is governed by direction, not by size.** A policy's security posture is its
+     permitted attempt rate — `limit ÷ window` — together with the set of policies in force.
+     - **Tightening or neutral** — any change that increases no policy's permitted rate and removes
+       no policy — is implementation tuning: ordinary code review, no ADR amendment. It is cheap
+       precisely because it cannot weaken the control.
+     - **Weakening** — raising any limit, increasing any policy's permitted rate, removing or
+       disabling a policy, changing a dimension, or altering the count-every-attempt or
+       reset-on-success rules — **is an architecture change and requires amending this ADR.** That
+       is not a new process: the architecture set is frozen and amendments require evidence plus an
+       ADR (`docs/architecture/README.md`), and FOUNDING_PRINCIPLES §10's corollary is that evidence
+       "does not silently edit a frozen document — it opens the amendment door". This clause only
+       names these thresholds as one of the things that existing rule already covers, so that
+       "it's just a constant" is never mistaken for "it's outside governance".
+     - **Reducing a limit to zero, or to a value no legitimate user can satisfy, is also a
+       weakening** — of availability rather than of enforcement — and takes the same route. The
+       symmetric loophole is worth closing explicitly: "tighten it to nothing" would turn the
+       limiter into the outage D7 exists to prevent.
+     - **What is genuinely out of scope for an amendment:** correcting a number downward on real
+       traffic, which is the case this contract exists to keep frictionless.
 - **Remaining risk:** the numbers may be wrong in either direction on first contact with real
   traffic — too tight produces support load from locked-out users, too loose produces a limit that
   never binds. Both are correctable in one edit, and neither is a security regression relative to
   today, where the limit is zero. First real traffic is the evidence this decision is waiting on,
-  and (4) is how it gets incorporated without ceremony.
+  and R1(4) is how a correction downward gets incorporated without ceremony — while a correction
+  upward goes through the amendment door.
 
 ### R2 — No pepper on the bucket hash
 
@@ -785,7 +840,7 @@ so it is not mistaken for something already handled.
 | Item | Blocks ADR acceptance? | Blocks P1-08 sign-off? |
 |---|---|---|
 | **Alerting on `auth.rate_limit_unavailable`** must reach doc 10's alert channel. D7 accepts a fail-open risk *on the condition that it is visible*; an unalerted fail-open is the failure this ADR would otherwise be creating | No — it is a wiring obligation, not an undecided architecture | **Yes.** This is the condition attached to D7 |
-| **Verifying the edge's forwarded-header behaviour and the Vercel WAF** against a real deployment (D5). Belongs on doc 09 §9.9's unverified register | No — D5 already states it as assumption, and the design does not rest on it | No — the identifier dimension is unaffected |
+| **Verifying the edge's forwarded-header behaviour and the Vercel WAF** against a real deployment (D5) — one observation of the raw header shape from a request of known origin. Belongs on doc 09 §9.9's unverified register | No — D5 states the right-most rule as this ADR's own inference with both premises named, rather than claiming a source establishes it | No — the identifier dimension needs no IP, and a wrong IP degrades a generous secondary control rather than forging one. It does gate any future decision to make the IP dimension load-bearing |
 | **Turnstile (doc 06 §1) and MFA (doc 12 §1 T2)** remain unimplemented; the limiter is not a substitute for either, and D7 records that it will be the only T2 control in force | No | No — out of P1-08's scope by the blueprint |
 | **Retaking R2 if P1-09 puts `users` under RLS** | No | No — a future contingency, not a present gap |
 
