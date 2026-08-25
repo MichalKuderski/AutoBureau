@@ -3,9 +3,12 @@ import { authConfigFromEnv } from "@/server/auth/config";
 import { createCodeVerifier, deriveCodeChallenge, pendingCookie } from "@/server/auth/pkce";
 import { createGoTrueProvider, ProviderError } from "@/server/auth/provider";
 import { appendCookies } from "@/server/auth/session";
+import { getDatabase } from "@/server/db";
 import { assertSameSiteRequest, CsrfError } from "@/server/http/csrf";
 import { problemResponse } from "@/server/http/problem";
+import { MAGIC_LINK_POLICIES, enforceRateLimit } from "@/server/http/rate-limit";
 import { safeDestination } from "@/server/http/public-routes";
+import { routeOf, traceIdFrom, withTraceHeader } from "@/server/observability";
 
 /**
  * `POST /v1/auth/magic-link` — begin an authorization-code exchange (ADR-009 D2).
@@ -26,6 +29,9 @@ const RequestSchema = z.object({
 });
 
 export async function POST(request: Request): Promise<Response> {
+  const traceId = traceIdFrom(request);
+  const route = routeOf(request);
+
   let config;
   try {
     config = authConfigFromEnv();
@@ -48,6 +54,24 @@ export async function POST(request: Request): Promise<Response> {
   if (!parsed.success) {
     return problemResponse("validation", { detail: "Enter an email address." });
   }
+
+  // Blueprint P1-08, and on this endpoint "before the provider call" is the whole point:
+  // after it, the mail has already been sent to someone who did not ask for it. This runs
+  // before the PKCE verifier is minted too, so a refused request starts no flow and leaves
+  // no pending cookie behind.
+  //
+  // A `429` here does not undo the 204-always rule below. That rule hides whether an
+  // ADDRESS has an account; this reports how often THIS REQUESTER has asked, which is the
+  // same answer for a real address and an invented one at the same rate.
+  const limited = await enforceRateLimit({
+    db: getDatabase(),
+    request,
+    identifier: parsed.data.email,
+    policies: MAGIC_LINK_POLICIES,
+    traceId,
+    route,
+  });
+  if (limited !== null) return withTraceHeader(limited, traceId);
 
   const verifier = createCodeVerifier();
   const challenge = await deriveCodeChallenge(verifier);

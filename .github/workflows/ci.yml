@@ -84,6 +84,53 @@ jobs:
             exit 1
           fi
 
+      # ADR-013 D2: the anonymous, no-GUC database door is narrow on purpose. The primary
+      # fence is the `GlobalTable` union, enforced by `pnpm typecheck` — a call naming any
+      # other table does not compile. This catches what the type system cannot: a NEW caller
+      # for an ALLOWED table, somewhere it does not belong.
+      - name: Anonymous global-table access stays allow-listed
+        run: |
+          hits=$(grep -rlnE "(\.|\[[\"'])withGlobalTable" --include="*.ts" \
+                   --exclude-dir=dist --exclude-dir=node_modules packages apps 2>/dev/null \
+                 | grep -vE "^(packages/db/(src/scoped\.ts|tests/)|apps/web/src/server/http/rate-limit\.ts)$" \
+                 | grep -vE "\.test\.tsx?$" || true)
+          if [ -n "$hits" ]; then
+            echo "::error::withGlobalTable used outside allow-listed modules (ADR-013 D2):"
+            echo "$hits"
+            exit 1
+          fi
+
+      # ADR-013 D2, third fence: widening the capability must be an explicit, reviewable act
+      # rather than a one-line diff nobody notices. This pins the union's membership, so
+      # adding a table to `GlobalTable` fails CI until the same PR updates this list.
+      - name: Global-table union membership is pinned
+        run: |
+          expected='export type GlobalTable = "auth_rate_limits";'
+          if ! grep -qxF "$expected" packages/db/src/scoped.ts; then
+            echo "::error::The GlobalTable union changed. Widening anonymous database access is an"
+            echo "::error::ADR-013 decision: amend the ADR and update this guardrail in the same PR."
+            grep -n "export type GlobalTable" packages/db/src/scoped.ts || true
+            exit 1
+          fi
+
+      # ADR-013 R1 clause 3: rate-limit thresholds are literals in one module and may never
+      # be read from the environment or any other runtime-mutable source. An operator who
+      # could widen a security control without a code review would be outside the governance
+      # that owns those numbers, and a deployment could then differ from what the ADR says.
+      #
+      # Comment lines are stripped before matching. The module's own docblock explains that
+      # it must not read `process.env`, and a naive grep would flag that sentence — a fence
+      # that fails on its own documentation is a fence someone deletes.
+      - name: Rate-limit thresholds are not runtime-configurable
+        run: |
+          hits=$(grep -nE "process\.env|getenv" apps/web/src/server/http/rate-limit.ts 2>/dev/null \
+                 | grep -vE "^[0-9]+: *(\*|//|/\*)" || true)
+          if [ -n "$hits" ]; then
+            echo "::error::rate-limit.ts must not read configuration at runtime (ADR-013 R1.3):"
+            echo "$hits"
+            exit 1
+          fi
+
       # PRD v1 §9: chat and agent-execution are postponed. Tables//models for them
       # must not reappear without a §21 amendment.
       - name: PRD scope fence

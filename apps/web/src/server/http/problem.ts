@@ -11,18 +11,31 @@ import type { ZodError } from "zod";
  */
 export function problemResponse(
   kind: ProblemKind,
-  init: { detail?: string; instance?: string; errors?: FieldError[] } = {},
+  init: {
+    detail?: string;
+    instance?: string;
+    errors?: FieldError[];
+    /**
+     * Extra response headers (ADR-013 D10). Additive and optional: every existing caller
+     * omits it and is unchanged. It exists because doc 03 §1 requires `Retry-After` on a
+     * `429`, and there was previously no way for a problem response to carry one.
+     *
+     * `content-type` and `cache-control` are applied afterwards and cannot be overridden —
+     * a problem response that became cacheable, or stopped being problem+json, would be a
+     * contract break dressed as a header.
+     */
+    headers?: Record<string, string>;
+  } = {},
 ): Response {
-  const body = problem(kind, init);
-  return new Response(JSON.stringify(body), {
-    status: body.status,
-    headers: {
-      "content-type": "application/problem+json",
-      // An error page is never a cache entry, and a 403 cached for the wrong principal
-      // is a data leak rather than a performance win.
-      "cache-control": "no-store",
-    },
-  });
+  const { headers, ...problemInit } = init;
+  const body = problem(kind, problemInit);
+  const response = new Response(JSON.stringify(body), { status: body.status });
+  for (const [name, value] of Object.entries(headers ?? {})) response.headers.set(name, value);
+  response.headers.set("content-type", "application/problem+json");
+  // An error page is never a cache entry, and a 403 cached for the wrong principal
+  // is a data leak rather than a performance win.
+  response.headers.set("cache-control", "no-store");
+  return response;
 }
 
 /** Success responses carry the same no-store rule: every `/v1` body is household data. */

@@ -39,6 +39,36 @@ export type ScopedClient = Omit<Prisma.TransactionClient, "$executeRawUnsafe" | 
 /** Unrestricted transaction client — dispatcher/maintenance only. */
 export type DispatcherClient = Prisma.TransactionClient;
 
+/**
+ * Tables reachable with no tenant scope at all (ADR-013 D2).
+ *
+ * This union IS the fence. Adding a member widens an anonymous, unauthenticated write
+ * capability, so it is a deliberate edit to this file rather than a call-site decision —
+ * `pnpm typecheck` rejects any other table, and a CI guardrail pins this list textually so
+ * that widening it cannot pass as a one-line diff nobody notices.
+ */
+export type GlobalTable = "auth_rate_limits";
+
+/** Defence in depth over the union, in the same spirit as the UUID assertions below. */
+const GLOBAL_TABLES: ReadonlySet<string> = new Set<GlobalTable>(["auth_rate_limits"]);
+
+declare const GLOBAL_CLIENT: unique symbol;
+
+/**
+ * The client `withGlobalTable` hands out.
+ *
+ * Branded so a `ScopedClient` cannot be passed where a `GlobalClient` is required: the two
+ * are otherwise structurally identical, and TypeScript would let one stand in for the other
+ * silently. The opposite direction is not blocked by the type system, and does not need to
+ * be — a global client used for tenant work reaches a transaction with no GUC set, where
+ * every household policy predicate is NULL and every scoped table returns zero rows and
+ * refuses every write. That direction fails closed at the database.
+ */
+export type GlobalClient = Omit<
+  Prisma.TransactionClient,
+  "$executeRawUnsafe" | "$queryRawUnsafe"
+> & { readonly [GLOBAL_CLIENT]: "global" };
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export class ScopeError extends Error {
@@ -193,6 +223,55 @@ export class Database {
           maxWait: options.maxWaitMs ?? DEFAULT_MAX_WAIT_MS,
         },
       ),
+    );
+  }
+
+  /**
+   * The one door for tables that belong to no tenant (ADR-013 D2, blueprint P1-08).
+   *
+   * WHY IT HAD TO EXIST, AND WHY IT IS NOT ANY OF THE OTHER FOUR
+   * ------------------------------------------------------------
+   * Rate limiting a sign-in runs *before* a token is verified: there is no principal and no
+   * household, so `withPrincipal`, `withHousehold` and `withIdentity` all fail at their
+   * first argument. `unsafeAcrossAllHouseholds` would work and must never be used — it runs
+   * on the BYPASSRLS dispatcher role, and the blast radius of a bug on a public,
+   * unauthenticated endpoint is then the entire tenant set. None of those four is widened
+   * by this method; it sits beside them.
+   *
+   * IT SETS NO GUC, AND THAT IS THE SAFETY PROPERTY
+   * -----------------------------------------------
+   * Neither `request.household_id` nor `request.user_id` is established here, deliberately.
+   * With both unset, `app.current_household()` and `app.current_user_id()` return NULL,
+   * every household policy predicate evaluates to NULL, and every household-scoped table
+   * returns zero rows and rejects every write — the fail-closed behaviour migration
+   * `20260728000001_rls` was built around. So the narrowness of this method is enforced by
+   * the database, not only by its signature: a query issued through it that named `items`
+   * would not leak, it would return nothing.
+   *
+   * It runs on the ordinary `app_user` connection — never `app_dispatcher`, never
+   * `service_role` — and opens NO audit unit, because there is no actor. `audit_log`'s
+   * insert policy requires a household or the dispatcher role, so a row written from here
+   * would be both impossible to insert and wrong to want: a rate-limit decision is not a
+   * household-attributable domain action. The observability record is its account.
+   *
+   * Callers must use parameterized `$queryRaw`. The Prisma model delegates would be
+   * intercepted by the audit extension, which refuses a mutation with no unit of work in
+   * scope — correctly, and that refusal is not something to work around.
+   */
+  async withGlobalTable<T>(
+    table: GlobalTable,
+    fn: (tx: GlobalClient) => Promise<T>,
+    options: ScopedTransactionOptions = {},
+  ): Promise<T> {
+    if (!GLOBAL_TABLES.has(table)) {
+      throw new ScopeError(`${JSON.stringify(table)} is not a global table`);
+    }
+    return this.client.$transaction(
+      async (tx) => fn(tx as unknown as GlobalClient),
+      {
+        timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        maxWait: options.maxWaitMs ?? DEFAULT_MAX_WAIT_MS,
+      },
     );
   }
 

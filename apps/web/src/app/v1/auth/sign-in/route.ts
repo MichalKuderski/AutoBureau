@@ -8,6 +8,12 @@ import { ensureHousehold } from "@/server/identity/bootstrap";
 import { appendCookies, sessionCookies } from "@/server/auth/session";
 import { assertSameSiteRequest, CsrfError } from "@/server/http/csrf";
 import { problemResponse } from "@/server/http/problem";
+import {
+  SIGN_IN_CLEAR_ON_SUCCESS,
+  SIGN_IN_POLICIES,
+  clearRateLimit,
+  enforceRateLimit,
+} from "@/server/http/rate-limit";
 import { log, routeOf, traceIdFrom, withTraceHeader } from "@/server/observability";
 
 /**
@@ -67,6 +73,27 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
+    // Inside the `try` on purpose: `getDatabase()` throws `DatabaseConfigError` when
+    // `DATABASE_URL` is unset, and that has always been reported by the catch below as a
+    // logged 500 rather than as an unhandled throw. Hoisting it out to sit beside the
+    // limiter would have quietly changed that.
+    const db = getDatabase();
+
+    // Blueprint P1-08, placed exactly where ADR-013 D9 puts it: after CSRF and after the
+    // body has parsed, and BEFORE the provider is asked anything. Before the provider
+    // matters twice over — it is what makes an attempt cost us nothing outbound, and it is
+    // what keeps the 429 from depending on whether the account exists, which would turn
+    // this endpoint into the enumeration oracle the neutral failure message below prevents.
+    const limited = await enforceRateLimit({
+      db,
+      request,
+      identifier: parsed.data.email,
+      policies: SIGN_IN_POLICIES,
+      traceId,
+      route,
+    });
+    if (limited !== null) return withTraceHeader(limited, traceId);
+
     const tokens = await createGoTrueProvider(config).signInWithPassword(
       parsed.data.email,
       parsed.data.password,
@@ -86,7 +113,6 @@ export async function POST(request: Request): Promise<Response> {
     // Mirror before the cookies exist. A session whose identity is not in this database
     // is a session that resolves to 403 on every request; issuing one would be creating
     // a partially usable identity, which is exactly what must not happen.
-    const db = getDatabase();
     await mirrorIdentity(db, principal);
 
     // Blueprint P1-02, and the same sentence applies: a mirrored principal belonging to
@@ -94,6 +120,20 @@ export async function POST(request: Request): Promise<Response> {
     // once it can enter the application, so the household is established here too —
     // still before the cookies exist.
     await ensureHousehold(db, principal.userId);
+
+    // ADR-013 D6: a success clears this subject's identifier buckets, so someone who
+    // mistyped four times and then got it right is not left one attempt from a lockout.
+    // Only after the sign-in has fully succeeded — a mirror failure is not a success — and
+    // deliberately not the per-IP bucket, which is shared with everyone else behind that
+    // address. Best effort: a clear that fails must not fail the sign-in.
+    await clearRateLimit({
+      db,
+      request,
+      identifier: parsed.data.email,
+      policies: SIGN_IN_CLEAR_ON_SUCCESS,
+      traceId,
+      route,
+    });
 
     // 204: nothing to say that the cookies do not already carry.
     return appendCookies(

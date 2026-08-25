@@ -81,6 +81,44 @@ enum IdempotencyState {
   completed
 }
 
+/// Authentication rate-limit counters (ADR-013, blueprint P1-08).
+///
+/// GLOBAL AND ANONYMOUS BY CONSTRUCTION. The only table in this schema written by a
+/// request that has no principal and no household: a sign-in attempt is counted before
+/// any token is verified. It therefore carries no `household_id`, no `user_id`, and no
+/// foreign key to anything — a reference to `users` would turn "this address attempted a
+/// sign-in" into a joinable fact about a real account (ADR-013 D3).
+///
+/// `bucket` is a SHA-256 of the policy-domain-separated, normalized subject. That is NOT
+/// secrecy: an email's preimage space is small and enumerable, so the digest is reversible
+/// with a wordlist. It exists so this table never becomes a second plaintext corpus of
+/// addresses, not to keep a secret it cannot keep — see ADR-013 D3 for exactly what it
+/// does and does not protect against.
+///
+/// Reached only through `Database.withGlobalTable`, which establishes no tenant GUC at all.
+model AuthRateLimit {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Policy identifier, e.g. `sign_in.identifier_ip`. A class, never a subject.
+  policy String @db.VarChar(64)
+  /// SHA-256 hex of `policy \0 normalized-subject`. Never a raw email or IP.
+  bucket String @db.Char(64)
+  /// Request time floored to the policy's window length, so a window maps to one row.
+  windowStartedAt DateTime @map("window_started_at") @db.Timestamptz(6)
+  attempts        Int      @default(0)
+  /// Authoritative for expiry: a lapsed row is treated as absent whether or not it has
+  /// been swept (ADR-013 D11). Correctness never depends on a cleaner running.
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  /// What makes the increment atomic: one `INSERT … ON CONFLICT DO UPDATE` both records
+  /// the attempt and reports the running total, with no read-modify-write window.
+  @@unique([policy, bucket, windowStartedAt])
+  /// Serves the opportunistic expiry sweep.
+  @@index([expiresAt])
+  @@map("auth_rate_limits")
+}
+
 /// Server-side idempotency records (ADR-011 D13, ADR-012).
 ///
 /// INFRASTRUCTURE, NOT DOMAIN DATA. Written only by the `/v1` request boundary and read

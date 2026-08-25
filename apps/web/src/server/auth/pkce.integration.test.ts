@@ -158,6 +158,17 @@ afterAll(async () => {
   await new Promise<void>((resolve) => provider.close(() => resolve()));
 });
 
+/**
+ * Magic-link now counts every request against a per-identifier limit (blueprint P1-08), and
+ * those counters live in Postgres for the length of their window — so they outlive the test,
+ * the file, and the run. Without this the suite passes once and then starts answering 429 to
+ * its own setup, which is how a green suite turns red for a reason that has nothing to do
+ * with what it is testing. Cleared per test so every case starts from an empty store.
+ */
+beforeEach(async () => {
+  await admin.$executeRawUnsafe(`DELETE FROM auth_rate_limits`);
+});
+
 const config = { cookieName: "ab_session" } as AuthConfig;
 const cookiesOf = (r: Response): string[] => r.headers.getSetCookie();
 const named = (r: Response, name: string): string | undefined =>

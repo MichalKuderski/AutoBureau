@@ -11,6 +11,8 @@ export {
   ScopeError,
   type ScopedClient,
   type DispatcherClient,
+  type GlobalClient,
+  type GlobalTable,
   type ScopedTransactionOptions,
   type HouseholdScopeOptions,
 } from "./scoped.js";
