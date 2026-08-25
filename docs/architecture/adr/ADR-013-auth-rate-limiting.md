@@ -2,10 +2,12 @@
 
 **Status:** Proposed · blueprint P1-08. **Not to be marked Accepted until the implementation is reviewed.**
 **Date:** 2026-08-25
-**Supersedes, narrowly:** the store named in `12-security.md` §7 ("Upstash sliding-window") and the
-anonymous fail-closed rule in `12-security.md` §7 / `01-system-architecture.md` §8 ("Redis down") —
-**for this limiter only**. ADR-005 is untouched: the outbox still targets Redis Streams, which is a
-fan-out decision, not a counting one.
+**Narrows, does not overturn:** the store named in `12-security.md` §7 ("Upstash sliding-window"),
+and the anonymous fail-closed rule in `12-security.md` §7 / `01-system-architecture.md` §8 ("Redis
+down") — **for this limiter only**. That fail-closed rule remains the governing default for
+rate-limit infrastructure independent of the application, and this exception **lapses automatically**
+if these counters ever move to such infrastructure (D7). ADR-005 is untouched: the outbox still
+targets Redis Streams, which is a fan-out decision, not a counting one.
 **Does not amend ADR-011.** D14 already makes `/v1/auth/*` a documented exception, and this ADR
 lives entirely inside it.
 
@@ -195,16 +197,43 @@ relationship to tenant data and must not acquire one. A FK to `users` would turn
 attempted a sign-in" into a joinable fact about a real account, and would make the row's lifetime a
 property of an account rather than of a window.
 
+**What the hash is and is not. It is not secrecy, and this ADR must not be read as claiming it
+is.** An unsalted, unpeppered SHA-256 of an email address or an IPv4 address is **trivially
+reversible by anyone who holds the table**. Email is a low-entropy, enumerable domain: a wordlist
+of addresses, or the `users.email` column itself, is hashed and matched offline in seconds. The
+entire IPv4 space is 2³² digests — hours on commodity hardware, and precomputable once. Treating
+`bucket` as a pseudonymised identifier for any purpose that assumes secrecy would be wrong.
+
+What it does buy is narrower and worth stating exactly:
+
+| Protects against | Does **not** protect against |
+|---|---|
+| The table becoming a *second plaintext corpus* of addresses that have attempted sign-in — a new asset with its own dump risk | Anyone who can `SELECT` the table and is willing to run a dictionary or rainbow attack. That is not a hard attack; it is an afternoon |
+| Casual exposure through a query result, a screenshot, an error message, or a support session — nothing reads as an address | A targeted confirmation query: "did `ada@example.test` attempt a sign-in", answerable by hashing one string |
+| Fixed-width, type-safe keys that cannot carry an injection payload or a malformed address into an index | Correlation over time: the same subject produces the same digest across windows |
+
+**Why this is nonetheless the right shape here**, evaluated against the current repository rather
+than against a general principle:
+
+- **The confidentiality of the address is not this table's to protect, and cannot be.**
+  `users`/`user_profiles` are deliberately outside RLS at HEAD (RLS migration: "Left without RLS
+  deliberately"), so any `app_user` connection already reads every address in the product in
+  plaintext. An attacker positioned to dump `auth_rate_limits` is positioned to dump `users`, where
+  the same addresses sit unhashed beside display names. Hashing here removes an *additional* copy;
+  it cannot remove the original, and pretending otherwise would be the exact overclaim this section
+  exists to prevent.
+- **What the table uniquely reveals is not the address but the attempt** — that someone tried to
+  sign in as this subject, in this window. D11's short retention is the real control on that, not
+  the digest: rows live for a window, not for 24 hours, and the table accumulates no history.
+- **A pepper is resolved, not deferred** — see R2, which decides against one and names the single
+  condition (P1-09's RLS decision) that would require retaking it.
+
 **Normalization is load-bearing.** The identifier is lower-cased and trimmed before hashing;
 `Ada@Example.test` and `ada@example.test ` must land in the same bucket or the limit is evaded by
-pressing shift. The digest is taken with the same SHA-256 primitive the repository already uses
-(`payloadSha256Hex` in `@autobureau/contracts/node`, or `node:crypto` directly) — not a new scheme.
-
-**Why hash the subject, given D4?** Not to defeat a database reader: `users`/`user_profiles` are
-deliberately outside RLS (RLS migration, §"users / user_profiles are not household-scoped"), so
-`app_user` can already read every address in plaintext. Hashing is for the two things it does buy —
-the table never becomes a *second* copy of the identifier corpus, and nothing reversible to an email
-or an IP is available to be logged, dumped, or joined. Whether to add a pepper is Open decision 2.
+pressing shift. The digest is domain-separated by policy so a `sign_in.identifier` bucket and a
+`magic_link.identifier` bucket for the same address are different rows. It is taken with the same
+SHA-256 primitive the repository already uses (`payloadSha256Hex` in `@autobureau/contracts/node`,
+or `node:crypto` directly) — not a new scheme.
 
 ### D4 — RLS: enabled, forced, and deliberately permissive on this table alone
 
@@ -235,38 +264,85 @@ table with no foreign key to any household table, adds no policy to any existing
 policy on any existing table, and changes no grant on any existing table. If a reviewer sees any of
 those four in the P1-08 migration, it is out of scope for this ADR.
 
-### D5 — IP trust: one hop, one header, one stated assumption, and a named residual risk
+### D5 — IP trust: the trusted topology, the authoritative source, and what the application enforces
 
 **Today the repository extracts no client IP anywhere.** No `x-forwarded-for`, `x-real-ip`,
-`Forwarded`, `x-vercel-*`, or `request.ip` appears in `apps/web/src` or `packages`.
+`Forwarded`, `x-vercel-*`, or `request.ip` appears in `apps/web/src` or `packages`. Everything below
+is therefore a decision about what P1-08 will do, not a description of what exists.
 
-**The assumption, stated rather than assumed.** Doc 09 §"Edge split" (review A7/F-03) puts
-`app.autobureau.com` **DNS-only to Vercel — no Cloudflare proxy in front of Vercel** — protected by
-Vercel's own WAF and rate limiting. A request reaching a route handler has therefore traversed
-exactly one trusted hop. On that topology, the value the platform edge places in `x-forwarded-for`
-is the connecting peer as the platform saw it, and client-supplied values are overwritten there.
+#### The trusted topology, named exactly
 
-**Where it is enforced: nowhere in this repository. That is the residual risk and it is named here
-rather than papered over.** The assumption rests on a deployment topology (`vercel.json`, doc 09 A7)
-and a platform behaviour, neither of which the application can assert at runtime. Two ways it
-breaks: a proxy placed in front of Vercel later (contradicting A7) silently makes the IP bucket
-wrong; and a request that reaches the app without traversing the edge — a direct hit on a deployment
-URL, or `next start` locally — has no trustworthy IP at all.
+The application trusts **one** topology, and it is the one doc 09 §3 fixes (review A7/F-03):
 
-Five consequences follow, and together they are why that risk is acceptable:
+> `app.autobureau.com` is DNS-only to Vercel — **no Cloudflare proxy in front of Vercel** —
+> protected by Vercel's WAF + rate limiting.
 
-1. **The identifier bucket is primary; the IP bucket is secondary.** No security property depends on
-   the IP dimension alone. If the IP is absent or untrustworthy, the identifier limit still holds
-   and the endpoint is still protected against the attack that matters most.
-2. **An absent or unparseable IP is not an error and never blocks a request.** The IP dimension is
-   skipped, and the skip is logged once (D12) rather than passing silently.
-3. **We read one header at one position and nothing else.** No `Forwarded`, no `X-Real-IP`, no
-   caller-chosen index into `X-Forwarded-For`. The rule is written down so it cannot drift into
-   "trust whatever is furthest left".
-4. **The IP limit is generous** — it exists to blunt spraying from one source, not to be
-   load-bearing, because it is spoofable in any topology where the assumption fails.
-5. **Volumetric per-IP defence stays the platform's job**, exactly as doc 09 already assigns it.
-   This limiter's contribution is the per-identifier dimension an edge WAF cannot compute.
+That is a single-proxy topology: client → Vercel edge → route handler. Doc 12 §1 T10 still lists
+"Cloudflare WAF" among the DoS controls; on `app.autobureau.com` that is **superseded by A7** and
+the WAF in front of this application is Vercel's. Cloudflare proxies only `in.autobureau.com`,
+`ai.autobureau.com`, and marketing, none of which reach these endpoints.
+
+#### The authoritative source, and its position
+
+- **Source:** the `x-forwarded-for` request header, as set by the platform edge.
+- **Position:** the **last** (right-most) value, which under a single-proxy topology is the peer the
+  platform itself observed. A client that sends its own `x-forwarded-for` has its value appended to
+  the left of that, not substituted for it, so reading right-most is what makes a spoofed prefix
+  inert. Reading left-most — the common default, and the common vulnerability — would trust the
+  attacker's string directly.
+- **Nothing else is read.** Not `Forwarded`, not `x-real-ip`, not any `x-vercel-*` header, not a
+  caller-chosen index. One header, one position, written down so it cannot drift.
+
+#### Assumption versus enforcement — the distinction the ADR must not blur
+
+| Claim | Status |
+|---|---|
+| The deployed topology is single-proxy, as doc 09 §3 specifies | **Architectural assumption.** Doc 09 §9.2 records that `infra/terraform/` — which would own the Cloudflare and edge configuration — **deliberately does not exist**, so no repository artifact configures or asserts this |
+| The platform edge overwrites/appends `x-forwarded-for` such that the right-most value is the true peer | **Architectural assumption about vendor behaviour.** Doc 09 §9.9 records that **no live deployment has ever run** and there is no Vercel project; this is unverified against a real edge |
+| Vercel's WAF and platform rate limiting are active in front of these endpoints | **Architectural assumption.** Same §9.9: unverified, and not configured by anything in this repository |
+| The right-most `x-forwarded-for` value parses as an IP address | **Enforced by the application.** P1-08 parses it and treats a failure as absence |
+| A missing or unparseable IP never blocks a request | **Enforced by the application** (see below) |
+| The identifier limit holds regardless of the IP | **Enforced by the application** — it is a separate policy on a separate row |
+
+Only the bottom three are things P1-08 can guarantee. The top three are inherited from a deployment
+that does not exist yet, and **P1-08 must not be described as verifying them.**
+
+#### What happens when the topology is absent or ambiguous
+
+The application cannot detect a topology change — a proxy added in front of Vercel would produce a
+well-formed header with an extra hop, indistinguishable from the expected one. It can detect the
+degenerate cases, and those are handled:
+
+| Condition | Behaviour |
+|---|---|
+| Header absent (local `next start`, a direct request that never crossed the edge) | IP dimension **skipped**; identifier dimension applies unchanged; `auth.rate_limit_degraded` logged once (D12) |
+| Header present but the right-most value does not parse as an IP | Same as absent — skipped, logged, never an error |
+| Header present and parseable | IP dimension applies |
+| An extra untrusted proxy has been inserted ahead of Vercel | **Undetectable by the application.** The IP bucket silently keys on the wrong value. This is the residual risk, and it is bounded only by the IP dimension being secondary — see below |
+
+An absent IP is never an error, never a `503`, and never a reason to reject: an endpoint that
+refused to authenticate anyone because it could not determine an IP would be a worse outcome than
+the abuse the IP dimension exists to blunt.
+
+#### The IP is strictly secondary, and this is what makes the residual risk acceptable
+
+- **No security property of this design rests on the IP dimension alone.** The blueprint's stated
+  acceptance property — "limit is per-account, not global" — is satisfied entirely by the identifier
+  dimension, which needs no IP and no topology assumption.
+- **The IP limit is deliberately generous** (D6). It exists to blunt one-source spraying and to
+  raise the cost of enumeration, not to be load-bearing, precisely because it is spoofable in any
+  topology where the assumption fails and because CGNAT makes a strict per-IP limit hostile to real
+  users.
+- **A spoofed or wrong IP degrades the IP dimension toward uselessness; it never weakens the
+  identifier dimension and never grants anything.** The failure direction is "one control stops
+  contributing", not "a control is bypassed".
+- **Volumetric per-IP defence remains assigned to the platform** by doc 09 §3 — with the caveat above
+  that this too is currently unverified. This limiter's contribution is the per-identifier dimension
+  an edge WAF cannot compute, and that is the part that does not depend on any of it.
+
+**No new infrastructure is proposed to close this gap.** The honest closure is the first real
+deployment: doc 09 §9.9 is the register where "unverified" becomes "verified", and confirming the
+edge's forwarded-header behaviour belongs on that list rather than in a component invented here.
 
 ### D6 — Bucket dimensions, and what each one actually stops
 
@@ -279,7 +355,7 @@ Three dimensions, applied per the D8 table:
 | Attack | Which dimension bites | Honest limit |
 |---|---|---|
 | **Credential stuffing** (many passwords, many accounts, botnet) | per-identifier — the one dimension a distributed attacker cannot spread, and the one the blueprint's acceptance test demands ("limit is per-account, not global") | none for the single-account case; the cap holds regardless of source count |
-| **Password spraying** (one common password, many accounts) | per-IP — each account sees too few attempts to trip a per-identifier limit | **a distributed spray defeats both dimensions.** This is a property of every IP/identifier limiter, not a gap in this one, and it is why doc 06 §1 also names Turnstile (Open decision 3). Not overclaimed. |
+| **Password spraying** (one common password, many accounts) | per-IP — each account sees too few attempts to trip a per-identifier limit | **a distributed spray defeats both dimensions.** This is a property of every IP/identifier limiter, not a gap in this one, and it is why doc 06 §1 also names Turnstile, which is not implemented. Not overclaimed. |
 | **Magic-link abuse** (mail-bombing a third party; enumeration) | per-identifier caps mail to one address; per-IP caps enumeration from one source. **Must be checked before the provider call** — after it, the mail has already been sent | a distributed enumeration still walks the address space slowly |
 | **Shared NAT/CGNAT false positives** | mitigated *by* the design: per-IP is generous and secondary, and a per-IP rejection must never stop a user whose identifier bucket is clean | a very large shared egress could still trip the generous limit; the identifier dimension is unaffected |
 
@@ -301,10 +377,13 @@ Two rules that are decisions rather than thresholds:
   separate rows with separate windows for the same address. Sharing a bucket would let a magic-link
   request consume a sign-in allowance — surprising, and usable as a targeted lockout.
 
-**Thresholds are Open decision 1.** The values below are provisional, are not ratified by this ADR,
-and exist so P1-08's shape is unblocked while the numbers are settled.
+**Thresholds are decided, and the reasoning behind each number is in R1.** They rest on architectural
+judgment rather than repository evidence — there is no traffic to derive them from — so R1 also fixes
+the revision contract: they are constants in one module, never environment variables, and a number
+may be revised by ordinary code review without amending this ADR as long as the *shape* above is
+unchanged.
 
-| Policy | Dimension | Provisional limit | Provisional window |
+| Policy | Dimension | Limit | Window |
 |---|---|---|---|
 | `sign_in.identifier_ip` | identifier + IP | 5 | 15 min |
 | `sign_in.identifier` | identifier | 20 | 15 min |
@@ -314,48 +393,100 @@ and exist so P1-08's shape is unblocked while the numbers are settled.
 
 ### D7 — Failure mode: fail **open**, loudly, on every endpoint this limiter protects
 
-The conflict is real and both sides were written in good faith. Doc 12 §7 and
-`01-system-architecture.md` §8 say the limiter fails **closed for anonymous**. P1-08 requires that a
-limiter-backend failure must not make authentication unavailable.
+**This is a risk decision, not a technicality.** An earlier draft of this ADR argued that because
+`sign-in` already depends on Postgres, fail-open versus fail-closed was "not a real choice". That
+argument was too strong and is withdrawn. It conflated two distinct failures, and the distinction is
+the whole of this section.
 
-**They were written about different worlds.** Doc 12 §7 assumed a limiter in Upstash — an
-*independent* service whose failure is uncorrelated with the application's. Fail-closed there costs
-availability only during a Redis outage and buys certainty that an attacker cannot disable the
-limiter by attacking Redis. D1 moves the counters into the application's own database, which
-changes the calculus completely:
+#### Limiter failure is not the same as database failure
 
-- For **`sign-in`**, the database is *already* a hard dependency: `sign-in/route.ts` mirrors the
-  identity and ensures a household before it issues cookies. If Postgres is unreachable, sign-in
-  cannot succeed whatever the limiter does. Fail-open versus fail-closed is not a real choice
-  there — only a choice of which error to report, and reporting `429` would be a lie while
-  reporting the limiter's own `503` would replace a specific error with a vaguer one.
-- For **`magic-link`**, the database is not otherwise required, so this is a genuine choice with a
-  genuine cost.
+| Failure | What it is | Does authentication still work? |
+|---|---|---|
+| **Total database failure** | Postgres unreachable | No. `sign-in` cannot mirror an identity or ensure a household; `callback` the same. The limiter is irrelevant — the endpoint fails on its own dependency |
+| **Limiter degradation** | The database is reachable and authentication works, but the limiter's own statement fails: lock-wait timeout on a hot bucket, statement timeout, pool exhaustion, a serialization failure, a bug in the limiter module, or the table missing because a migration has not been applied to a deployment that is otherwise live | **Yes** — and this is the case that matters. Authentication is fine; only the counting broke |
 
-**Decision, as one rule:** *on a limiter storage failure the request proceeds, on every endpoint,
-and every such failure is recorded at `error` level with the policy that could not be evaluated.*
+The second row is not hypothetical: a migration lag between the `prisma migrate deploy` step and the
+running functions, or contention on a single hot bucket during exactly the attack the limiter exists
+to stop, both produce a working database and a failing limiter. **Fail-closed would convert the
+attack's contention into a full authentication outage** — the limiter becoming the denial of service.
+That, and not the database-is-down case, is why the choice matters and which way it goes.
 
-**The trade-off, not hidden:**
+#### Decision
 
-- **Cost.** For the duration of a database outage the application-level auth limits are not
-  enforced. An attacker who could reliably take Postgres down could suppress them. What they gain is
-  narrower than it sounds: they have already taken sign-in down (it cannot mirror an identity), so
-  what is left is unmetered attempts against a provider that still answers — and GoTrue's own limits
-  remain in force, which is the `rate-limited` path `provider.ts:88` already handles. The exposure
-  is an outage window, not a standing condition.
-- **Benefit.** No failure of the limiter can, by itself, lock every user out of the product. Turning
-  "the counters are unreachable" into "nobody may sign in" would make the limiter a *cause* of the
-  outage it exists to survive — which is precisely what P1-08 forbids.
-- **Why this is a scoped amendment and not a quiet contradiction.** Doc 12 §7's anonymous
-  fail-closed rule is about a limiter whose failure is independent of the application's. This
-  limiter has no independent failure mode on the endpoint that matters most. The rule therefore does
-  not apply to the Postgres-backed auth limiter defined here, and **remains in force for any future
-  limiter that runs on independent infrastructure**.
+*On a limiter storage failure the request proceeds, on every endpoint this limiter protects, and
+every such failure is recorded at `error` level with the policy that could not be evaluated.*
 
-Two boundaries on this rule: a limiter *decision* to reject is never affected — fail-open covers
-only the case where the store could not be consulted, never a store that answered "over limit". And
-a fail-open is never silent (D12), while also never being so noisy it becomes the outage: one record
-per occurrence.
+#### Why availability is prioritized over enforcement here
+
+1. **The failure mode of fail-closed is total and self-inflicted.** Every unauthenticated user is
+   locked out of the product for the duration, by a component whose only job is to count. The
+   failure mode of fail-open is a bounded window in which one control is absent while every other
+   control still stands.
+2. **The limiter's degradation is positively correlated with the attack.** A limiter under a
+   credential-stuffing load is the limiter most likely to hit lock contention. Fail-closed hands an
+   attacker a cheap denial-of-service against all users by attacking the counter, which inverts the
+   control's purpose.
+3. **P1-08's own instruction forbids the alternative** — "do not turn 'rate-limit infrastructure is
+   down' into 'all authentication is down'".
+4. **This does not extend to the reject decision.** Fail-open covers only the case where the store
+   *could not be consulted*. A store that answers "over limit" is always honoured.
+
+#### What actually still protects the endpoint during degradation — verified versus assumed
+
+This is the part an earlier draft got wrong by leaning on GoTrue. Stated precisely:
+
+| Protection | Status in this repository |
+|---|---|
+| GoTrue's own rate limits | **Assumed, not verified.** `provider.ts:17-21` states plainly: "PROVIDER COMPATIBILITY IS UNVERIFIED. There is no Supabase project yet." What *is* verified is only that **if** the provider returns `429`, this application maps it to `rate-limited` and renders it (`provider.ts:88`, and the `provider.test.ts` case that pins it). That is our handling of a provider response, **not evidence that the provider imposes any limit at all.** It must not be cited as a backstop |
+| Vercel WAF / platform rate limiting | **Assumed, not verified.** Doc 09 §9.9: no live deployment has ever run, no Vercel project exists; §9.2: the Terraform that would configure the edge deliberately does not exist |
+| CSRF (`assertSameSiteRequest`) | **Verified in code and tests.** Bounds cross-site abuse, but not a credential-stuffing script that simply sets the header |
+| Password strength / breach-corpus check | **Not implemented.** No sign-up route exists and no server-side `zxcvbn`/HIBP check exists; `lib/password.ts` is explicitly a client-side hint, not the gate |
+| MFA | **Not implemented.** `profile-settings.tsx`: "no MFA mechanism exists yet — not TOTP, not WebAuthn, nothing an enrolled factor could check a code against" |
+| New-device notices, hardened recovery runbook | **Not implemented** |
+
+Doc 12 §1 T2 names five controls against account takeover — pwned-password checks, MFA, rate
+limits, new-device notices, a hardened recovery runbook. **None of the other four exists**, which
+means P1-08's limiter will be the *first and only* application-layer T2 control. That raises the
+stakes of this decision rather than lowering them, and no honest version of this ADR can point at a
+sibling control to absorb the risk.
+
+#### Residual risk, stated without mitigation-by-assertion
+
+**During limiter degradation, application-layer authentication rate limiting is absent, and no other
+implemented application-layer control replaces it.** Concretely:
+
+- Credential stuffing and password spraying proceed unmetered by us for the duration.
+- An attacker who can *induce* limiter degradation — most plausibly by driving contention on the
+  bucket their own attack creates — gains exactly the window they want.
+- The only things that may still throttle them are the provider's limits and the platform's WAF,
+  **both of which are unverified today and neither of which this repository configures.**
+
+This risk is accepted for the reasons above, and it is bounded in three ways, all of which are
+obligations rather than reassurances:
+
+1. **It must be visible.** `auth.rate_limit_unavailable` at `error` is not decoration; a limiter
+   silently failing open forever is the actual disaster, and the difference between that and this
+   decision is entirely whether the alert exists. Wiring it into doc 10's alert channel is a
+   **condition of accepting this risk**, recorded under "What remains open" below.
+2. **It must be rare.** Degradation caused by contention is a design defect, not weather. The
+   single-statement upsert (D3) exists partly to keep the limiter's own lock footprint minimal.
+3. **It must not be the last line forever.** The correct long-term answer to "one control, failing
+   open" is more controls — Turnstile (doc 06 §1) and MFA (doc 12 §1 T2), neither of which is in
+   P1-08's scope. This ADR does not schedule them; it records that the limiter is not a substitute
+   for them.
+
+#### The doc 12 §7 rule is narrowed, not overturned
+
+Doc 12 §7's "fail-closed for anonymous" **remains the governing rule for rate-limit infrastructure
+that is independent of the application** — an Upstash or Redis deployment, exactly the design doc 12
+§7 was written about. There, fail-closed costs availability only during that separate service's
+outage and denies an attacker the option of disabling the limiter by attacking it, and this ADR
+takes no position against it.
+
+The narrowing is confined to *this* limiter: one that shares a process, a connection pool, and a
+database with the endpoint it protects, and whose degradation is therefore correlated with both the
+application's own load and the attack. **If P1-13 later provisions Redis and these counters move,
+doc 12 §7's rule applies again by default and this exception lapses with the reason for it.**
 
 ### D8 — Endpoint coverage: two protected, three deliberately not
 
@@ -460,7 +591,7 @@ it a moment and try again", so P0-12's error-state map needs no change.
   over when it is over. That is a privacy benefit worth stating: the table does not accumulate a
   history of who attempted to sign in.
 
-### D12 — Observability: two events, one policy field, no subjects
+### D12 — Observability: three events, one policy field, no subjects
 
 Uses P0-01's `log()` unchanged.
 
@@ -480,19 +611,23 @@ carrying:
   tripped without saying who, and it is the field that makes the record actionable.
 - **`route` class** — `routeOf(request)` already yields a fixed pathname for these endpoints, with
   no identifiers in it. No new mechanism.
-- **`subject_ref`** — the first 12 hex characters of the stored bucket hash, as a pseudonym, so an
-  operator can see that forty rejections are one subject without recovering the subject. This
-  follows the `householdRef` precedent exactly ("truncated SHA-256 keeps records joinable to each
-  other and to nothing else"). It is a truncation of an already-irreversible digest, not the limiter
-  key. **This is the one field a reviewer should argue about** — it is listed as Open decision 4
-  rather than slipped in.
+
+**No per-subject field is logged — not even a truncated digest.** An earlier draft proposed a
+`subject_ref` pseudonym on the `householdRef` precedent. R3 rejects it: a household id is a random
+UUIDv7 whose truncated digest is genuinely irreversible, whereas an email's preimage space is small
+and enumerable, so a truncated digest of one is recoverable with a wordlist. The precedent does not
+transfer, and the correlation question it was meant to answer is served by `policy` (which dimension
+tripped) and `traceId` (within a request).
 
 **Never logged:** the email in any form, the IP in any form, the password, any token, the cookie
-header, the full bucket hash, the threshold, or any provider body. `redact.ts`'s scrubbers apply to
-error messages as they already do.
+header, the bucket hash — whole or truncated — the counter, the threshold, or any provider body.
+`redact.ts`'s scrubbers apply to error messages as they already do.
 
-Alerting on the rate of `auth.rate_limited` by policy is the signal that an attack is in progress.
-That belongs in doc 10's alerting, and **this ADR does not build it**.
+**Alerting is an obligation, not an optional extra.** This ADR builds no alerting — that belongs to
+doc 10 — but D7 accepts the fail-open risk *on the condition that it is visible*, so
+`auth.rate_limit_unavailable` reaching an alert channel is a sign-off condition for P1-08 rather
+than a nice-to-have. Separately, the rate of `auth.rate_limited` by policy is the signal that an
+attack is in progress; that one is genuinely a later refinement.
 
 ### D13 — Deployment: no new runtime infrastructure, and here is why
 
@@ -538,33 +673,126 @@ That belongs in doc 10's alerting, and **this ADR does not build it**.
 - ⚠️ **A per-identifier limit is a bounded denial-of-service vector against a named account** (D6).
   Accepted deliberately, with three named bounds.
 - ⚠️ **A distributed spray defeats both dimensions.** Rate limiting alone does not discharge doc 06
-  §1's abuse controls; Turnstile is the missing half and is not in P1-08 (Open decision 3).
-- ⚠️ **The IP dimension rests on an assumption this repository cannot enforce** (D5). Named, with
-  the design arranged so nothing important depends on it.
-- ⚠️ **Doc 12 §7 is now amended twice over** — store, and anonymous failure mode — both narrowly and
-  both with reasoning. Anyone reading doc 12 §7 alone will get the wrong answer for this limiter.
-- ↩️ **Reversible.** Nothing references the table and no domain row points at it. Dropping it means
-  auth endpoints revert to today's behaviour: provider-enforced limits only.
+  §1's abuse controls; Turnstile is the missing half and is not in P1-08.
+- ⚠️ **The IP dimension rests on assumptions this repository neither configures nor verifies** (D5).
+  Named as assumptions, with the design arranged so nothing important depends on them.
+- ⚠️ **Fail-open means the limiter can be absent exactly when it is needed** (D7). This is the
+  ADR's most significant accepted risk: during limiter degradation there is **no other implemented
+  application-layer control** against credential stuffing — MFA, breach-corpus checks, new-device
+  notices and Turnstile are all absent — and the provider and platform protections that might
+  compensate are unverified. Accepting it is conditional on the `error`-level signal reaching an
+  alert channel.
+- ⚠️ **This limiter will be the only implemented control of doc 12 §1 T2** (account takeover). Doc
+  12 names five; the other four do not exist. The document reads as though a layered defence is in
+  place, and for the foreseeable term it is not.
+- ⚠️ **The bucket hash is not secrecy** (D3). It prevents a second plaintext corpus and casual
+  exposure; it does not withstand a wordlist. Anyone reading `CHAR(64)` and inferring anonymisation
+  will be wrong.
+- ⚠️ **Doc 12 §7 is now narrowed twice over** — store, and anonymous failure mode — both explicitly
+  and both with reasoning, and the failure-mode narrowing lapses if these counters ever move to
+  independent infrastructure. Anyone reading doc 12 §7 alone will get the wrong answer for this
+  limiter.
+- ↩️ **Reversible.** Nothing references the table and no domain row points at it. Dropping it
+  returns these endpoints to today's posture: no application-layer limit at all, and reliance on
+  provider behaviour that has never been observed.
 
-## Open decisions
+## Resolved decisions
 
-These are unresolved on purpose. 1 must be settled before P1-08 merges; the others may outlive it.
+An earlier draft left three of these "open" while presenting the ADR as ready to review. That was
+the wrong posture: each materially changes implementation semantics, so each is decided here.
+Every one separates **repository evidence**, **architectural judgment**, and **remaining risk**.
 
-1. **Thresholds and window lengths.** The D6 table is provisional. Ratifying it is a product and
-   security judgement — how many failed passwords before a real person is locked out is a
-   support-cost decision as much as a security one — and there is no evidence in the repository or
-   the PRD to derive it from. The *shape* of P1-08 does not depend on the numbers.
-2. **Whether to pepper the bucket hash.** Recommended **no**: `users.email` is already readable in
-   plaintext by `app_user` (`users`/`user_profiles` are deliberately outside RLS), so a pepper
-   defends against nobody who is not already past that wall, and it would cost a new secret — the
-   exact acquisition this ADR avoids elsewhere. **Revisit if P1-09 puts `users` under RLS**, because
-   that changes the calculus.
-3. **Cloudflare Turnstile** (doc 06 §1) is not implemented and is not in P1-08. It is the half of
-   doc 06 §1's abuse controls that answers the distributed spray this limiter cannot. Tracked, not
-   scheduled here.
-4. **Whether `subject_ref` is logged at all** (D12). It follows the `householdRef` precedent and is
-   irreversible, but it is the one observability field that touches the subject and it should be an
-   explicit choice.
+### R1 — Thresholds and windows are decided, as code constants, with an explicit revision contract
+
+**Decided.** The D6 table is the shipping configuration for P1-08. It is no longer labelled
+provisional.
+
+- **Repository evidence:** none, and none is obtainable. There is no deployment (doc 09 §9.9), no
+  telemetry, no sign-in traffic, and no PRD figure for tolerable lockout. No amount of reading this
+  repository produces a defensible number.
+- **Architectural judgment**, which is what the numbers actually rest on:
+  - `sign_in.identifier_ip` = 5 / 15 min — above ordinary human error (a person who has forgotten a
+    password tries three or four times, then uses recovery) and far below a useful guessing budget.
+  - `sign_in.identifier` = 20 / 15 min — four times the single-source limit, so a distributed
+    attacker needs at least four source addresses to reach it, while a legitimate user on a mobile
+    connection that changes address mid-session is not caught by the stricter bucket. It also prices
+    the lock-out-a-neighbour attack (D6): denying one account for ≤15 minutes costs 20 attempts
+    across ≥4 addresses.
+  - `sign_in.ip` = 60 / 15 min — a shared office or CGNAT egress with twenty people signing in over
+    a morning stays far below; a spray across sixty accounts from one host does not.
+  - `magic_link.identifier` = 3 / 15 min — caps mail to one address at twelve messages an hour,
+    while leaving room for the "it didn't arrive, resend" case twice.
+  - `magic_link.ip` = 30 / 15 min.
+- **The implementation contract that is acceptance-ready now**, and which does not depend on the
+  numbers being right:
+  1. The five policy names, their dimensions, and fixed-window semantics are fixed by this ADR.
+  2. Every attempt is counted; a successful sign-in clears the identifier buckets (D6).
+  3. Thresholds and windows are **constants in one table in one module** — deliberately **not**
+     environment variables. An operator-tunable security control can be widened to infinity without
+     review, and a new environment variable is precisely the acquisition D13 forbids.
+  4. Revising a number is an ordinary code change with a review. It does **not** require amending
+     this ADR, *provided the shape in (1) and (2) is unchanged*. Changing the shape does.
+- **Remaining risk:** the numbers may be wrong in either direction on first contact with real
+  traffic — too tight produces support load from locked-out users, too loose produces a limit that
+  never binds. Both are correctable in one edit, and neither is a security regression relative to
+  today, where the limit is zero. First real traffic is the evidence this decision is waiting on,
+  and (4) is how it gets incorporated without ceremony.
+
+### R2 — No pepper on the bucket hash
+
+**Decided: no pepper.**
+
+- **Repository evidence:** `users`/`user_profiles` carry no RLS at HEAD — the RLS migration says so
+  in terms ("Left without RLS deliberately"), and no later migration adds one. Any `app_user`
+  connection therefore reads every address in the product in plaintext.
+- **Architectural judgment:** a pepper would defend the `auth_rate_limits` digests against an
+  attacker who can already `SELECT users.email` unhashed. It defends nobody who is not already past
+  that wall, and it would cost a secret in Doppler plus a per-environment variable, plus a rotation
+  story that invalidates every live bucket at rotation time. Against the current RLS posture that is
+  cost with no corresponding gain.
+- **Remaining risk:** the judgment is entirely contingent on that posture. **P1-09 exists to decide
+  whether `users` gets a self-read policy.** If it does, `users.email` stops being freely readable,
+  the digests here become the *weakest* copy of the identifier corpus, and this decision must be
+  retaken. That contingency is written into P1-09's scope by this sentence rather than left to
+  memory.
+
+### R3 — `subject_ref` is **not** logged
+
+**Decided: the limiter logs no per-subject field at all.** D12 is corrected accordingly.
+
+- **Repository evidence:** `householdRef` (`observability/logger.ts`) is the precedent an earlier
+  draft cited — a truncated SHA-256 that "keeps records joinable to each other and to nothing else".
+- **Architectural judgment — the precedent does not transfer, and the reason is precise.** A
+  household id is a random UUIDv7: roughly 122 bits of preimage entropy, so a truncated digest of it
+  is genuinely irreversible. An email address has almost no preimage entropy — the domain is small,
+  enumerable, and available in `users.email` — so a truncated digest of one is **reversible by
+  anyone with a wordlist**, exactly as D3 now says. Logging it would place a recoverable subject
+  identifier in a log aggregator, whose readership is broader than the database's, in service of a
+  correlation question that is already answered otherwise: `policy` says which dimension tripped,
+  and a per-identifier policy firing at all means one subject reached its limit. `traceId` correlates
+  within a request.
+- **Remaining risk:** an operator investigating an attack cannot tell from logs alone whether forty
+  rejections are one subject or forty. That is a real, accepted loss of investigative resolution.
+  The compensating path is the table itself, which is queryable during the incident by someone with
+  database access — a narrower and more auditable audience than log search, which is the right place
+  for that capability to live.
+
+## What remains open, and whether it blocks acceptance
+
+Nothing below is a decision this ADR needed to make. Each is an obligation on other work, recorded
+so it is not mistaken for something already handled.
+
+| Item | Blocks ADR acceptance? | Blocks P1-08 sign-off? |
+|---|---|---|
+| **Alerting on `auth.rate_limit_unavailable`** must reach doc 10's alert channel. D7 accepts a fail-open risk *on the condition that it is visible*; an unalerted fail-open is the failure this ADR would otherwise be creating | No — it is a wiring obligation, not an undecided architecture | **Yes.** This is the condition attached to D7 |
+| **Verifying the edge's forwarded-header behaviour and the Vercel WAF** against a real deployment (D5). Belongs on doc 09 §9.9's unverified register | No — D5 already states it as assumption, and the design does not rest on it | No — the identifier dimension is unaffected |
+| **Turnstile (doc 06 §1) and MFA (doc 12 §1 T2)** remain unimplemented; the limiter is not a substitute for either, and D7 records that it will be the only T2 control in force | No | No — out of P1-08's scope by the blueprint |
+| **Retaking R2 if P1-09 puts `users` under RLS** | No | No — a future contingency, not a present gap |
+
+**The ADR is decision-complete.** Every question that changes what P1-08 builds is answered above;
+what remains are obligations on implementation and on a deployment that does not yet exist. Status
+stays **Proposed** regardless: it becomes Accepted when the implementation is reviewed, not when the
+decisions stop moving.
 
 ## What this ADR does not decide
 
