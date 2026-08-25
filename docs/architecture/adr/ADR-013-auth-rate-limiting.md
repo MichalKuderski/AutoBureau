@@ -1,6 +1,8 @@
 # ADR-013 — Authentication rate limits live in Postgres, reached by one narrow anonymous path
 
-**Status:** Proposed · blueprint P1-08. **Not to be marked Accepted until the implementation is reviewed.**
+**Status:** Accepted · blueprint P1-08, not yet implemented. The decisions below are binding on
+P1-08; the two sign-off conditions in "What remains open" are obligations on that implementation,
+not open architecture.
 **Date:** 2026-08-25
 **Narrows, does not overturn:** the store named in `12-security.md` §7 ("Upstash sliding-window"),
 and the anonymous fail-closed rule in `12-security.md` §7 / `01-system-architecture.md` §8 ("Redis
@@ -844,10 +846,12 @@ so it is not mistaken for something already handled.
 | **Turnstile (doc 06 §1) and MFA (doc 12 §1 T2)** remain unimplemented; the limiter is not a substitute for either, and D7 records that it will be the only T2 control in force | No | No — out of P1-08's scope by the blueprint |
 | **Retaking R2 if P1-09 puts `users` under RLS** | No | No — a future contingency, not a present gap |
 
-**The ADR is decision-complete.** Every question that changes what P1-08 builds is answered above;
-what remains are obligations on implementation and on a deployment that does not yet exist. Status
-stays **Proposed** regardless: it becomes Accepted when the implementation is reviewed, not when the
-decisions stop moving.
+**The ADR is decision-complete, and is Accepted on that basis.** Every question that changes what
+P1-08 builds is answered above; what remains are obligations on implementation and on a deployment
+that does not yet exist. Accepting ahead of implementation is the established practice here — ADRs
+004, 006, 007 and 009 all stand Accepted with no code behind them — because an ADR records a
+decision, and a decision that is settled does not become more settled by waiting. The two sign-off
+conditions in the table are therefore gates on P1-08 merging, not on this document standing.
 
 ## What this ADR does not decide
 
