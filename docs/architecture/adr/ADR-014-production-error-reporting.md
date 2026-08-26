@@ -1,6 +1,9 @@
 # ADR-014 — Production errors reach Sentry through the existing log sink, and through nothing else
 
-**Status:** Proposed · blueprint P1-19 (to be created on acceptance), unblocks P1-08's sign-off condition
+**Status:** Accepted · not yet implemented. The decisions below are binding on **P1-19**, the
+follow-up task specified in D10, which is to be added to the blueprint now that this is accepted.
+The operational prerequisites in "Open items, classified" are obligations on that work and on the
+first deployment, not open architecture.
 **Date:** 2026-08-26
 **Executes rather than amends:** `10-observability-and-analytics.md` §1 names Sentry as the error
 tool and §4 already lists "Sentry new-issue spike" among the launch paging alerts; this ADR carries
