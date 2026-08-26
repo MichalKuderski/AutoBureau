@@ -63,11 +63,20 @@ third is close:
    "Sentry new-issue spike" as a launch paging alert. Adopting it *executes* the frozen architecture
    set; adopting anything else *deviates* from it and would need the deviation argued.
 2. **Doc 13 §7 already lists Sentry in the accepted launch subprocessor set**, and states the rule
-   that makes this decisive: **"Adding a subprocessor = ADR + notice cycle."** Sentry is not an
-   addition — it is already cleared, with a DPA and a documented purpose. Any alternative
-   destination *is* an addition, and doc 13 §3 prices that at a public subprocessor-list change plus
-   **30 days' email notice to users**. Choosing differently would cost a month and a compliance
-   cycle to obtain a capability the named vendor already provides.
+   that makes this decisive: **"Adding a subprocessor = ADR + notice cycle."** Sentry is therefore
+   not an *addition* to that set. Any alternative destination is, and doc 13 §3 prices an addition
+   at a public subprocessor-list change plus **30 days' email notice to users** — a month and a
+   compliance cycle spent to obtain a capability the already-named vendor provides.
+
+   **What that does and does not establish, because the distinction is easy to blur.** Doc 13 §7's
+   sentence "Each: DPA signed, purpose documented, data categories mapped, no-training terms where
+   AI-relevant" is a **policy statement about what the launch set requires** — not evidence that any
+   of it has been executed for Sentry. There is no vendor account, no signed DPA, and no deployment
+   (doc 09 §9.9). So the accurate claim is narrow: Sentry is **architecturally cleared**, which
+   removes the notice cycle from the critical path. Actually signing the DPA, creating the US-region
+   project, mapping its data categories, and confirming the public subprocessor list is current all
+   remain **outstanding operational obligations** — see the Open decisions table, where they are
+   classified rather than assumed complete.
 3. **No accepted ADR establishes Sentry**, which is exactly why this document exists. Following the
    precedent ADR-012 and ADR-013 both set — a vendor named in a summary table is an intention, not
    an executed decision — the naming makes Sentry the default an alternative must argue with, not a
@@ -119,13 +128,35 @@ developer who logs an object without knowing what is inside it cannot leak a sec
 sink, with automatic instrumentation and default integrations disabled. Exactly one new runtime
 dependency in `apps/web`.
 
+**What is verified and what is assumed here.** The *ordering* argument above is a repository fact,
+readable in `logger.ts`. The characterisation of what `@sentry/nextjs` captures by default, and the
+existence of specific configuration switches such as `sendDefaultPii`, are **assumptions about
+vendor behaviour that this repository cannot verify** — no SDK is installed and no deployment has
+run. They are not load-bearing: the decision rests on the structural point that *any* capture path
+which runs before this codebase's redaction boundary is outside the guarantee doc 10 §3 makes,
+whatever a particular SDK version happens to attach. P1-19 must confirm the actual configuration
+surface against the installed SDK, and treat any divergence as a finding rather than an adjustment.
+
 Three properties follow and are binding:
 
-- **Additive, never a replacement.** The Sentry sink composes with `defaultSink`; stderr keeps
-  receiving every record exactly as today. `setLogSink` takes one function, so the implementation
-  registers a composed sink that calls both — it does not swap the default out.
-- **`log()` is unchanged.** No new parameter, no new severity, no call-site edits. The seam already
-  exists; this ADR uses it rather than widening it.
+- **Additive, never a replacement — this is a hard requirement, not a preference.** The Sentry sink
+  composes with `defaultSink`; stderr keeps receiving every record exactly as today. `setLogSink`
+  takes one function and *replaces* the current one, so the implementation must register a composed
+  sink that calls both. **A Sentry outage, a missing DSN, or a broken transport must never cost the
+  local record.** An implementation that swaps `defaultSink` out has broken this ADR, not merely
+  deviated from a suggestion.
+
+  **One prerequisite the seam does not yet satisfy, and P1-19 owns it.** `defaultSink` is a
+  module-private `const` in `logger.ts` and is exported neither from that module nor from
+  `server/observability/index.ts`. Composition is therefore *not implementable today* without one
+  of: exporting `defaultSink`, or duplicating the stderr writer in the new module. **Duplication is
+  refused** — two copies of the emission path is how development and production formats drift, which
+  is the defect `logger.ts` already calls out for its own dev/prod branch. P1-19 must therefore make
+  one **minimal, additive export** of `defaultSink`. That is the only change to `logger.ts` this
+  decision authorises, and it changes no behaviour.
+- **`log()` is unchanged.** No new parameter, no new severity, no call-site edits, no change to
+  record construction, redaction, or the `try/catch` around the sink. The one authorised logger edit
+  is the `defaultSink` export named above.
 - **No browser SDK.** Server runtime only. Doc 10 §6 already puts "session replay off entirely at
   launch", and the client error boundary in `components/ui/error-state.tsx` stays as it is.
 
@@ -234,12 +265,28 @@ the repository already provides:
 This is the same shape of reasoning ADR-013 D7 applies to the rate limiter, and for the same reason:
 a component that exists to observe failure must not be able to cause it.
 
-**One honest limitation, and it is a real one.** On Vercel a serverless function may be frozen or
-reclaimed once the response is sent, so an event handed to an async transport can be lost before it
-leaves the process. The implementation should flush on a best-effort basis where the platform allows
-it, and **this ADR does not claim that every emitted error reaches Sentry.** What it claims is that
-the channel exists and that failure to deliver is silent and harmless. Measuring actual delivery is
-D11's deployment-only verification.
+#### The delivery contract, stated so it cannot be read as a promise
+
+| Question | Answer |
+|---|---|
+| Is remote reporting best-effort? | **Yes.** At-most-once, unacknowledged, never retried |
+| Does `defaultSink` remain authoritative locally? | **Yes.** stderr is the primary record and the fallback; the remote copy is a convenience layered on top |
+| May a request fail because Sentry is unavailable? | **Never.** Not a 5xx, not a slow response, not a changed status |
+| May the Sentry sink block the request? | **No.** It must not `await` delivery, must not add latency proportional to network conditions, and must not be made async |
+| Is a bounded flush required? | **Yes — as a P1-19 implementation requirement**, bounded by a small deadline, on the paths where the platform permits it. It is *not* something this ADR proves works |
+| What guarantee does the architecture make? | **Exactly one: every `error` record is written locally.** Remote arrival is offered, never guaranteed |
+
+**The serverless caveat, labelled honestly.** A serverless function may be frozen or reclaimed once
+its response is sent, so an event handed to an async transport can be lost before leaving the
+process. That is an **assumption about platform lifecycle, not a repository-verified fact** — no
+deployment has ever run (doc 09 §9.9) — and it is the reason a bounded flush is required rather than
+optional: without one, the sink risks being decorative in exactly the runtime it targets.
+
+**Losing the remote event is an operational limitation, not a silent error.** The distinction is
+load-bearing: the record itself is never lost, because stderr already has it. What is lost is the
+*remote copy*, and with it the alert. So the correct reading of an empty Sentry project is "no
+alerts fired", never "no errors occurred" — and D11's deployment verification exists precisely to
+measure the gap between those two.
 
 ### D8 — Relationship to P1-08 and ADR-013
 
@@ -287,11 +334,12 @@ would put work in the queue for a decision that has not been made.
 > | | |
 > |---|---|
 > | **Priority** | High — closes audit 05 Gate B2 and unblocks P1-08's sign-off condition |
-> | **Description** | Register a production `LogSink` that forwards `level: "error"` records to Sentry (ADR-014). Additive to `defaultSink`; `log()` unchanged; `@sentry/node` with automatic instrumentation off, never `@sentry/nextjs`. One variable, `SENTRY_DSN`, via Doppler; unset disables the sink silently. |
-> | **Files** | new `server/observability/sentry.ts` · `server/observability/index.ts` · `apps/web/package.json` · `.env.example` · `docs/architecture/09-*.md` §9.4 |
+> | **Description** | Register a production `LogSink` that forwards `level: "error"` records to Sentry (ADR-014). **Composed with `defaultSink`, never replacing it.** `@sentry/node` with automatic instrumentation off, never `@sentry/nextjs`. One variable, `SENTRY_DSN`, via Doppler; unset disables the sink silently. Sourcemap upload **off**. |
+> | **Also required** | (a) **Export `defaultSink`** from `logger.ts` — one additive export, no behaviour change; composition is otherwise impossible and duplicating the stderr writer is refused (D2). (b) A **bounded flush** on the paths the platform permits, with a small deadline, so the sink is not decorative in a serverless lifecycle (D7). (c) Confirm the SDK's real configuration surface against the assumptions D2 flags. |
+> | **Files** | new `server/observability/sentry.ts` · `server/observability/logger.ts` (export only) · `server/observability/index.ts` · `apps/web/package.json` · `.env.example` · `docs/architecture/09-*.md` §9.4 |
 > | **Dependencies** | P0-01 (the seam), ADR-014 accepted |
 > | **Risk** | **Low** — additive; a broken sink degrades to today's behaviour |
-> | **Tests** | A registered sink receives every `error` record and no `warn`/`info` record. A throwing sink does not affect the caller. An unset DSN registers nothing. No forwarded record contains an email, IP, token, cookie, or bucket value. Existing redaction and observability suites stay green. |
+> | **Tests** | Every `error` record reaches the sink; no `warn`/`info` record does. **A failing or throwing Sentry transport still leaves the local stderr record intact** — the composition property, asserted directly. A throwing sink does not affect the caller. An unset DSN registers nothing and logs normally. No forwarded record contains an email, IP, token, cookie, or bucket value. The flush is bounded and cannot extend a request. Existing redaction and observability suites stay green. |
 > | **Type** | Mechanical (the architecture is ADR-014's) |
 > | **Cat** | **B** |
 
@@ -341,22 +389,28 @@ Named individually so none is quietly absorbed later:
 - ↩️ **Reversible.** Removing the sink returns the system to today's posture: structured records on
   stderr, consumed by nothing. No data model, no migration, and no other module depends on it.
 
-## Open decisions
+## Open items, classified
 
-None material to implementation. Two operational choices are deliberately left to whoever creates
-the project, because neither changes what P1-19 builds:
+**No architectural decision remains open** — everything that determines what P1-19 builds is settled
+above. What follows is classified rather than listed, so that nothing material hides behind the word
+"detail".
 
-1. **Sentry plan tier and event quota.** A quota decision, revisitable without code change. Worth
-   noting only because quota exhaustion is a silent under-delivery mode on top of D7's.
-2. **Whether `@sentry/node`'s release/sourcemap tagging is configured in P1-19 or later.** Doc 10 §1
-   names "release-tagged, sourcemaps"; it improves triage and changes no privacy or failure
-   property, so it may follow.
+| Item | Classification | Why, and what it affects |
+|---|---|---|
+| **Sentry plan tier and event quota** | **Operational / deployment configuration**, with a reliability consequence that must not be buried | Quota exhaustion is a *second* silent under-delivery mode alongside the freeze window (D7). It changes no code, but it means "no alert" can be caused by billing. Whoever provisions the project owns choosing a quota that survives an incident-sized error burst, and owns knowing when it is hit |
+| **Signing the DPA; creating the US-region project; mapping data categories; confirming the public subprocessor list** | **Operational obligation — outstanding, not complete** | Doc 13 §7 states these as requirements of the launch set, not as executed facts (D1). None is verifiable from this repository. None is a code change, and none blocks P1-19's merge — but all block *production* use of the channel |
+| **Release tagging** | **Implementation choice**, may land in P1-19 or later | Doc 10 §1 names "release-tagged". Improves triage; changes no privacy, failure, or availability property |
+| **Sourcemap upload** | **Operational / deployment configuration with a security dimension** — deliberately *not* filed as a cosmetic detail | Doc 10 §1 names "sourcemaps". For a server runtime this means the vendor holds readable server source, which is a disclosure decision rather than a triage convenience. It is not required for the channel to work and **must not be enabled by default in P1-19**; enabling it is a separate, deliberate choice |
+| **Actual delivery, and an alert actually firing** | **Deployment verification** | D8's third layer and D11. Cannot be established here at all |
 
 ## What this ADR does not change
 
 - **ADR-013** — unmodified. Its condition stands as written; this establishes what it waits on.
 - **ADR-012, ADR-011** — untouched.
 - **P1-08's implementation** (`8399890`) — no change. The event is already emitted correctly.
-- **`logger.ts`, `redact.ts`, and their tests** — untouched. The seam is used, not widened.
+- **`redact.ts` and its tests** — untouched. Redaction is inherited, not re-implemented.
+- **`logger.ts`** — one additive export of `defaultSink` is authorised by D2 and owned by P1-19, and
+  nothing else: no change to `log()`, to record construction, to redaction, or to the `try/catch`
+  around the sink. The seam is used, not widened.
 - **Doc 10** — no amendment. This executes §1 and §4 rather than departing from them.
 - **Doc 13 §7** — no amendment. Sentry is already in the launch subprocessor set.
