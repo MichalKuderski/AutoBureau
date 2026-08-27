@@ -490,6 +490,18 @@ demonstrated externally in its current state.*
 | **Type** | **Architectural** |
 | **Cat** | **C** · `claude-opus-5` @ `max` |
 
+### P1-19 · Wire production error reporting
+| | |
+|---|---|
+| **Priority** | High — closes audit 05 Gate B2 and unblocks P1-08's sign-off condition |
+| **Description** | Register a production `LogSink` that forwards `level: "error"` records to Sentry (ADR-014). **Composed with `defaultSink`, never replacing it** — a Sentry outage, a missing DSN, or a broken transport must never cost the local stderr record. `@sentry/node` only, automatic instrumentation and default integrations off; **never `@sentry/nextjs` or `instrumentation.ts`**, because auto-capture attaches request data before this codebase's redaction boundary runs. One variable, `SENTRY_DSN`, via Doppler; unset disables the sink silently, not an error. Sourcemap upload **off by default** — the vendor would hold readable server source, so enabling it is a separate, deliberate choice, not part of this task. Also required: (a) one **additive** export of `defaultSink` from `logger.ts` — the only authorised logger change, no behaviour change; (b) a **bounded flush** on the paths the platform permits, so the sink is not decorative in a serverless lifecycle; (c) confirm the SDK's real configuration surface (e.g. `sendDefaultPii`) against the assumptions ADR-014 D2 flags, and treat any divergence as a finding rather than an adjustment. **Not part of this task:** creating the Sentry project/DPA (operational, not code) and configuring the doc 10 §4 "new-issue spike" alert rule (a console action in a project that does not yet exist) — both remain outstanding after merge, and actual delivery in a deployed environment remains production-only verification. |
+| **Files** | new `server/observability/sentry.ts` · `server/observability/logger.ts` (`defaultSink` export only) · `server/observability/index.ts` · `apps/web/package.json` · `.env.example` · `docs/architecture/09-infrastructure-and-deployment.md` §9.4 |
+| **Dependencies** | P0-01 (the seam), ADR-014 (accepted) |
+| **Risk** | **Low** — additive; a broken or absent sink degrades to exactly today's behaviour |
+| **Tests** | Every `error` record reaches the sink; no `warn`/`info` record does. A failing or throwing Sentry transport still leaves the local stderr record intact — the composition property, asserted directly, not inferred. An unset DSN registers nothing and logs normally. No forwarded record contains an email, IP, token, cookie, or an ADR-013 bucket value. The flush is bounded and cannot extend a request's latency. Existing redaction and observability suites stay green. |
+| **Type** | Mechanical (the architecture is ADR-014's) |
+| **Cat** | **B** · `claude-opus-5` @ `xhigh` |
+
 ---
 
 # Phase 2 — UX/UI polish
