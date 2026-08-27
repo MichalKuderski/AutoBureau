@@ -1,6 +1,9 @@
 # ADR-015 — The Sentry integration is built on `@sentry/core`, not `@sentry/node`
 
-**Status:** Proposed
+**Status:** Accepted · not yet implemented. The decisions below are binding on **P1-19**, whose
+blueprint entry is amended to match D8 before implementation begins (D9). The verification
+obligation in D8 and the operational items in D10 belong to that work and to the first deployment,
+not to open architecture.
 **Date:** 2026-08-27
 **Amends ADR-014** (`ADR-014-production-error-reporting.md`, Accepted at `5150b0c`) — **the SDK and
 configuration mechanism only.** ADR-014 remains the governing decision on production error

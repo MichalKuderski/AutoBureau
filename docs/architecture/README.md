@@ -45,6 +45,7 @@ see `docs/product/pre-g1-backlog.md`.
 | [012](adr/ADR-012-idempotency-storage.md) | Idempotency records in Postgres, not Redis; atomic claim by unique index | Accepted · implemented |
 | [013](adr/ADR-013-auth-rate-limiting.md) | Auth rate limits in Postgres; one narrow anonymous write path; fail-open | Accepted · not yet impl. |
 | [014](adr/ADR-014-production-error-reporting.md) | Production `error` records reach Sentry through a composed log sink; local logging stays authoritative | Accepted · not yet impl. |
+| [015](adr/ADR-015-sentry-sdk-correction.md) | Amends ADR-014's SDK mechanism: `@sentry/core` driven from an explicit client, not `@sentry/node`, which ships an OpenTelemetry runtime | Accepted · not yet impl. |
 
 ## Where I pushed back on the brief
 
