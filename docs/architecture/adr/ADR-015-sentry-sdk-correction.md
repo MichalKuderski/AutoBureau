@@ -6,8 +6,9 @@
 configuration mechanism only.** ADR-014 remains the governing decision on production error
 reporting. Its destination (D1), capture model (D2's rationale), scope (D3), configuration source
 (D5), environment behaviour (D6), delivery contract (D7), and its relationships to ADR-013, P1-17
-and P1-08 (D8, D9) are carried forward unchanged. D7 clause 10 is the reason this document exists
-rather than a quiet substitution during implementation.
+and P1-08 (D8, D9) are carried forward unchanged. **ADR-014 D2's closing instruction** — confirm the
+configuration surface against the installed SDK, and treat any divergence as a finding rather than
+an adjustment — is why this document exists instead of a quiet substitution during implementation.
 **Does not amend ADR-013, ADR-012, ADR-011.** No sign-off condition, storage decision, or API
 convention is touched.
 **Amends no frozen architecture document.** Doc 10 §1 names Sentry; doc 13 §7 already lists Sentry
@@ -71,7 +72,7 @@ documentation. The repository was not modified; the probe directory was deleted 
 | Envelope delivery to a local collector | **Succeeded.** Payload contained exactly the fields supplied plus the four listed below |
 | Auto-added event fields | `event_id`, `timestamp`, `environment`, `contexts.trace{trace_id, span_id}` — **and nothing else** |
 | Envelope header additions | `event_id`, `sent_at`, and a dynamic-sampling `trace` block (`environment`, `public_key`, `trace_id`, `org_id`) |
-| `server_name` | **absent.** `server-runtime-client.js:163` attaches it *only* when `options.serverName` is set. `contexts.runtime` behaves the same way via `options.runtime` |
+| `server_name` | **absent.** `server-runtime-client.js:163` attaches it *only* when `options.serverName` is set. `contexts.runtime` is the same shape at `:157`, gated on `options.runtime` |
 | Ingest URL construction | Done **by the client** (`client.js:105-113`), which passes `{ url, … }` into the transport factory. Application code never parses the DSN |
 | Transport throws synchronously | `captureEvent` returned an event id and **did not throw**; `flush` resolved `true` and did not reject |
 | Transport promise rejects | `flush(1000)` → **`true`**, no rejection |
@@ -104,7 +105,9 @@ vanishes without one.
 | The observability module is already Node-runtime-only — `logger.ts` imports `node:crypto` | `logger.ts:1` |
 | `middleware.ts` does **not** import the observability module, so nothing drags the sink onto the Edge runtime | verified by import inspection |
 | Next.js **15.5.22** is installed and `next/server` exports **`after`** (stable, not `unstable_after`) | `apps/web/node_modules/next` |
-| `after(task)` **throws** (`E468`) when called outside a request scope | `next/dist/server/after/after.js:14` |
+| `after(task)` **throws** (`E468`) when called outside a request scope | `next/dist/server/after/after.js:12-20` |
+| A **function** passed to `after()` is queued and run by `runCallbacksOnClose()`, which awaits `onClose` first — this is what makes "after the response is sent" verified rather than assumed | `next/dist/server/after/after-context.js:33-49, 88-90` |
+| A **promise** passed to `after()` takes a different branch: it needs a host-supplied `waitUntil` and **throws `E91`** without one | `next/dist/server/after/after-context.js:35-37, 130-136` |
 
 ## Decision
 
@@ -230,9 +233,9 @@ reached. That mechanism is untouched by the change of package.
 
 **`server_name` and `contexts.runtime` are controlled by omission, not by stripping.**
 `ServerRuntimeClient` attaches them only when `options.serverName` / `options.runtime` are supplied
-(`server-runtime-client.js:163`). P1-19 must not supply them. This is the structural form of the
-control, and it is why the `@sentry/node` path was worse here: it *sets* them, so suppression there
-would have required a `beforeSend` stripper.
+(`server-runtime-client.js:163` and `:157` respectively). P1-19 must not supply either. This is the
+structural form of the control, and it is why the `@sentry/node` path was worse here: it *sets*
+them, so suppression there would have required a `beforeSend` stripper.
 
 **`sendDefaultPii: false` is no longer the stated control, and ADR-014 D4 requirement 1 is
 amended.** Direct observation: the option still exists in `@sentry/core`'s `ClientOptions`
@@ -300,13 +303,19 @@ budget that is spent.
 
 | Context | Mechanism |
 |---|---|
-| Inside a request scope | `after()` from `next/server` (Next **15.5.22**, stable, verified present), which runs the flush **after the response is sent**. The flush is awaited *inside* the `after` callback, never by `log()` and never by the handler |
+| Inside a request scope | `after()` from `next/server` (Next **15.5.22**, stable, verified present), passed a **function**, which runs the flush **after the response is sent**. The flush is awaited *inside* the `after` callback, never by `log()` and never by the handler |
 | Outside a request scope | Fire-and-forget: start the bounded race, **do not await it**, attach a no-op rejection handler so an unhandled rejection cannot be produced |
 
-`after()` **throws `E468` when called outside a request scope** (verified at
-`next/dist/server/after/after.js:14`), so the call must be wrapped in `try/catch` and fall through
-to the second row. This is the only correct reading: a logger cannot know whether its caller is
-inside a request.
+**`after()` must be passed a function, never a promise, and the call must be wrapped in
+`try/catch`.** Both requirements are read from the installed source rather than from the API's name.
+The *function* form is queued and run by `runCallbacksOnClose()`, which awaits `onClose` before
+draining the queue (`after-context.js:33-49, 88-90`) — that is what makes "after the response is
+sent" a verified property. The *promise* form takes a different branch: it requires a host-supplied
+`waitUntil` and throws `E91` without one (`after-context.js:35-37, 130-136`), and it would begin the
+flush immediately rather than after the response. **Two throw paths must be caught, not one** —
+`E468` when there is no request scope (`after.js:12-20`), and `E91` if the function form is ever
+replaced by the promise form. Either falls through to the second row. A logger cannot know whether
+its caller is inside a request, so the `try/catch` is structural rather than defensive politeness.
 
 **`log()` stays synchronous and unchanged.** The sink hands the event to the client and returns; the
 client buffers it; the flush happens later, elsewhere, bounded. No new parameter, no new severity,
@@ -377,7 +386,7 @@ Nothing not listed as amended is changed. ADR-014 remains the governing decision
 
 ### D8 — What P1-19 must change after this ADR is accepted
 
-The task's shape, priority, risk, dependencies and category are unchanged. These rows change:
+The task's shape, priority, risk and category are unchanged. These rows change:
 
 | Row | Change |
 |---|---|
@@ -385,7 +394,8 @@ The task's shape, priority, risk, dependencies and category are unchanged. These
 | **Files** | The entry's existing list is correct and stays as written — new `server/observability/sentry.ts` · `server/observability/logger.ts` (`defaultSink` export only) · `server/observability/index.ts` · `apps/web/package.json` · `.env.example` · `docs/architecture/09-infrastructure-and-deployment.md` §9.4 — **plus** `.github/workflows/ci.yml` for the OTel fence (D2) |
 | **Configuration** | `SENTRY_DSN` via Doppler, unchanged. Client options: `integrations: []`, `sendDefaultPii: false` (documentation, not control), `environment` from the deployment, `fingerprint: [record.event]` per event. **Do not pass `serverName` or `runtime`** |
 | **Payload rules** | Forward the redacted `LogRecord` and nothing else. Vendor metadata limited to D4's closed allowed set |
-| **Flush** | One constant `FLUSH_TIMEOUT_MS = 2000`. Race `client.flush()` against an application-owned **ref'd** timer. Invoke via `after()` inside a request scope, wrapped in `try/catch` for `E468`; fire-and-forget with a no-op rejection handler otherwise. Never awaited by `log()` or by a handler |
+| **Dependencies** | `P0-01 (the seam), ADR-014 (accepted)` → `P0-01 (the seam), ADR-014 + ADR-015 (accepted)`. The entry must not cite only ADR-014 while implementing decisions ADR-015 took |
+| **Flush** | One constant `FLUSH_TIMEOUT_MS = 2000`. Race `client.flush()` against an application-owned **ref'd** timer. Invoke via `after()` inside a request scope, **passing a function, never a promise** (D5), wrapped in `try/catch` covering both `E468` and `E91`; fire-and-forget with a no-op rejection handler otherwise. Never awaited by `log()` or by a handler |
 | **Composition** | `defaultSink(record)` first and unconditionally; the Sentry path second, in its own `try/catch` (D3) |
 | **Tests** | ADR-014 D10's list stands, with four **additions**: (1) a forwarded payload contains **no `server_name` and no `contexts.runtime`** — asserted on the outcome, not on the presence of `sendDefaultPii`; (2) a transport that throws, rejects, and returns 500 each leave `log()`'s return value and the local stderr record unaffected; (3) the flush is bounded by the application's own deadline **with an unresponsive transport**, which is the case the SDK's own timer does not cover; (4) the CI fence fails when an `@opentelemetry/*` or module-interception package enters the lockfile. **No test may depend on network egress to a vendor** (ADR-014 D6) |
 | **Verification obligation** | Confirm that the Next.js build bundles `@sentry/core` cleanly. This ADR could not check it — doing so requires the lockfile change that this task is forbidden to make — so it is P1-19's, and a bundling failure is a finding to report, not a thing to work around |
@@ -396,9 +406,9 @@ The hardening blueprint is the single work queue and this ADR does not edit it. 
 this order:
 
 1. **Amend the existing P1-19 entry** in `docs/hardening/07-HARDENING-BLUEPRINT.md` — the
-   `### P1-19 · Wire production error reporting` section — to match D8: its Description, Files and
-   Tests rows. Amend it **in place**; do not add a second task. There is one piece of work and it
-   has not started.
+   `### P1-19 · Wire production error reporting` section — to match D8: its Description, Files,
+   Dependencies and Tests rows. Amend it **in place**; do not add a second task. There is one piece
+   of work and it has not started.
 2. **Add ADR-015 to the index table** in `docs/architecture/README.md`.
 3. **Only then may P1-19 implementation begin.**
 
@@ -456,8 +466,9 @@ evidence tables, every file:line citation to `@sentry/*`, the flush measurements
 measurements, and the resolved dependency closures.
 
 **Repository fact** — read from this working tree at `342c184`: `logger.ts` ordering and seam,
-`middleware.ts` imports, the installed Next.js version, `after`'s presence and its out-of-scope
-throw.
+`middleware.ts` imports, the installed Next.js version, and `after()`'s presence, its out-of-scope
+`E468` throw, its function-form scheduling through `onClose`, and its promise-form `E91` throw — the
+last three read from `next/dist/server/after/after-context.js`, not from documentation.
 
 **Inference, labelled as such** — that an OpenTelemetry runtime graph would materially affect cold
 start or bundle size on Vercel (plausible, **unmeasured**, and *not* a reason D1 relies on); and
