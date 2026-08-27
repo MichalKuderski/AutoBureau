@@ -151,6 +151,20 @@ two migration connection strings `STAGING_MIGRATION_DATABASE_URL` /
 `PRODUCTION_MIGRATION_DATABASE_URL`. None appears in a workflow file; gitleaks already runs
 in `ci.yml`.
 
+One further input is required and is deliberately **not** a secret: the repository *variable*
+**`PRODUCTION_HOST`** — production's public hostname, no scheme (e.g. `app.autobureau.com`).
+It is a `vars.` entry rather than a `secrets.` one because a public hostname is not a
+credential, and filing it as a secret would both misstate that and hide it from review.
+
+It is read in exactly one place, and that place is why it matters: §9.7's rollback step
+re-smokes production after promoting the previous deployment back. `vercel rollback` runs
+before it and does not depend on the variable, so an unset `PRODUCTION_HOST` does not prevent
+a rollback — it removes the **proof that the rollback landed**, which is the guarantee §9.7
+actually makes. Because that step runs only under `if: failure()`, the job is already red, and
+a verification that never ran is easy to misread as part of the original failure. The smoke
+script therefore refuses a URL with no host and says so by name, rather than failing on an
+unparseable URL.
+
 **`SENTRY_DSN`** (ADR-014 D5, ADR-015; blueprint P1-19) is application configuration and so
 comes from Doppler with everything else, per deployed environment. It is a write-only ingest
 key rather than a credential, and it routes through Doppler anyway because a second handling

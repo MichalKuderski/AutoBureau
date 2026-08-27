@@ -40,6 +40,25 @@ if (!BASE) {
   process.exit(2);
 }
 
+// A scheme with no host — `https://` — survives the check above, because stripping the
+// trailing slashes leaves the truthy string `https:`. It is checked separately, and named
+// rather than left to `fetch`'s "Failed to parse URL", because there is exactly one caller
+// that produces this shape: §9.7's rollback step interpolating an unset `PRODUCTION_HOST`.
+// That step runs only when the job is already failing, so an unexplained stack trace there
+// reads as part of the original failure. The rollback itself still ran — `vercel rollback`
+// precedes this — so what an unset variable costs is the proof that it landed.
+if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/*$/.test(BASE)) {
+  console.error(`FAIL  base URL has a scheme but no host: ${JSON.stringify(BASE)}`);
+  console.error("      From CI this means the repository variable PRODUCTION_HOST is unset");
+  console.error("      (doc 09 §9.4). The rollback ran; its verification did not.");
+  process.exit(2);
+}
+if (!URL.canParse(BASE) || new URL(BASE).hostname === "") {
+  console.error(`FAIL  not a usable base URL: ${JSON.stringify(BASE)}`);
+  console.error("      Expected an absolute origin, e.g. https://app.example.com");
+  process.exit(2);
+}
+
 const results = [];
 function check(name, ok, detail) {
   results.push({ name, ok, detail });
