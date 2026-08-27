@@ -131,6 +131,30 @@ jobs:
             exit 1
           fi
 
+      # ADR-015 D2: the Sentry integration is `@sentry/core` precisely because `@sentry/node`
+      # is an OpenTelemetry distribution — requiring it pulls eight `@opentelemetry/*`
+      # packages plus two module-loader patchers into the process before any configuration
+      # runs. ADR-014 D11 excludes OpenTelemetry, and doc 12 T8 makes dependency surface a
+      # supply-chain concern, so the exclusion is checked rather than merely written down.
+      #
+      # This matches RESOLVED PACKAGES only: pnpm writes those as `  'name@version':` at two
+      # spaces. Next.js declares `@opentelemetry/api` as an OPTIONAL PEER, which appears
+      # deeper and without a version key — nothing is installed for it, and that pre-existing
+      # reference must keep passing or the fence fails on a clean checkout.
+      #
+      # Adopting OpenTelemetry later is a decision, not a dependency bump: it needs an ADR,
+      # and this guardrail updated in the same PR.
+      - name: Sentry integration introduces no OpenTelemetry runtime
+        run: |
+          hits=$(grep -nE "^  '(@opentelemetry/[^']+|import-in-the-middle|require-in-the-middle)@" \
+                   pnpm-lock.yaml || true)
+          if [ -n "$hits" ]; then
+            echo "::error::An OpenTelemetry or module-interception package is now installed."
+            echo "::error::ADR-015 D2 excludes both. Use @sentry/core, never @sentry/node."
+            echo "$hits"
+            exit 1
+          fi
+
       # PRD v1 §9: chat and agent-execution are postponed. Tables//models for them
       # must not reappear without a §21 amendment.
       - name: PRD scope fence

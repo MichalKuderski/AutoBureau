@@ -73,8 +73,14 @@ export type LogSink = (record: LogRecord) => void;
  * everything else. `process.stdout` is used rather than `console` because a structured
  * logger should not go through a formatter it does not control; the `console` fallback
  * exists for runtimes that do not expose the streams.
+ *
+ * Exported so a production sink can *compose* with it rather than replace it (ADR-014 D2,
+ * ADR-015 D3): `setLogSink` takes one function, so an additive sink has to hold this one and
+ * call it first. The alternative — a second copy of the emission path in the remote sink —
+ * is how development and production formats drift apart, which is the defect the dev/prod
+ * branch below already exists to avoid. Exporting it changes no behaviour.
  */
-const defaultSink: LogSink = (record) => {
+export const defaultSink: LogSink = (record) => {
   const line =
     process.env.NODE_ENV === "production"
       ? JSON.stringify(record)

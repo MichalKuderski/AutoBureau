@@ -14,6 +14,7 @@
   "dependencies": {
     "@autobureau/contracts": "workspace:*",
     "@autobureau/db": "workspace:*",
+    "@sentry/core": "^10.71.0",
     "@tanstack/react-query": "^5.62.0",
     "clsx": "^2.1.1",
     "jose": "^6.2.8",

@@ -151,6 +151,24 @@ two migration connection strings `STAGING_MIGRATION_DATABASE_URL` /
 `PRODUCTION_MIGRATION_DATABASE_URL`. None appears in a workflow file; gitleaks already runs
 in `ci.yml`.
 
+**`SENTRY_DSN`** (ADR-014 D5, ADR-015; blueprint P1-19) is application configuration and so
+comes from Doppler with everything else, per deployed environment. It is a write-only ingest
+key rather than a credential, and it routes through Doppler anyway because a second handling
+convention for one variable is how the first one drifts.
+
+Unset is a supported state, not a misconfiguration: with no DSN the error-reporting sink is
+never registered and logging is exactly what P0-01 shipped — structured JSON on
+stdout/stderr. `local` and CI leave it unset, so no test depends on egress to a vendor.
+The Sentry **environment** tag is derived from Vercel's injected `VERCEL_ENV`, the same way
+preview deployments derive `APP_ORIGIN` from `VERCEL_URL` (§9.3); it is not a variable of
+ours and does not appear in Doppler. Sourcemap upload stays off — for a server runtime that
+would put readable source in a vendor's hands, which is a disclosure decision of its own.
+
+Still outstanding, and **not** delivered by P1-19: the Sentry account and US-region project,
+the signed DPA and data-category mapping, confirmation of the public subprocessor list, the
+DSN's provisioning in Doppler, and doc 10 §4's "new-issue spike" alert rule. Until those
+exist, error reporting is wired but not reaching anywhere.
+
 ### 9.5 Two connection strings, and why the running app only gets one
 
 The application connects through Supabase's **transaction-mode pooler** (port 6543,
