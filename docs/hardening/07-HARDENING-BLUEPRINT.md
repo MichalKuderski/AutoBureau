@@ -363,7 +363,7 @@ demonstrated externally in its current state.*
 |---|---|
 | **Priority** | High |
 | **Description** | Provider 429s are handled; AutoBureau enforces none of its own. Credential stuffing is bounded only by GoTrue's unverified limits, and magic-link abuse is invisible. |
-| **Files** | `app/v1/auth/*` · new limiter · requires Redis (does not yet exist) |
+| **Files** | `app/v1/auth/*` · new limiter · PostgreSQL-backed store, no Redis dependency (ADR-013) |
 | **Dependencies** | P1-01 (infrastructure), P0-01 (to see it working) |
 | **Risk** | **Low** |
 | **Tests** | N+1 attempts → 429; limit is per-account, not global. |
