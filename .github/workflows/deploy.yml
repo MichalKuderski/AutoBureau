@@ -78,8 +78,13 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
+      # Deployment Protection answers ahead of the deployment, so the smoke suite has to
+      # identify itself as automation or it never reaches the application at all. The
+      # secret bypasses the gate for this request only; the preview URL stays private.
       - name: Smoke the preview
         run: node scripts/smoke-deployment.mjs "${{ steps.deploy.outputs.url }}"
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
   # ── staging ────────────────────────────────────────────────────────────────────────
   # Migrations run before the code that depends on them, and staging is where a
@@ -136,6 +141,8 @@ jobs:
 
       - name: Smoke staging
         run: node scripts/smoke-deployment.mjs "${{ steps.deploy.outputs.url }}"
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
   # ── production ─────────────────────────────────────────────────────────────────────
   # Gated by a GitHub protected environment: the approval is the promotion. Production is
@@ -190,6 +197,8 @@ jobs:
 
       - name: Smoke production
         run: node scripts/smoke-deployment.mjs "${{ steps.deploy.outputs.url }}"
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
       # A failed smoke is a failed deployment, and the response is immediate: the previous
       # production deployment is promoted back. This is Vercel's own instant rollback

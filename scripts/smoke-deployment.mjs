@@ -35,6 +35,15 @@
 const BASE = (process.argv[2] ?? process.env.SMOKE_BASE_URL ?? "").replace(/\/+$/, "");
 const EXPECT_UNCONFIGURED = process.argv.includes("--expect-unconfigured");
 
+// Vercel Deployment Protection sits *in front of* the deployment: it answers before the
+// Build Output runs, so an unauthenticated CI request never reaches middleware at all.
+// The bypass secret is how automation identifies itself to that gate without turning the
+// gate off — preview URLs stay private to everyone else. Absent, every request below is
+// byte-for-byte what it was before, which is what keeps `next start` and any unprotected
+// origin working unchanged.
+const BYPASS = process.env.VERCEL_AUTOMATION_BYPASS_SECRET ?? "";
+const BYPASS_HEADERS = BYPASS === "" ? {} : { "x-vercel-protection-bypass": BYPASS };
+
 if (!BASE) {
   console.error("usage: node scripts/smoke-deployment.mjs <base-url> [--expect-unconfigured]");
   process.exit(2);
@@ -67,12 +76,58 @@ function check(name, ok, detail) {
 }
 
 async function get(path, init) {
-  const response = await fetch(`${BASE}${path}`, { redirect: "manual", ...init });
+  // The bypass header goes first so an explicit `headers` in `init` still wins — no caller
+  // sets it today, and none should have to think about it.
+  const response = await fetch(`${BASE}${path}`, {
+    redirect: "manual",
+    ...init,
+    headers: { ...BYPASS_HEADERS, ...init?.headers },
+  });
   return response;
+}
+
+/**
+ * Is something answering ahead of the application?
+ *
+ * Two signals, both unambiguous. The application's own redirects are built with
+ * `new URL(to, request.nextUrl.origin)` (`apps/web/src/middleware.ts`), so they are
+ * same-origin by construction and can never point at `vercel.com`; and nothing in this
+ * codebase sets a `_vercel_sso_nonce` cookie. Either one means the response came from the
+ * protection gate, not from us.
+ */
+function interceptedBy(response) {
+  const location = response.headers.get("location");
+  if (location !== null && URL.canParse(location, BASE)) {
+    const host = new URL(location, BASE).hostname;
+    if (host === "vercel.com" || host.endsWith(".vercel.com")) return `redirect to ${host}`;
+  }
+  const cookies = response.headers.getSetCookie?.() ?? [response.headers.get("set-cookie") ?? ""];
+  if (cookies.some((c) => c.includes("_vercel_sso_nonce"))) return "_vercel_sso_nonce cookie";
+  return null;
 }
 
 // ── 1. The application shell serves ───────────────────────────────────────────────────
 const root = await get("/");
+
+// An intercepted deployment does not fail this suite honestly: the negative assertions
+// below are all satisfied by a 302 (`!== 200`, `!== 503`), and the CSP checks read an
+// empty `script-src`, so a deployment nobody ever reached scores a comfortable majority of
+// passes. Stop here instead, and say which of the two causes it is.
+const intercepted = interceptedBy(root);
+if (intercepted !== null) {
+  console.error(`FAIL  the deployment is behind Vercel Deployment Protection (${intercepted})`);
+  console.error("      The gate answered before the application did, so nothing below would");
+  console.error("      have tested this deployment.");
+  console.error(
+    BYPASS === ""
+      ? "      VERCEL_AUTOMATION_BYPASS_SECRET is unset. CI must pass the repository secret\n" +
+          "      of that name into this step's environment."
+      : "      VERCEL_AUTOMATION_BYPASS_SECRET is set but was refused: it does not match the\n" +
+          "      Protection Bypass for Automation value on this Vercel project.",
+  );
+  process.exit(2);
+}
+
 check("GET / responds 200", root.status === 200, { status: root.status });
 const html = await root.text();
 check("GET / returns an HTML document", /<html[\s>]/i.test(html));
