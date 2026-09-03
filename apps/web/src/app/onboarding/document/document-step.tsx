@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
 import { UploadDropzone } from "@/components/ui/upload";
-import { useToast } from "@/components/ui/toast";
 import { StepFooter } from "../onboarding-shell";
 import { useOnboarding } from "../onboarding-provider";
 
@@ -24,17 +23,17 @@ import { useOnboarding } from "../onboarding-provider";
  */
 export function DocumentStep() {
   const router = useRouter();
-  const { toast } = useToast();
-  const { seed, recordDocuments, documentsAdded } = useOnboarding();
+  const { seed } = useOnboarding();
 
   const suggestions = seed.obligations.slice(0, 3);
 
   return (
     <>
-      <h1 className="text-2xl leading-tight sm:text-3xl">Send us one document</h1>
+      <h1 className="text-2xl leading-tight sm:text-3xl">One document is the fastest start</h1>
       <p className="mt-2 max-w-xl text-ink-secondary text-pretty">
-        One is enough to start. We&apos;ll read it, file it under the right person, and pull out
-        the dates that matter.
+        Sending one isn&apos;t available yet. When it is, we&apos;ll read it, file it under the
+        right person, and pull out the dates that matter — that is the step that turns a claim
+        into a real date.
       </p>
 
       {suggestions.length > 0 ? (
@@ -54,7 +53,7 @@ export function DocumentStep() {
                   <Icon.Documents className="mt-0.5 size-4 shrink-0 text-ink-tertiary" />
                   <span className="min-w-0">
                     <span className="block text-ink">{o.title}</span>
-                    <span className="block text-xs text-ink-tertiary">Send {o.needs}</span>
+                    <span className="block text-xs text-ink-tertiary">Needs {o.needs}</span>
                   </span>
                 </li>
               ))}
@@ -64,17 +63,17 @@ export function DocumentStep() {
       ) : null}
 
       <div className="mt-6">
-        <UploadDropzone
-          onFiles={(files) => {
-            recordDocuments(files.length);
-            toast({
-              tone: "success",
-              title: `${files.length} ${files.length === 1 ? "document" : "documents"} received`,
-              description: "We'll start reading it now — this usually takes under a minute.",
-            });
-            router.push("/onboarding/ready");
-          }}
-        />
+        {/*
+         * Blueprint P0-07, the last surface carrying that defect. `671f0e7` disabled the
+         * two `(app)` dropzones and recorded that this one "has the identical defect (same
+         * toast, same discarded argument)" but was out of that task's scope. It is the same
+         * defect for the same reason: no upload endpoint, no multipart handling and no
+         * object-storage client exists anywhere in the workspace, so every file this control
+         * accepted was discarded while a success toast said it had been received — during
+         * onboarding, which is the worst possible moment to teach someone the product lies.
+         * `disabled` is the existing honest placeholder; the enabled path is untouched.
+         */}
+        <UploadDropzone disabled />
       </div>
 
       {/*
@@ -92,7 +91,7 @@ export function DocumentStep() {
 
       <StepFooter note="You can forward documents by email later — that's the channel that keeps working when you're busy.">
         <Button variant="primary" onClick={() => router.push("/onboarding/ready")}>
-          {documentsAdded > 0 ? "Continue" : "I'll do this later"}
+          Continue
         </Button>
       </StepFooter>
     </>
