@@ -73,8 +73,22 @@ const TokenResponseSchema = z.object({
   expires_in: z.number().int().positive(),
 });
 
+/**
+ * What `/signup` produced.
+ *
+ * Which arm comes back is the *deployment's* choice, not this code's: GoTrue returns a
+ * session when "Confirm email" is off and a bare user record when it is on. Modelling both
+ * is how this honours the project's confirmation setting instead of assuming one — and it
+ * is why nothing here reads a flag of our own that could disagree with the provider.
+ */
+export type SignUpOutcome =
+  | { readonly kind: "session"; readonly tokens: SessionTokens }
+  | { readonly kind: "confirmation-required" };
+
 export interface AuthProvider {
   signInWithPassword(email: string, password: string): Promise<SessionTokens>;
+  /** Create an account. `displayName` is stored as provider user metadata, never a claim we trust. */
+  signUp(email: string, password: string, displayName: string): Promise<SignUpOutcome>;
   refresh(refreshToken: string): Promise<SessionTokens>;
   signOut(accessToken: string): Promise<void>;
   /** Ask the provider to email a link that will return an authorization code. */
@@ -141,6 +155,50 @@ export function createGoTrueProvider(
   return {
     signInWithPassword(email, password) {
       return tokenGrant("password", { email, password }, "invalid-credentials");
+    },
+
+    async signUp(email, password, displayName) {
+      // Not `tokenGrant`: `/signup` is the one provider call whose success may legitimately
+      // carry no tokens, so a helper that insists on parsing a token response would turn the
+      // confirmation-required deployment into a spurious "unusable response".
+      let response: Response;
+      try {
+        response = await fetchImpl(`${config.apiUrl}/signup`, {
+          method: "POST",
+          headers,
+          // `data` becomes provider user metadata. It is user-supplied and stays that way:
+          // nothing downstream reads it as an authorization input, and the mirrored profile
+          // is written from the verified email rather than from this.
+          body: JSON.stringify({ email, password, data: { display_name: displayName } }),
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+      } catch {
+        throw new ProviderError("unavailable", "the identity provider could not be reached");
+      }
+
+      if (!response.ok) {
+        // The body is never surfaced. GoTrue distinguishes "already registered" from a
+        // rejected password, and passing that through would hand the caller an
+        // account-enumeration oracle the route then has to un-leak.
+        throw new ProviderError(mapStatus(response.status, "invalid-credentials"), "sign-up was refused");
+      }
+
+      const body: unknown = await response.json().catch(() => null);
+      const session = TokenResponseSchema.safeParse(body);
+      if (session.success) {
+        return {
+          kind: "session",
+          tokens: {
+            accessToken: session.data.access_token,
+            refreshToken: session.data.refresh_token,
+            expiresIn: session.data.expires_in,
+          },
+        };
+      }
+      // A 2xx with no token set is GoTrue saying the account exists but is unconfirmed.
+      // That includes the obfuscated user it returns for an address already registered,
+      // which is exactly the response that keeps this endpoint from confirming membership.
+      return { kind: "confirmation-required" };
     },
 
     refresh(refreshToken) {

@@ -22,6 +22,9 @@ describe("A4 · the public surface is exactly this and nothing more", () => {
         "/v1/auth/magic-link",
         "/v1/auth/sign-in",
         "/v1/auth/sign-out",
+        // P1-02: creating an account cannot require one. Origin-checked and rate-limited
+        // like every other entry here; public in the routing sense only.
+        "/v1/auth/sign-up",
       ].sort(),
     );
   });

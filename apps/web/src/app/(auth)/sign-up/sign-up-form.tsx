@@ -7,7 +7,11 @@ import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
+import { ApiError, apiFetch } from "@/lib/api-client";
 import { assessPassword, isPlausibleEmail } from "@/lib/password";
+
+/** 204 (session issued) arrives as `undefined`; 202 carries the pending marker. */
+type SignUpResponse = { status?: "confirmation-required" } | undefined;
 
 /**
  * Create an account.
@@ -35,25 +39,84 @@ export function SignUpForm() {
     password?: string | undefined;
   }>({});
   const [pending, setPending] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  /** Set once the provider accepted the address but the account awaits confirmation. */
+  const [confirmationSentTo, setConfirmationSentTo] = useState<string | null>(null);
 
   const assessment = assessPassword(password, email);
 
-  const submit = () => {
+  const submit = async () => {
+    // The endpoint mints an identity, so a double-submit is more expensive here than on a
+    // read. `Button` already disables itself while `loading`; this is the guard that does
+    // not depend on a rendering artefact.
+    if (pending) return;
+
     const nextErrors: typeof errors = {};
     if (name.trim().length === 0) nextErrors.name = "Tell us what to call you.";
     if (!isPlausibleEmail(email)) nextErrors.email = "Enter an address we can reach you at.";
     if (!assessment.acceptable) nextErrors.password = assessment.hint;
     setErrors(nextErrors);
+    setFormError(null);
     if (Object.keys(nextErrors).length > 0) return;
 
     setPending(true);
-    // Supabase Auth replaces this; a real signup lands on onboarding the same way,
-    // with the verification email already in flight.
-    window.setTimeout(() => {
+    let outcome: SignUpResponse;
+    try {
+      // Through `apiFetch` like every other `/v1` call, so the CSRF header and same-origin
+      // credential handling stay in the one place that owns them.
+      outcome = await apiFetch<SignUpResponse>("/auth/sign-up", {
+        method: "POST",
+        body: { name: name.trim(), email: email.trim(), password },
+      });
+    } catch (cause) {
       setPending(false);
-      router.push("/onboarding");
-    }, 500);
+      // Nothing here distinguishes "this address already has an account": the endpoint
+      // deliberately does not say, so there is no such branch to render and none may be
+      // invented. What can be reported is a fact about the request — a rejected password,
+      // too many attempts, an unconfigured or unreachable deployment.
+      setFormError(
+        cause instanceof ApiError
+          ? (cause.problem.detail ?? "We couldn't create your account. Please try again.")
+          : "We couldn't create your account. Please try again.",
+      );
+      return;
+    }
+
+    // 204 means the deployment does not require email confirmation and the session cookies
+    // are already set — the identity is complete, so onboarding is reachable now. A 202
+    // means the account is inert until the emailed link is followed, and `/auth/callback`
+    // completes it there. Same destination, different reason, and the copy differs.
+    if (outcome?.status === "confirmation-required") {
+      setPending(false);
+      setConfirmationSentTo(email.trim());
+      return;
+    }
+    router.push("/onboarding");
   };
+
+  // The account exists but is inert until the link is followed. Replacing the form rather
+  // than annotating it is deliberate: resubmitting the same address would only spend the
+  // rate-limit budget that lets them ask for the mail again.
+  if (confirmationSentTo !== null) {
+    return (
+      <>
+        <h1 className="text-2xl leading-tight">Confirm your email</h1>
+        <p className="mt-2 text-sm text-ink-secondary text-pretty">
+          We sent a link to <span className="font-medium text-ink-primary">{confirmationSentTo}</span>.
+          Follow it and your household is ready.
+        </p>
+        <p className="mt-4 text-sm text-ink-tertiary text-pretty">
+          Nothing arrives? Check spam, and confirm the address is right.
+        </p>
+        <Link
+          href="/sign-in"
+          className="mt-6 inline-block text-sm text-accent underline-offset-4 hover:underline"
+        >
+          Back to sign in
+        </Link>
+      </>
+    );
+  }
 
   return (
     <>
@@ -69,7 +132,7 @@ export function SignUpForm() {
         className="mt-6 flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
-          submit();
+          void submit();
         }}
       >
         <TextInput
@@ -116,6 +179,12 @@ export function SignUpForm() {
             show={password.length > 0}
           />
         </div>
+
+        {formError === null ? null : (
+          <p role="alert" className="text-sm text-critical text-pretty">
+            {formError}
+          </p>
+        )}
 
         <Button type="submit" variant="primary" fullWidth loading={pending}>
           Create account

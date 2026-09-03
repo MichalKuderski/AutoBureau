@@ -20,7 +20,7 @@ import {
 } from "@/server/auth/context";
 import { createJwtVerifier } from "@/server/auth/jwt";
 import { getDatabase } from "@/server/db";
-import { SIGN_IN_PATH } from "@/server/http/public-routes";
+import { ONBOARDING_PATH, SIGN_IN_PATH } from "@/server/http/public-routes";
 
 /**
  * Authenticated route group (ADR-009 D1/D3).
@@ -51,6 +51,8 @@ type Resolution =
     }
   /** More than one membership and no usable preference — the person picks (P1-03). */
   | { readonly kind: "choose"; readonly households: readonly HouseholdOption[] }
+  /** Authenticated, but no household yet — onboarding, not an error page (P1-02). */
+  | { readonly kind: "onboarding" }
   | { readonly kind: "sign-in" };
 
 /**
@@ -149,16 +151,26 @@ async function resolve(): Promise<Resolution> {
       ctx = await resolveRequestContext(request(null), deps);
     }
   } catch (cause) {
-    // Only the unauthenticated case redirects: that is the single HTML behaviour D3
-    // specifies. Every other rejection — `no-membership` above all — is left to
-    // propagate rather than rerouted. D1 fixes zero memberships at `403` and A2 tests
-    // it, and the `/v1` boundary already answers exactly that; turning it into a
-    // redirect here would invent a recovery route no document defines, and would send
-    // someone to a screen that cannot create a household anyway. Next offers no way to
-    // answer an HTML segment with 403 without `experimental.authInterrupts`, so failing
-    // closed through the error boundary is the honest option available.
     if (cause instanceof RequestContextError && cause.reason === "unauthenticated") {
       return { kind: "sign-in" };
+    }
+    // `no-membership` used to be left to propagate, and the reason given was that a
+    // redirect "would send someone to a screen that cannot create a household anyway".
+    // P1-02 removed that premise: `ensureHousehold` now runs at both places a session is
+    // established, so a principal reaching this branch is one whose bootstrap has not run
+    // — a session predating P1-02, or a sole membership revoked mid-session. Rendering a
+    // 500 at them is not D1 being strict, it is an unhandled exception wearing D1's
+    // clothes: the person sees "something went wrong" and has no way forward.
+    //
+    // THE `/v1` BOUNDARY IS UNCHANGED AND STAYS 403. D1 fixes zero memberships at 403 and
+    // A2 tests it; that is an authorization answer to a programmatic caller. This is the
+    // HTML tier answering a document navigation, where the honest response is the screen
+    // that resolves the condition — the same split already made for `ambiguous-household`,
+    // which is 400 at `/v1` and a chooser here. Onboarding sits outside this route group,
+    // so it renders without re-entering this layout, and it is reached only with a
+    // verified session because middleware guards it like every other non-public path.
+    if (cause instanceof RequestContextError && cause.reason === "no-membership") {
+      return { kind: "onboarding" };
     }
     // `ambiguous-household` is the one rejection P1-03 can answer. It is not a failure:
     // the resolver refusing to guess between two real memberships is D1 working, and the
@@ -239,6 +251,7 @@ async function resolve(): Promise<Resolution> {
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const resolved = await resolve();
   if (resolved.kind === "sign-in") redirect(SIGN_IN_PATH);
+  if (resolved.kind === "onboarding") redirect(ONBOARDING_PATH);
   // No shell, because there is no household to render one for yet. This is the whole
   // recovery path for a multi-household principal: choose, and the next server render
   // resolves normally.

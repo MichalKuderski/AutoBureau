@@ -45,7 +45,9 @@ export type PolicyName =
   | "sign_in.identifier"
   | "sign_in.ip"
   | "magic_link.identifier"
-  | "magic_link.ip";
+  | "magic_link.ip"
+  | "sign_up.identifier"
+  | "sign_up.ip";
 
 /** Which subject a policy counts against. `identifier` here always means the email. */
 type Dimension = "identifier" | "identifier_ip" | "ip";
@@ -89,6 +91,18 @@ const POLICIES: Readonly<Record<PolicyName, Policy>> = {
   // Caps mail to one address at twelve an hour, leaving room to resend twice.
   "magic_link.identifier": { dimension: "identifier", limit: 3, windowSeconds: WINDOW },
   "magic_link.ip": { dimension: "ip", limit: 30, windowSeconds: WINDOW },
+  // Sign-up is a NEW fence over a previously unlimited endpoint, so it is a tightening
+  // under R1 clause 4 rather than a weakening — ordinary code review, no ADR amendment.
+  //
+  // Matched to `magic_link` on the identifier because both send mail to an address that
+  // did not ask for it, and one address needs at most a couple of attempts plus a resend.
+  "sign_up.identifier": { dimension: "identifier", limit: 3, windowSeconds: WINDOW },
+  // Stricter than `magic_link.ip` (30) deliberately: a magic link is a *login* for an
+  // account that already exists, while each of these mints a new identity row. A shared
+  // office signing in all morning is normal; ten new households an hour from one address
+  // is not, and the cost of being wrong is a bulk account-creation run rather than a
+  // person waiting for a second email.
+  "sign_up.ip": { dimension: "ip", limit: 10, windowSeconds: WINDOW },
 };
 
 /**
@@ -106,6 +120,8 @@ export const MAGIC_LINK_POLICIES: readonly PolicyName[] = [
   "magic_link.identifier",
   "magic_link.ip",
 ];
+
+export const SIGN_UP_POLICIES: readonly PolicyName[] = ["sign_up.identifier", "sign_up.ip"];
 
 /**
  * The policies a successful sign-in clears (ADR-013 D6).

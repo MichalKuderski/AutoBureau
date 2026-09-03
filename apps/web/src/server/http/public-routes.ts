@@ -21,6 +21,10 @@ const PUBLIC_PAGES = ["/", "/sign-in", "/sign-up", "/forgot-password"] as const;
  */
 const PUBLIC_AUTH_ENDPOINTS = [
   "/v1/auth/sign-in",
+  // Creating an account cannot require an account. Like sign-in, it is public in the
+  // routing sense only: it verifies the request's origin, rate-limits it, and issues
+  // cookies solely when the provider returned a session it could verify.
+  "/v1/auth/sign-up",
   "/v1/auth/sign-out",
   "/v1/auth/magic-link",
   "/auth/refresh",
@@ -37,6 +41,15 @@ export const SIGN_IN_PATH = "/sign-in";
 
 /** Where a successful refresh goes when `next` is missing or refused. */
 export const DEFAULT_DESTINATION = "/dashboard";
+
+/**
+ * Where an authenticated principal with no household is sent (P1-02).
+ *
+ * Deliberately NOT in the allowlist above: it is reached only with a verified session, and
+ * middleware guards it exactly like `/dashboard`. It is named here because it is a routing
+ * destination this module already owns the vocabulary for, not because it is public.
+ */
+export const ONBOARDING_PATH = "/onboarding";
 
 export function isPublicPath(pathname: string): boolean {
   // Trailing slashes are normalised so `/sign-in/` cannot slip past an exact match, and
