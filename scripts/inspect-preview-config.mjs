@@ -68,9 +68,38 @@ for (const line of readFileSync(source, "utf8").split("\n")) {
 const problems = [];
 const refs = new Map();
 const note = (ok, text, detail) => {
-  console.error(`${ok ? "ok  " : "FAIL"}  ${text}${detail === undefined ? "" : `  ${detail}`}`);
+  console.error(`${ok ? "ok  " : "warn"}  ${text}${detail === undefined ? "" : `  ${detail}`}`);
   if (!ok) problems.push(text);
 };
+
+/**
+ * Can this file's values be read at all?
+ *
+ * A variable marked **Sensitive** in Vercel is write-only: the platform will inject it into
+ * the running function but will not hand it back, so `vercel pull` writes something opaque
+ * in its place. Every value is then simultaneously present and unparseable — which is
+ * exactly the shape this check first produced, and it says nothing whatever about the
+ * deployment.
+ *
+ * Detecting that up front matters more than any assertion below it, because the alternative
+ * is a report that reads like a misconfiguration when the real finding is "this surface
+ * cannot answer the question". Where the runtime values point has to be established from
+ * somewhere the runtime touched — the provider's own logs, or rows in the expected database.
+ */
+const hasScheme = (value, schemes) =>
+  URL.canParse(value) && schemes.includes(new URL(value).protocol.replace(":", "").toLowerCase());
+
+const readable = REQUIRED.filter((k) => {
+  const v = env.get(k);
+  if (v === undefined || v === "") return false;
+  // These two are short free-form strings with no shape to check, so they can never
+  // distinguish a real value from an opaque one and must not vote on readability.
+  if (k === "AUTH_AUDIENCE" || k === "AUTH_COOKIE_NAME") return false;
+  if (k === "DATABASE_URL") return hasScheme(v, ["postgres", "postgresql"]);
+  if (k === "AUTH_ANON_KEY") return v.startsWith("sb_publishable_") || v.split(".").length === 3;
+  return hasScheme(v, ["http", "https"]);
+});
+const OPAQUE = readable.length === 0;
 
 /* ── presence ─────────────────────────────────────────────────────────────────── */
 
@@ -87,6 +116,23 @@ for (const key of DERIVED) {
       ? `warn  ${key} is SET on preview — it should be unset so it derives from VERCEL_URL (doc 09 §9.3)`
       : `ok    ${key} is correctly unset (derived from VERCEL_URL on preview)`,
   );
+}
+
+if (OPAQUE) {
+  console.error("\n── values are not readable here ──────────────────────────────");
+  console.error("      Every required variable is PRESENT and none is parseable as its own type.");
+  console.error("      That is the signature of Vercel 'Sensitive' variables: write-only, so");
+  console.error("      `vercel pull` cannot hand back what it will inject at runtime.");
+  console.error("");
+  console.error("      This is not evidence of a misconfiguration, and this step cannot");
+  console.error("      produce any. Establish where the runtime actually points from a surface");
+  console.error("      the runtime touched:");
+  console.error("        · the Supabase project's auth logs — did /signup and /token arrive?");
+  console.error("        · auth_rate_limits — the limiter writes BEFORE the provider call and");
+  console.error("          fails open, so an empty table means the database was unreachable");
+  console.error("          while every HTTP status looked healthy.");
+  console.error("\nnothing further can be asserted from the pulled file");
+  process.exit(0);
 }
 
 /* ── which project does each value name? ──────────────────────────────────────── */
@@ -163,6 +209,30 @@ if (dbUrl) {
     );
     note(u.port === "6543", "DATABASE_URL uses the transaction pooler port 6543", u.port || "(default)");
     note(!/^postgres$/i.test(user), "DATABASE_URL is NOT the postgres superuser", dbRef ? "app role" : user);
+
+    /*
+     * `?pgbouncer=true` is not a tuning preference on port 6543 — it is what makes Prisma
+     * usable there at all. Transaction pooling hands a different backend to each statement,
+     * so Prisma's prepared statements do not survive between them and every query fails.
+     *
+     * The failure is invisible from outside, which is why it is asserted here. The limiter
+     * is the first thing to touch the database on the auth path and it fails OPEN by
+     * design, so a connection that authenticates and then cannot execute produces no error
+     * in any response, no pooler auth failure in the logs, and a perfect smoke score — with
+     * an empty `auth_rate_limits` as the only trace. `.env.example` §119 spells the whole
+     * string out; the two parameters are the half most easily dropped when a connection
+     * string is assembled by hand.
+     */
+    note(
+      u.searchParams.get("pgbouncer") === "true",
+      "DATABASE_URL sets ?pgbouncer=true (required by Prisma on the transaction pooler)",
+      u.searchParams.get("pgbouncer") ?? "(absent)",
+    );
+    note(
+      u.searchParams.get("connection_limit") === "1",
+      "DATABASE_URL sets &connection_limit=1 (one handle per serverless instance)",
+      u.searchParams.get("connection_limit") ?? "(absent)",
+    );
   }
 }
 
