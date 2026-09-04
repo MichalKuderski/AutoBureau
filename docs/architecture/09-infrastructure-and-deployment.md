@@ -135,9 +135,17 @@ PR ──▶ preview  ──(merge)──▶ staging ──(human approval)─�
 Promotion is a person approving a named commit, not a timer. Production is never reached
 by a push alone.
 
-`APP_ORIGIN` is per-deployment and is compared against by the CSRF check, so preview
-configuration must derive it from Vercel's `VERCEL_URL` rather than pin a literal — a
-preview that claims production's origin rejects its own form posts.
+`APP_ORIGIN` is per-deployment and is compared against by the CSRF check, so a preview that
+claims production's origin rejects its own form posts. That derivation cannot live in
+configuration: a Vercel environment variable is a literal string and `$VERCEL_URL` in its
+value is not interpolated, so one stored value cannot follow the different host every
+preview gets. `authConfigFromEnv` derives it instead — `https://$VERCEL_URL`, and only when
+`VERCEL_ENV` is exactly `preview`. **Preview therefore leaves `APP_ORIGIN` unset**; every
+other deployed environment sets it explicitly, an explicit value always wins, and outside
+preview there is no fallback, so a production deployment that loses it answers 503 rather
+than trusting its own `*.vercel.app` deployment URL. `VERCEL_URL` is safe as an input here
+for the reason `VERCEL_ENV` is safe in `sentry.ts`: the platform injects it into the
+runtime, so unlike `Host` no requester can influence it.
 
 ### 9.4 Secrets
 

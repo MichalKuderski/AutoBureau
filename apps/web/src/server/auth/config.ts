@@ -46,6 +46,49 @@ function required(env: NodeJS.ProcessEnv, key: string): string {
   return value.trim();
 }
 
+/**
+ * This deployment's own origin, for the CSRF comparison.
+ *
+ * Doc 09 §9.3 requires that "preview configuration must derive it from Vercel's
+ * `VERCEL_URL` rather than pin a literal — a preview that claims production's origin
+ * rejects its own form posts", and `.env.example` §94 repeats it. Neither could be
+ * honoured by configuration alone: a Vercel environment variable is a literal string and
+ * `$VERCEL_URL` in its value is not interpolated, so every preview shares one stored
+ * value while each has a different host. The derivation has to happen here, and
+ * `sentry.ts` already reads `VERCEL_ENV` on the same premise — a platform-injected
+ * variable is configuration, not request data.
+ *
+ * WHY THIS IS NOT THE HOST HEADER MISTAKE
+ * ---------------------------------------
+ * `VERCEL_URL` is injected into the runtime by the platform and is fixed for the life of
+ * the deployment. A requester cannot influence it: it arrives with the process, not with
+ * the request, so nothing a caller sends can widen the accepted origin set. That is the
+ * whole difference from trusting `Host`, which is attacker-supplied on every request.
+ *
+ * TWO GUARDS, BOTH DELIBERATE
+ * ---------------------------
+ * An explicit `APP_ORIGIN` always wins, so production and staging keep the literal custom
+ * domain they are actually served on. And the fallback is gated on `VERCEL_ENV` being
+ * exactly `preview`, so a production deployment whose `APP_ORIGIN` went missing fails
+ * closed — 503, the existing unconfigured-boundary behaviour — rather than quietly
+ * accepting its `*.vercel.app` deployment URL as its origin and diverging from the domain
+ * users actually post from.
+ */
+function appOrigin(env: NodeJS.ProcessEnv): string {
+  const explicit = env["APP_ORIGIN"];
+  if (explicit !== undefined && explicit.trim() !== "") return explicit.trim();
+
+  if (env["VERCEL_ENV"] === "preview") {
+    const host = env["VERCEL_URL"]?.trim();
+    // Host only, no scheme — Vercel previews are HTTPS-only, so the scheme is not a guess.
+    if (host !== undefined && host !== "") return `https://${host}`;
+  }
+
+  throw new AuthConfigError(
+    "APP_ORIGIN is not set. The authenticated boundary cannot start without it.",
+  );
+}
+
 export function authConfigFromEnv(env: NodeJS.ProcessEnv = process.env): AuthConfig {
   const cookieName = required(env, "AUTH_COOKIE_NAME");
   return {
@@ -56,7 +99,7 @@ export function authConfigFromEnv(env: NodeJS.ProcessEnv = process.env): AuthCon
     refreshCookieName: `${cookieName}_refresh`,
     apiUrl: required(env, "AUTH_API_URL").replace(/\/+$/, ""),
     anonKey: required(env, "AUTH_ANON_KEY"),
-    allowedOrigins: [required(env, "APP_ORIGIN")],
+    allowedOrigins: [appOrigin(env)],
     // Pinned here rather than read from the environment: an operator who can widen the
     // accepted algorithm set through configuration can reintroduce algorithm confusion
     // without a code review.
