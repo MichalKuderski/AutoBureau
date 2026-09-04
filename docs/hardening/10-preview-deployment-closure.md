@@ -74,6 +74,25 @@ CSRF was re-checked in the preview case and is unweakened: foreign origin → 40
 operator's list and makes it correct-by-construction; the other six `AUTH_*` values are
 still unset and still need configuring.
 
+### Confirmed by deploying it (run #6, `e200c79`)
+
+Worth stating because a plausible reading said otherwise. The 503 is raised when **any** of
+the seven values is missing, and the smoke suite's `"AUTH_* appears unset"` is the script's
+own hint rather than a reading of the deployment — so `APP_ORIGIN`, the one value that could
+not be a literal, was a credible sole cause.
+
+It was not. PR #3 was fast-forwarded to `e200c79` and the pipeline redeployed against it:
+
+```
+16/17 checks passed against https://autobureau-production-1tdp9rcck-…vercel.app
+FAIL  configured boundary does not answer 503  {"status":503}
+```
+
+Same score, same failure, with the derivation in place. The other six values are therefore
+genuinely absent, and no repository change can supply them. CI on the same commit is green —
+lint · build · typecheck · test, governance documents, and architectural guardrails all pass
+— so the preview smoke is the only red check on the PR.
+
 ## 3. What needs a credential this environment does not hold
 
 **Setting them in the Vercel dashboard would be wrong**, not merely unavailable. Doc 09
