@@ -96,6 +96,20 @@ jobs:
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
+      # The smoke suite deliberately never signs anyone in, so it cannot see the half of
+      # the system that only exists once someone does: the household bootstrap, tenant
+      # isolation, session rotation, and the limiter. This drives those against the real
+      # provider and the real staging database, which is the only place they are true.
+      #
+      # It writes synthetic identities to staging on every preview — doc 09 §1 already
+      # fixes staging as synthetic-only, and a bootstrap asserted against a mock would
+      # prove nothing about the deployment. It never touches production: this job is the
+      # only caller and it only ever has a preview URL.
+      - name: Staging acceptance against the preview
+        run: node scripts/staging-acceptance.mjs "${{ steps.deploy.outputs.url }}"
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
   # ── staging ────────────────────────────────────────────────────────────────────────
   # Migrations run before the code that depends on them, and staging is where a
   # migration is proved. Deploy order is always: migrate (expand) → deploy (doc 09 §4).
