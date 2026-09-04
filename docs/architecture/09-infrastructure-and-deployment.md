@@ -159,6 +159,16 @@ two migration connection strings `STAGING_MIGRATION_DATABASE_URL` /
 `PRODUCTION_MIGRATION_DATABASE_URL`. None appears in a workflow file; gitleaks already runs
 in `ci.yml`.
 
+There are two Vercel projects, and which job uses which is load-bearing rather than
+cosmetic. **`preview` and `staging` both use `VERCEL_STAGING_PROJECT_ID`; only `production`
+uses `VERCEL_PROJECT_ID`.** Preview belongs to the staging project because §9.3 puts it on
+the staging backend, and the Doppler config holding the staging `AUTH_*` and `DATABASE_URL`
+values syncs into *that* project's Preview scope. Pointing preview at the production project
+instead is not a naming preference: the pull finds no configuration, every preview answers
+503 at the boundary, and the Doppler sync reports "In Sync" throughout because it is in sync
+with a project the pipeline never deploys to. It also lands every pull-request preview
+inside the production project, one scope away from production's own values.
+
 One further input is required and is deliberately **not** a secret: the repository *variable*
 **`PRODUCTION_HOST`** — production's public hostname, no scheme (e.g. `app.autobureau.com`).
 It is a `vars.` entry rather than a `secrets.` one because a public hostname is not a

@@ -53,19 +53,29 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: npm install --global vercel@latest
 
+      # `VERCEL_STAGING_PROJECT_ID`, not `VERCEL_PROJECT_ID`. §9.3 puts preview on the
+      # staging backend, and the Doppler config that carries the staging `AUTH_*` and
+      # `DATABASE_URL` values syncs into the staging Vercel project's Preview scope — so
+      # pulling the production project's preview scope found nothing and every preview
+      # answered 503 at the boundary, with the Doppler sync reporting "In Sync" the whole
+      # time because it was in sync with a project this job never deployed to.
+      #
+      # It also put every pull-request preview inside the production Vercel project, one
+      # scope away from production's own configuration. Wrong on both counts, and only the
+      # first one was visible.
       - name: Pull Vercel preview configuration
         run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
 
       - name: Build
         run: vercel build --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
 
       - name: Deploy prebuilt artifact
         id: deploy
@@ -76,7 +86,7 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
 
       # Deployment Protection answers ahead of the deployment, so the smoke suite has to
       # identify itself as automation or it never reaches the application at all. The
