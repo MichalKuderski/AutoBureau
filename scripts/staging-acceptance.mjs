@@ -17,9 +17,13 @@
  * --------------
  * Real rows in the staging database — auth users, households, memberships, entitlements.
  * That is the point: a household bootstrap asserted against a mock proves nothing about the
- * deployment. Every identity it creates is prefixed `acc-` and addressed at a domain that
- * receives no mail, and doc 09 §1 already fixes staging as synthetic-only. It never runs
- * against production: the workflow only ever hands it a preview URL.
+ * deployment. Every identity is prefixed `acc-` at `example.com`, the IETF-reserved test
+ * domain, and doc 09 §1 already fixes staging as synthetic-only. It never runs against
+ * production: the workflow only ever hands it a preview URL.
+ *
+ * REQUIRES "Confirm email" OFF on the staging project. With it on, sign-up issues no
+ * session and there is nothing here to exercise; worse, each attempt sends mail through
+ * Supabase's built-in SMTP, whose few-per-hour cap then answers 429 to everything.
  *
  * ORDERING IS LOAD-BEARING. The rate-limit section is last because it deliberately spends
  * the per-address budget, and `sign_up.ip` is shared by every sign-up in the run. Moving it
@@ -92,7 +96,10 @@ const attrsOf = (res, name) =>
     .map((c) => c.split(";").slice(1).map((s) => s.trim()).join("; "))[0] ?? "";
 
 const stamp = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-const addressFor = (tag) => `acc-${tag}-${stamp}@autobureau-staging.invalid`;
+// `example.com` is the IETF-reserved test domain. The previous `.invalid` TLD is reserved
+// precisely to never resolve, and Supabase rejects it outright with `email_address_invalid`
+// — every sign-up here failed on the address before any of this suite was exercised.
+const addressFor = (tag) => `acc-${tag}-${stamp}@example.com`;
 const created = [];
 
 async function signUp(tag) {
@@ -145,6 +152,11 @@ if (alice.res.status === 202) {
   console.error("        · did auth_rate_limits gain rows? (the limiter runs before the");
   console.error("          provider call and fails open, so an unreachable DATABASE_URL is");
   console.error("          silent here and invisible to the smoke suite)");
+  console.error("");
+  console.error('      Note: with "Confirm email" ON, this suite cannot pass at all. Sign-up');
+  console.error("      issues no session, and each attempt sends mail — Supabase's built-in");
+  console.error("      SMTP allows only a handful per hour, so repeated runs then fail on");
+  console.error("      over_email_send_rate_limit rather than on anything this suite asserts.");
   process.exit(3);
 }
 
