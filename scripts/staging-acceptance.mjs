@@ -102,6 +102,28 @@ const stamp = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6
 const addressFor = (tag) => `acc-${tag}-${stamp}@example.com`;
 const created = [];
 
+/**
+ * A 5xx here is the deployment's own fault rather than a verdict about the request, and it
+ * is the one case where this suite can hand over something that shortens the next step.
+ *
+ * `problemResponse` bodies are written to be safe to show — deliberately generic, naming no
+ * account and no configuration — and `x-trace-id` is the id the server put on its own log
+ * record. Printing the pair turns "search the function logs" into "search for this id",
+ * which matters because the actual cause (a database error, say) never reaches the caller.
+ */
+async function diagnose(label, res) {
+  if (res.status < 500) return;
+  const trace = res.headers.get("x-trace-id") ?? "(none)";
+  const body = await res.clone().text().catch(() => "");
+  let detail = body.slice(0, 200);
+  try {
+    detail = JSON.parse(body).detail ?? detail;
+  } catch {
+    /* not problem+json — show the truncated body as-is */
+  }
+  console.error(`      ↳ ${label} ${res.status} · trace ${trace} · ${JSON.stringify(detail)}`);
+}
+
 async function signUp(tag) {
   const email = addressFor(tag);
   const j = jar();
@@ -112,6 +134,7 @@ async function signUp(tag) {
       body: JSON.stringify({ name: `Acceptance ${tag}`, email, password: PASSWORD }),
     }),
   );
+  await diagnose(`sign-up(${tag})`, res);
   created.push(email);
   return { email, jar: j, res };
 }
@@ -280,6 +303,7 @@ const signInRes = signedIn.take(
   }),
 );
 check("sign-in with correct credentials succeeds", signInRes.status === 204, { status: signInRes.status });
+await diagnose("sign-in(correct password)", signInRes);
 
 const wrong = await req("/v1/auth/sign-in", {
   method: "POST",
