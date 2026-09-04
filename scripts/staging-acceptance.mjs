@@ -114,20 +114,37 @@ async function signUp(tag) {
 heading("sign-up → identity → household bootstrap");
 
 const alice = await signUp("alice");
-const confirmationRequired = alice.res.status === 202;
-console.error(
-  `      provider mode: ${confirmationRequired ? "CONFIRMATION REQUIRED (202)" : "session issued (204)"}`,
-);
 
-if (confirmationRequired) {
+/**
+ * A 202 does NOT mean "confirmation required".
+ *
+ * `/v1/auth/sign-up` answers 202 in two cases it deliberately refuses to tell apart: the
+ * provider issued no session because confirmation is on, and the provider REFUSED the
+ * request for any reason that is a fact about the account. That is the enumeration
+ * protection working — an already-registered address must look exactly like a fresh one —
+ * and it means a caller out here cannot distinguish "working, awaiting confirmation" from
+ * "the provider rejected us" no matter what it asserts.
+ *
+ * So this reports both readings instead of picking one. Which it is has to be settled where
+ * the evidence lives: whether an `auth.users` row appeared in the expected Supabase project,
+ * and whether the limiter wrote its rows — the limiter runs BEFORE the provider call and
+ * fails open, so a database this deployment cannot reach leaves no trace in any response.
+ */
+if (alice.res.status === 202) {
   const body = await alice.res.clone().json().catch(() => null);
-  check("sign-up returns 202 confirmation-required", body?.status === "confirmation-required", body);
+  check("sign-up answers 202 with the non-committal body", body?.status === "confirmation-required", body);
   check(
-    "no session cookies are issued before confirmation",
+    "no session cookies are issued on the 202 path",
     !(alice.res.headers.getSetCookie?.() ?? []).some((c) => c.startsWith("ab_session")),
   );
-  console.error("\nSTOP: this deployment requires email confirmation, so no session can be");
-  console.error("      established from here. The rest of the suite needs a signed-in caller.");
+  console.error("\nSTOP: sign-up returned 202, which is EITHER confirmation-required OR a provider");
+  console.error("      refusal — the endpoint does not distinguish them, by design. No session");
+  console.error("      exists either way, so the rest of the suite cannot run.");
+  console.error("\n      Settle it against the database, not this output:");
+  console.error(`        · did an auth.users row appear for ${alice.email}?`);
+  console.error("        · did auth_rate_limits gain rows? (the limiter runs before the");
+  console.error("          provider call and fails open, so an unreachable DATABASE_URL is");
+  console.error("          silent here and invisible to the smoke suite)");
   process.exit(3);
 }
 
