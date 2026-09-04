@@ -70,6 +70,14 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
 
+      # Asserted before the build, because the failure it catches is invisible afterwards:
+      # a deployment can hold every required variable, come up configured, score 17/17, and
+      # be pointed at the wrong Supabase project the whole time. The limiter fails open, so
+      # an unreachable database never reaches a status code. Structure only — hostnames,
+      # ports and public project refs; never a password or a key.
+      - name: Assert the pulled preview configuration
+        run: node scripts/inspect-preview-config.mjs
+
       - name: Build
         run: vercel build --token="$VERCEL_TOKEN"
         env:
