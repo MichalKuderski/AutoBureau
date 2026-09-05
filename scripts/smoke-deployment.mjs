@@ -51,15 +51,22 @@ if (!BASE) {
 
 // A scheme with no host — `https://` — survives the check above, because stripping the
 // trailing slashes leaves the truthy string `https:`. It is checked separately, and named
-// rather than left to `fetch`'s "Failed to parse URL", because there is exactly one caller
-// that produces this shape: §9.7's rollback step interpolating an unset `PRODUCTION_HOST`.
-// That step runs only when the job is already failing, so an unexplained stack trace there
-// reads as part of the original failure. The rollback itself still ran — `vercel rollback`
-// precedes this — so what an unset variable costs is the proof that it landed.
+// rather than left to `fetch`'s "Failed to parse URL", because every caller that produces
+// this shape produces it the same way: a workflow interpolating a repository variable that
+// is unset. Two do so now — staging smokes `https://${{ vars.STAGING_HOST }}`, and §9.7's
+// rollback verification uses `PRODUCTION_HOST` — so the message names the cause rather than
+// one variable.
+//
+// The staging case fails the job outright, which is correct: a smoke run against a host
+// nobody configured proves nothing. The production case runs only when the job is already
+// failing, and there the rollback itself still happened — `vercel rollback` precedes this —
+// so what an unset variable costs there is the proof that it landed.
 if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/*$/.test(BASE)) {
   console.error(`FAIL  base URL has a scheme but no host: ${JSON.stringify(BASE)}`);
-  console.error("      From CI this means the repository variable PRODUCTION_HOST is unset");
-  console.error("      (doc 09 §9.4). The rollback ran; its verification did not.");
+  console.error("      From CI this means the repository variable naming this host is unset");
+  console.error("      (doc 09 §9.4): STAGING_HOST for staging, PRODUCTION_HOST for the");
+  console.error("      rollback verification — in which case the rollback ran and only its");
+  console.error("      verification did not.");
   process.exit(2);
 }
 if (!URL.canParse(BASE) || new URL(BASE).hostname === "") {

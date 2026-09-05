@@ -187,8 +187,33 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
 
+      # `vars.STAGING_HOST`, not the per-deployment URL this job just produced.
+      #
+      # The deployment URL and `APP_ORIGIN` are different origins here, and the CSRF check
+      # compares against `APP_ORIGIN`. Staging deploys with `--prod`, so `VERCEL_ENV` is
+      # `production` and `APP_ORIGIN` is the stable domain rather than something derived
+      # per deployment — §9.3 provides that derivation only for `preview`. Smoking the
+      # deployment URL therefore sends an Origin the application is right to reject, and
+      # `POST /v1/auth/sign-in` answered 403 before reaching the provider. The suite still
+      # scored 17/17, because its assertions there are "never 200" and "not 503" and a
+      # CSRF refusal satisfies both — a green run that had not exercised the boundary.
+      #
+      # Pointing both steps at the stable domain makes the Origin match, which is what lets
+      # the acceptance suite below sign anyone in at all. `--prod` promotes this deployment
+      # to that domain, so it is the same artifact either way.
       - name: Smoke staging
-        run: node scripts/smoke-deployment.mjs "${{ steps.deploy.outputs.url }}"
+        run: node scripts/smoke-deployment.mjs "https://${{ vars.STAGING_HOST }}"
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+      # Staging's counterpart to the preview job's acceptance run, and the reason the host
+      # above has to be right: this signs real synthetic identities in and out, and every
+      # state-changing request it makes carries an Origin the CSRF check must accept.
+      #
+      # Synthetic identities only, against the staging backend doc 09 §1 already fixes as
+      # synthetic-only. It never touches production: this job only ever holds a staging host.
+      - name: Staging acceptance against the deployment
+        run: node scripts/staging-acceptance.mjs "https://${{ vars.STAGING_HOST }}"
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 

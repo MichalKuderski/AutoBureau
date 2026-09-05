@@ -169,10 +169,21 @@ instead is not a naming preference: the pull finds no configuration, every previ
 with a project the pipeline never deploys to. It also lands every pull-request preview
 inside the production project, one scope away from production's own values.
 
-One further input is required and is deliberately **not** a secret: the repository *variable*
-**`PRODUCTION_HOST`** — production's public hostname, no scheme (e.g. `app.autobureau.com`).
-It is a `vars.` entry rather than a `secrets.` one because a public hostname is not a
-credential, and filing it as a secret would both misstate that and hide it from review.
+Two further inputs are required and are deliberately **not** secrets — the repository
+*variables* **`PRODUCTION_HOST`** and **`STAGING_HOST`**, each an environment's public
+hostname with no scheme (e.g. `app.autobureau.com`). They are `vars.` entries rather than
+`secrets.` ones because a public hostname is not a credential, and filing one as a secret
+would both misstate that and hide it from review.
+
+**`STAGING_HOST` must name the same origin as staging's `APP_ORIGIN`.** The two are compared
+against each other on every state-changing request, by the CSRF check, and a mismatch is not
+a partial failure: staging deploys with `--prod`, so `VERCEL_ENV` is `production` and
+`APP_ORIGIN` is that stable domain rather than the per-deployment URL — §9.3 derives an
+origin only for `preview`. Smoking the deployment URL instead sends an Origin the
+application is correct to reject, and `POST /v1/auth/sign-in` answers 403 without ever
+reaching the provider. The smoke suite still scores 17/17, because a CSRF refusal satisfies
+both of its assertions there ("never 200", "not 503"), so the miss is invisible in the score
+— it is the acceptance suite, which signs identities in, that cannot proceed at all.
 
 It is read in exactly one place, and that place is why it matters: §9.7's rollback step
 re-smokes production after promoting the previous deployment back. `vercel rollback` runs
