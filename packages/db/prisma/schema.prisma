@@ -7,9 +7,27 @@
 //   task_runs / approvals     — no agent execution in v1 (Action Kits are templates)
 // Their architecture is reviewed and parked in doc 04; empty tables are not free.
 
+// `binaryTargets` is a consequence of doc 09 §9's deployment topology, not a Prisma
+// preference. GitHub Actions is the only deployment authority — `vercel.json` sets
+// `github.enabled: false` — so `vercel build` runs on an Ubuntu runner and
+// `vercel deploy --prebuilt` uploads that output to Vercel's RHEL-based Node runtime.
+// `native` alone therefore bakes in `debian-openssl-3.0.x`, the runner's engine, and the
+// deployed function fails at Prisma initialisation with:
+//
+//     Prisma Client could not locate the Query Engine for runtime "rhel-openssl-3.0.x"
+//
+// It fails in a way nothing upstream can see. The engine never loads, so no connection is
+// ever attempted: `auth_rate_limits` stayed empty because the limiter caught this and
+// failed open, the database logged nothing because nothing reached it, and the smoke suite
+// scored 17/17 because no check it makes touches a database. Every symptom that looked like
+// a pooler or credential problem was this.
+//
+// `native` stays first so local development and the integration suites keep using the host's
+// own engine; `rhel-openssl-3.0.x` is the deployed one and is additive.
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
+  binaryTargets   = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
