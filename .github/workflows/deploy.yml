@@ -139,6 +139,14 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # ─── TEMPORARY DIAGNOSTIC — REMOVE ONCE THE CREDENTIAL IS RESOLVED ───────────────
+      # Structure only; never the password. See scripts/inspect-connection-structure.mjs
+      # for what it prints and what it deliberately refuses to print.
+      - name: Inspect the migration connection string — TEMPORARY, structure only
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}
+        run: node scripts/inspect-connection-structure.mjs "staging job (environment-bound), secrets.STAGING_MIGRATION_DATABASE_URL"
+
       # Direct connection, not the pooled one: `migrate deploy` takes advisory locks and
       # issues DDL, and transaction-mode pooling breaks both.
       - name: Apply migrations (expand)
@@ -176,6 +184,36 @@ jobs:
         run: node scripts/smoke-deployment.mjs "${{ steps.deploy.outputs.url }}"
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+  # ─── TEMPORARY DIAGNOSTIC JOB — REMOVE WITH THE STEP ABOVE ─────────────────────────
+  #
+  # Deliberately binds NO `environment:`. Two things follow, and both are the point.
+  #
+  # It is not subject to the staging environment's deployment branch policy, so it runs
+  # from a branch — the environment-bound `staging` job cannot, which is what stopped the
+  # first attempt at this diagnostic dead with an empty step list.
+  #
+  # And `secrets.STAGING_MIGRATION_DATABASE_URL` resolves here from REPOSITORY (or
+  # organization) scope only, with no environment layer able to shadow it. Comparing this
+  # reading against the one the `staging` job prints is what separates the two surviving
+  # hypotheses: same structure in both means the repository secret itself still lacks the
+  # tenant suffix; different structure means an environment secret is shadowing it after
+  # all, whatever the environment page shows.
+  diagnose-secret-scope:
+    name: diagnose secret scope (TEMPORARY)
+    # Exactly the `staging` job's condition, so both readings come from ONE run at the
+    # same moment — the previous comparison spanned two runs and two instruments.
+    if: github.event_name == 'push' || github.event.inputs.environment == 'staging'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Inspect what repository/organization scope holds
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}
+        run: node scripts/inspect-connection-structure.mjs "repository/organization scope (no environment binding), secrets.STAGING_MIGRATION_DATABASE_URL"
 
   # ── production ─────────────────────────────────────────────────────────────────────
   # Gated by a GitHub protected environment: the approval is the promotion. Production is
