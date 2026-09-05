@@ -140,65 +140,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # ─── TEMPORARY DIAGNOSTIC — REMOVE ONCE THE CREDENTIAL IS RESOLVED ───────────────
-      #
-      # Two runs failed here with a byte-identical `P1000 ... credentials for \`postgres\``
-      # after the repository secret was corrected to carry the tenant suffix Supavisor
-      # requires. Prisma's error echoes the username in full, so the value the runner
-      # received still lacks it — but "what Prisma echoed" is a second-hand reading, and
-      # every remaining hypothesis is about a value nobody has looked at directly.
-      #
-      # This step looks at it, and prints ONLY structure: presence, scheme, username,
-      # whether that username carries the project ref, host, port, database, and the NAMES
-      # of any query parameters. The password is never printed, never measured, and never
-      # digested — a truncated hash of the whole URL would leave the password as its only
-      # unknown, so anyone with the log could brute-force it offline. Presence is the only
-      # thing said about it.
-      #
-      # It cannot fail the job: the point is to see this AND the migration error together
-      # in one run, rather than trading one blind attempt for another.
+      # Structure only; never the password. See scripts/inspect-connection-structure.mjs
+      # for what it prints and what it deliberately refuses to print.
       - name: Inspect the migration connection string — TEMPORARY, structure only
         env:
           DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}
-        run: |
-          node - <<'DIAGNOSTIC'
-          const raw = process.env.DATABASE_URL;
-          const say = (k, v) => console.log(`  ${k.padEnd(30)} ${v}`);
-
-          console.log('── secrets.STAGING_MIGRATION_DATABASE_URL, structure only ──');
-
-          if (raw === undefined || raw === '') {
-            say('present', 'NO — unset or empty');
-            console.log('\n  The secret did not reach this step at all.');
-            process.exit(0);
-          }
-          say('present', 'yes');
-
-          let u;
-          try {
-            u = new URL(raw);
-          } catch {
-            say('parseable as a URL', 'NO');
-            console.log('\n  Present but not decomposable. An unencoded reserved character');
-            console.log('  in the password (@ : / ? # %) will do this and shift every field.');
-            process.exit(0);
-          }
-          say('parseable as a URL', 'yes');
-
-          // decodeURIComponent: a percent-encoded username would otherwise read as a
-          // different value than the server is actually offered.
-          const username = decodeURIComponent(u.username);
-          const REF = '.kdqnfruwgocfqwpbpuxo';
-
-          say('scheme', u.protocol.replace(':', ''));
-          say('username', username === '' ? '(empty)' : username);
-          say(`username carries ${REF}`, username.includes(REF) ? 'YES' : 'NO');
-          say('password', u.password === '' ? 'ABSENT' : 'present (never printed)');
-          say('hostname', u.hostname);
-          say('port', u.port === '' ? '(default)' : u.port);
-          say('database', u.pathname.replace(/^\//, '') || '(none)');
-          const names = [...u.searchParams.keys()];
-          say('query parameter names', names.length > 0 ? names.join(', ') : '(none)');
-          DIAGNOSTIC
+        run: node scripts/inspect-connection-structure.mjs "staging job (environment-bound), secrets.STAGING_MIGRATION_DATABASE_URL"
 
       # Direct connection, not the pooled one: `migrate deploy` takes advisory locks and
       # issues DDL, and transaction-mode pooling breaks both.
@@ -237,6 +184,34 @@ jobs:
         run: node scripts/smoke-deployment.mjs "${{ steps.deploy.outputs.url }}"
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+  # ─── TEMPORARY DIAGNOSTIC JOB — REMOVE WITH THE STEP ABOVE ─────────────────────────
+  #
+  # Deliberately binds NO `environment:`. Two things follow, and both are the point.
+  #
+  # It is not subject to the staging environment's deployment branch policy, so it runs
+  # from a branch — the environment-bound `staging` job cannot, which is what stopped the
+  # first attempt at this diagnostic dead with an empty step list.
+  #
+  # And `secrets.STAGING_MIGRATION_DATABASE_URL` resolves here from REPOSITORY (or
+  # organization) scope only, with no environment layer able to shadow it. Comparing this
+  # reading against the one the `staging` job prints is what separates the two surviving
+  # hypotheses: same structure in both means the repository secret itself still lacks the
+  # tenant suffix; different structure means an environment secret is shadowing it after
+  # all, whatever the environment page shows.
+  diagnose-secret-scope:
+    name: diagnose secret scope (TEMPORARY)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Inspect what repository/organization scope holds
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}
+        run: node scripts/inspect-connection-structure.mjs "repository/organization scope (no environment binding), secrets.STAGING_MIGRATION_DATABASE_URL"
 
   # ── production ─────────────────────────────────────────────────────────────────────
   # Gated by a GitHub protected environment: the approval is the promotion. Production is
