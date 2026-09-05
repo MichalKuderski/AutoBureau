@@ -139,6 +139,67 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # ─── TEMPORARY DIAGNOSTIC — REMOVE ONCE THE CREDENTIAL IS RESOLVED ───────────────
+      #
+      # Two runs failed here with a byte-identical `P1000 ... credentials for \`postgres\``
+      # after the repository secret was corrected to carry the tenant suffix Supavisor
+      # requires. Prisma's error echoes the username in full, so the value the runner
+      # received still lacks it — but "what Prisma echoed" is a second-hand reading, and
+      # every remaining hypothesis is about a value nobody has looked at directly.
+      #
+      # This step looks at it, and prints ONLY structure: presence, scheme, username,
+      # whether that username carries the project ref, host, port, database, and the NAMES
+      # of any query parameters. The password is never printed, never measured, and never
+      # digested — a truncated hash of the whole URL would leave the password as its only
+      # unknown, so anyone with the log could brute-force it offline. Presence is the only
+      # thing said about it.
+      #
+      # It cannot fail the job: the point is to see this AND the migration error together
+      # in one run, rather than trading one blind attempt for another.
+      - name: Inspect the migration connection string — TEMPORARY, structure only
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}
+        run: |
+          node - <<'DIAGNOSTIC'
+          const raw = process.env.DATABASE_URL;
+          const say = (k, v) => console.log(`  ${k.padEnd(30)} ${v}`);
+
+          console.log('── secrets.STAGING_MIGRATION_DATABASE_URL, structure only ──');
+
+          if (raw === undefined || raw === '') {
+            say('present', 'NO — unset or empty');
+            console.log('\n  The secret did not reach this step at all.');
+            process.exit(0);
+          }
+          say('present', 'yes');
+
+          let u;
+          try {
+            u = new URL(raw);
+          } catch {
+            say('parseable as a URL', 'NO');
+            console.log('\n  Present but not decomposable. An unencoded reserved character');
+            console.log('  in the password (@ : / ? # %) will do this and shift every field.');
+            process.exit(0);
+          }
+          say('parseable as a URL', 'yes');
+
+          // decodeURIComponent: a percent-encoded username would otherwise read as a
+          // different value than the server is actually offered.
+          const username = decodeURIComponent(u.username);
+          const REF = '.kdqnfruwgocfqwpbpuxo';
+
+          say('scheme', u.protocol.replace(':', ''));
+          say('username', username === '' ? '(empty)' : username);
+          say(`username carries ${REF}`, username.includes(REF) ? 'YES' : 'NO');
+          say('password', u.password === '' ? 'ABSENT' : 'present (never printed)');
+          say('hostname', u.hostname);
+          say('port', u.port === '' ? '(default)' : u.port);
+          say('database', u.pathname.replace(/^\//, '') || '(none)');
+          const names = [...u.searchParams.keys()];
+          say('query parameter names', names.length > 0 ? names.join(', ') : '(none)');
+          DIAGNOSTIC
+
       # Direct connection, not the pooled one: `migrate deploy` takes advisory locks and
       # issues DDL, and transaction-mode pooling breaks both.
       - name: Apply migrations (expand)
