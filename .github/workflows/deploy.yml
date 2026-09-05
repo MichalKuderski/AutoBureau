@@ -148,8 +148,23 @@ jobs:
 
       - run: npm install --global vercel@latest
 
+      # No `--git-branch`. Vercel accepts it only alongside `--environment=preview`, because
+      # branch overrides exist only in the preview scope; pairing it with `production`
+      # is refused outright:
+      #
+      #     Invalid request: `target` must be "preview" when specifying a `gitBranch`
+      #
+      # `production` is nonetheless the right scope here. Staging deploys with `--prod`
+      # into the *staging* Vercel project (doc 09 §9.3), so the configuration it needs is
+      # that project's production scope — the log confirms the right project was reached,
+      # `autobureau-staging`, and only the flag combination was rejected.
+      #
+      # This had never executed before: the staging job runs only on a push to `main` or a
+      # dispatch, and every previous attempt died at the migration step above it. The two
+      # sibling `vercel pull` calls were always correct — preview passes
+      # `--environment=preview` with no branch, production passes neither.
       - name: Pull Vercel staging configuration
-        run: vercel pull --yes --environment=production --git-branch=main --token="$VERCEL_TOKEN"
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
