@@ -97,8 +97,24 @@ export interface AuthProvider {
   exchangeCode(authCode: string, codeVerifier: string): Promise<SessionTokens>;
 }
 
+/**
+ * A refusal's HTTP status, classified as either a fact about the ACCOUNT or a fact about
+ * the DEPLOYMENT. The distinction is not cosmetic: the caller's fallback becomes a 202 on
+ * sign-up and a 401 on sign-in, while `unavailable` becomes a 503, so a status routed to
+ * the wrong side is visible to anyone who can send two requests.
+ *
+ * 422 is the case that matters, and it was missing. GoTrue answers a repeat sign-up with
+ * `422 user_already_exists`, so a registered address fell through to `unavailable` and the
+ * endpoint returned 503 where a fresh address returned 204 — an account-enumeration oracle
+ * in the one endpoint whose header promises there is none, and the exact thing the 202 is
+ * for. Staging found it; the unit test beside it did not, because it asserted only that the
+ * provider's wording never reaches the caller and never asserted the classification.
+ *
+ * Both are now covered, and 422 sits with 400/401/403 where it belongs: the provider is
+ * telling us something about the account, not about itself.
+ */
 function mapStatus(status: number, fallback: ProviderRejection): ProviderRejection {
-  if (status === 400 || status === 401 || status === 403) return fallback;
+  if (status === 400 || status === 401 || status === 403 || status === 422) return fallback;
   if (status === 429) return "rate-limited";
   return "unavailable";
 }

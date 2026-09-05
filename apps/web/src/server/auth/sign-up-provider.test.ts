@@ -135,6 +135,46 @@ describe("signUp — no account-enumeration oracle", () => {
     expect((error as ProviderError).message).not.toMatch(/registered/i);
     expect((error as ProviderError).message).toBe("sign-up was refused");
   });
+
+  /*
+   * The half this file used to leave unasserted, and the half that was broken.
+   *
+   * Checking only the message let a real oracle through: `mapStatus` had no case for 422,
+   * so GoTrue's `422 user_already_exists` — its answer to every repeat sign-up — classified
+   * as `unavailable`, and the route returned 503 where a fresh address returned 204. The
+   * wording never leaked and the endpoint reported membership anyway, by status code.
+   *
+   * Staging caught it: 204 → 503 → 503 across three attempts on one address. So the
+   * classification is asserted here, and the reason is spelled out rather than left to a
+   * comment, because it is the property the 202 depends on.
+   */
+  it("classifies a 422 as a fact about the ACCOUNT, so the route can answer 202", async () => {
+    const provider = createGoTrueProvider(
+      config,
+      fetchReturning(jsonResponse({ msg: "User already registered", error_code: "user_already_exists" }, 422)),
+    );
+
+    const error = await provider
+      .signUp("taken@example.test", "correct horse battery", "Ada")
+      .catch((e: unknown) => e);
+
+    expect((error as ProviderError).reason).toBe("invalid-credentials");
+    // Never `unavailable`: that is the deployment-fault class and becomes a 503, which a
+    // fresh address never receives.
+    expect((error as ProviderError).reason).not.toBe("unavailable");
+  });
+
+  it("still treats a genuine provider outage as a deployment fault", async () => {
+    // The counterpart. 5xx must stay `unavailable` — widening the account-fact class to
+    // swallow real outages would trade one wrong answer for another.
+    for (const status of [500, 502, 503]) {
+      const provider = createGoTrueProvider(config, fetchReturning(jsonResponse({}, status)));
+      const error = await provider
+        .signUp("someone@example.test", "correct horse battery", "Ada")
+        .catch((e: unknown) => e);
+      expect((error as ProviderError).reason).toBe("unavailable");
+    }
+  });
 });
 
 describe("signUp — failure classification matches the rest of the provider", () => {
