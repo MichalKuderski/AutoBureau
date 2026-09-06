@@ -131,12 +131,35 @@ if (mode === "migration-secret") {
   console.error(`  source: ${src}\n`);
 
   const env = readPulled(src);
+
+  // Three states, not two. `vercel pull` writes "[SENSITIVE]" in place of a value it may not
+  // hand back, so a key present-but-unreadable is configured correctly and simply cannot be
+  // asserted on here. Collapsing that into "present" would overstate what was verified;
+  // collapsing it into "missing" would raise a false alarm. It is reported as itself.
+  const SENSITIVE = /^\[SENSITIVE\]$/i;
   for (const key of REQUIRED) {
     const v = env.get(key);
-    say(key, v === undefined || v === "" ? "MISSING" : "present");
-    if (v === undefined || v === "") bad(`${key} is absent from the Production scope`);
+    if (v === undefined || v === "") {
+      say(key, "ABSENT — the key is not in this scope at all");
+      bad(`${key} is absent from the Production scope`);
+    } else if (SENSITIVE.test(v.trim())) {
+      say(key, "present, value withheld (Sensitive)");
+    } else {
+      say(key, "present and readable");
+    }
   }
-  const extra = [...env.keys()].filter((k) => !REQUIRED.includes(k) && !k.startsWith("VERCEL_"));
+
+  // Doppler stamps its own source into every scope it syncs. These are identifiers, not
+  // credentials, and they answer the question the sync UI cannot: which config landed here.
+  rule("Which Doppler config synced into this scope?");
+  for (const key of ["DOPPLER_PROJECT", "DOPPLER_CONFIG", "DOPPLER_ENVIRONMENT"]) {
+    const v = env.get(key);
+    say(key, v === undefined || v === "" ? "(absent — no Doppler sync stamp)" : v);
+  }
+  const cfg = (env.get("DOPPLER_CONFIG") ?? "").trim();
+  if (cfg !== "" && /stg|stag/i.test(cfg)) bad(`the STAGING Doppler config (${cfg}) is synced into the production scope`);
+
+  const extra = [...env.keys()].filter((k) => !REQUIRED.includes(k) && !k.startsWith("VERCEL_") && !k.startsWith("DOPPLER_"));
   if (extra.length > 0) console.error(`\n  other names present: ${extra.sort().join(", ")}`);
 
   rule("Which Supabase project do the auth values name?");
