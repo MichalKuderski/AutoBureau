@@ -1,7 +1,8 @@
 # 11 — Production Cutover Runbook
 
-**Status:** documentation only. Executing this runbook has not been authorized; nothing in
-it has been performed.
+**Status:** sections A–B performed 2026-09-06 under explicit authorization. Sections C
+onward are not authorized and have not been performed. **The deployment boundary (section F)
+has not been crossed.**
 
 This document is written to be followed without the conversation that produced it. Every
 fact below was verified against the running systems on 2026-09-06; where something could
@@ -13,12 +14,14 @@ not be verified, it says so rather than guessing.
 
 | Fact | Value | How it was established |
 | --- | --- | --- |
-| `main` | `7c9bf8f` | working tree clean, local == `origin/main` |
+| `main` | `5f75646` | working tree clean, local == `origin/main` |
 | Staging smoke | **17/17** | run `34001299542`, against `https://autobureau-staging.vercel.app` |
 | Staging acceptance | **57/57** | same run, same origin |
 | Staging database | 6 migrations applied, none rolled back | queried directly; all `finished_at` predate the run |
-| Production Supabase | **`INACTIVE`** (`hdoknvqnjyttondgidvi`, us-east-2) | Supabase project listing |
-| Production deployment | **never performed** | `production` job skipped on every run to date |
+| Production Supabase | **`ACTIVE_HEALTHY`** (`hdoknvqnjyttondgidvi`, us-east-2, PG 17.6) | resumed 2026-09-06 under section B |
+| Production schema | **empty, verified before migration** | 0 public tables · no `_prisma_migrations` · 0 auth users · no `app_user`/`app_dispatcher` · no `app` schema · 0 policies |
+| Production extensions | `pgcrypto` installed · `vector` available | `pg_available_extensions`; the init migration installs `vector` |
+| Production deployment | **never performed** | the `production` job has been skipped on every run to date |
 | Production secrets | **never exercised** | the `production` job has never run |
 
 Staging Supabase is `kdqnfruwgocfqwpbpuxo` (us-west-2) and is `ACTIVE_HEALTHY`. It is
@@ -104,8 +107,30 @@ Conflating them is the single most likely configuration error in this cutover.
 - Used by: the running application. It is not a superuser and does not own the tables, so
   row-level security genuinely applies to it.
 
-`app_user` is **created by the migrations**, not by hand. It does not exist until step D
-completes.
+### `app_user` is created by the migrations — but cannot log in
+
+Migration `20260728000001_rls` runs `CREATE ROLE app_user NOLOGIN` and grants it its table,
+sequence and schema privileges. It does **not** give the role `LOGIN`, a password, or
+`CONNECT` on the database, and that omission is deliberate: a migration is version-controlled
+text, and a password in it would be a password in the repository.
+
+The consequence is a step that exists in no automated path. After the migrations run,
+somebody with admin access must, once per environment:
+
+```sql
+ALTER ROLE app_user WITH LOGIN PASSWORD '<chosen production password>';
+GRANT CONNECT ON DATABASE postgres TO app_user;
+```
+
+Until that runs, the runtime `DATABASE_URL` cannot authenticate no matter how correctly it is
+formed. The only places in this repository that perform it are the two integration-test
+harnesses, both explicitly marked test-harness-only; `docs/hardening/00-ground-truth.md`
+records the same behaviour. Staging works because someone did this by hand there.
+
+**Ordering consequence.** The password in `DATABASE_URL` (section C) and the password set by
+the statement above must be the same value, so it has to be chosen before C-3 and applied in
+D-4. `DATABASE_URL` therefore cannot be *verified* until D-4 completes — configuring it
+earlier is correct, but it is unexercised configuration until then.
 
 ---
 
@@ -150,8 +175,13 @@ Three rules that the pipeline depends on. Each was learned from a failure.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | B-1 | Resume / provision the production project | Supabase | `hdoknvqnjyttondgidvi` | **MUTATING** | A-4 | status `ACTIVE_HEALTHY` | stays inactive → **STOP** | project can be paused again; no data exists yet | **YES** |
 | B-2 | Confirm the project is empty before anything is applied | Supabase SQL | `public` schema, `auth.users` | read-only | B-1 | 0 public tables, 0 auth users | unexpected content → **STOP** and establish why | none | no |
-| B-3 | Enable required extensions | Supabase | `pgcrypto`, `vector` | **MUTATING** | B-1 | both available | missing → migrations in D will fail | drop extensions | no |
+| B-3 | Confirm the required extensions are **available** | Supabase | `pgcrypto`, `vector` | read-only | B-1 | both listed as available | not available on the plan/region → **STOP**, migrations in D will fail | none | no |
 | B-4 | Record the project's region and pooler hostname | Supabase | connection settings | read-only | B-1 | region recorded for use in C | — | none | no |
+
+B-3 is deliberately read-only. Migration `20260728000000_init` issues
+`CREATE EXTENSION IF NOT EXISTS "pgcrypto"` and the same for `vector`, so the migrations own
+extension creation. Creating them by hand beforehand is unnecessary and introduces a second
+source of truth for something the schema already declares.
 
 ---
 
@@ -168,6 +198,11 @@ Nothing here is a code change. Every item is set in a console.
 | C-5 | Set the stable production hostname | GitHub → repository **variables** | `PRODUCTION_HOST` | **MUTATING** | C-3 | no scheme; **equals the hostname portion of `APP_ORIGIN`** | mismatch → every state-changing request 403 | re-enter | no |
 | C-6 | Confirm the Vercel identifiers name the production project | GitHub → repository secrets | `VERCEL_PROJECT_ID`, `VERCEL_ORG_ID`, `VERCEL_TOKEN` | read-only | — | project id is the production project, not staging | pointing at staging would deploy production code to staging | — | no |
 
+**`DATABASE_URL` is configured here but cannot work yet.** `app_user` does not exist until
+D-1 creates it, and cannot authenticate until D-4 gives it `LOGIN` and a password. Choose that
+password now, use it in `DATABASE_URL` here, and apply the identical value at D-4. Between C-3
+and D-4, `DATABASE_URL` is correct-but-unexercised configuration, not a working connection.
+
 > **STOP** — C-4 and C-5 are the two most failure-prone steps in this runbook, and both fail
 > silently or confusingly. Do not proceed to F without completing G's prerequisites.
 
@@ -180,6 +215,8 @@ Nothing here is a code change. Every item is set in a console.
 | D-1 | Run the production job's migration step | GitHub Actions → Supabase | `prisma migrate deploy` | **MUTATING** | B, C-1 | 6 migrations applied | `P1000` → credential wrong, see incident §1 | expand-only; see rollback policy | **YES** (via F's gate) |
 | D-2 | Verify migration state | Supabase SQL | `_prisma_migrations` | read-only | D-1 | 6 rows, all `finished`, none `rolled_back` | any partial → **STOP** | — | no |
 | D-3 | Verify the runtime role and RLS exist | Supabase SQL | `app_user`, `pg_tables.rowsecurity`, `pg_policies` | read-only | D-1 | `app_user` exists; RLS enabled on tenant tables; policies present | absent → the application cannot run safely | — | no |
+| D-4 | **Grant `app_user` the ability to log in** | Supabase SQL | `ALTER ROLE app_user WITH LOGIN PASSWORD …` + `GRANT CONNECT` | **MUTATING** | D-1 | `app_user` can authenticate; password matches the one in `DATABASE_URL` | omitted → the application cannot connect at all, and every request fails at the boundary | `ALTER ROLE app_user NOLOGIN` restores the migrated state | **YES** |
+| D-5 | Confirm `app_user` is not over-privileged | Supabase SQL | `pg_roles` | read-only | D-4 | `app_user` is not superuser, has no `BYPASSRLS`, and does not own the tables | any of those true → RLS does not actually constrain it — **STOP** | — | no |
 
 The migration step is part of the production job; it is not run separately. D-1 therefore
 happens inside F, and D-2/D-3 are performed immediately afterwards.
@@ -254,6 +291,14 @@ On a first-ever production deployment there is no previous deployment to roll ba
 That is a material risk and should be stated explicitly at K-1: the rollback path does not
 exist yet.
 
+**Do not be reassured by GitHub's deployment list.** It contains one record labelled
+environment `Production`, created by `vercel[bot]` on 2026-08-28 from commit `56cf76e`. Its
+URL is `autobureau-staging-6heq6tjbn-…` — Vercel's own Git integration deploying to the
+*staging* project and labelling the record "Production". It is not a deployment of the
+production application and is not a rollback target. It was possible because `vercel.json`
+(`github.enabled: false`) was authored 2026-08-21 but only reached `main` on 2026-09-05 with
+the PR #3 fast-forward; no such record exists after that date.
+
 ---
 
 ## Rollback policy
@@ -288,6 +333,7 @@ Every line must be **yes**. Any **no** is a NO-GO.
 - [ ] `APP_ORIGIN` set explicitly
 - [ ] `PRODUCTION_HOST` set and **equal to the hostname portion of `APP_ORIGIN`**
 - [ ] `VERCEL_PROJECT_ID` names the production project
+- [ ] the `app_user` password is chosen, used in `DATABASE_URL`, and ready to apply at D-4
 - [ ] rollback decision-maker named and reachable
 - [ ] rollback target exists, or its absence is explicitly accepted
 - [ ] authorization recorded
