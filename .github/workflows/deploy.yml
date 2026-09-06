@@ -228,6 +228,25 @@ jobs:
       name: production
       url: ${{ steps.deploy.outputs.url }}
     steps:
+      # First, and before anything mutates. Pointing the smoke above at `PRODUCTION_HOST`
+      # gives that variable teeth it did not have: unset, it used to cost only the proof
+      # that a rollback landed, but now it would fail the primary smoke — and a failed
+      # smoke rolls production back. An unset variable would therefore roll back a
+      # deployment that was never shown to be bad.
+      #
+      # So it is checked here instead, ahead of the migration and the deploy, where the
+      # cost of being wrong is a red job that changed nothing. A public hostname is not a
+      # credential (§9.4), but there is no reason to echo it, so this reports only whether
+      # it is set.
+      - name: Require PRODUCTION_HOST before anything mutates
+        run: |
+          if [ -z "${{ vars.PRODUCTION_HOST }}" ]; then
+            echo "::error::vars.PRODUCTION_HOST is unset. Refusing to migrate or deploy production:"
+            echo "::error::the post-deploy smoke targets that host, and would fail and trigger a rollback."
+            exit 1
+          fi
+          echo "PRODUCTION_HOST is set."
+
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
@@ -268,8 +287,27 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
+      # `vars.PRODUCTION_HOST`, for the reason staging now does the same: `APP_ORIGIN` here
+      # is the stable host, the CSRF check compares against it, and a deployment URL is a
+      # different origin. Smoking the deployment URL sends an Origin the application is
+      # right to reject, so `POST /v1/auth/sign-in` answers 403 without reaching the
+      # provider — and the suite still scores 17/17, because a refusal satisfies both of its
+      # assertions there ("never 200", "not 503"). Staging demonstrated exactly this: the
+      # same check read 403 against the deployment URL and 401 against the stable origin.
+      #
+      # `vercel deploy --prebuilt --prod` aliases this deployment onto that host before the
+      # CLI returns, so this smokes the artifact just deployed, not the previous one. It
+      # also makes the rollback verification below an apples-to-apples repeat of this step:
+      # same origin, before and after the pointer moves.
+      #
+      # There is deliberately NO production acceptance step. `staging-acceptance.mjs` proves
+      # the auth stack by *creating* identities, households and rate-limit rows; doc 09 §1
+      # fixes staging as synthetic-only precisely so that is safe there. Running it against
+      # production would write synthetic accounts into real user data and consume real
+      # sign-up limits. Production's equivalent is a human check against a known account,
+      # which belongs in the cutover runbook rather than in this job.
       - name: Smoke production
-        run: node scripts/smoke-deployment.mjs "${{ steps.deploy.outputs.url }}"
+        run: node scripts/smoke-deployment.mjs "https://${{ vars.PRODUCTION_HOST }}"
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
