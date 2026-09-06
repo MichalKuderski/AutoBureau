@@ -396,6 +396,8 @@ Every line must be **yes**. Any **no** is a NO-GO.
 - [ ] `main` is the commit intended to ship, tree clean
 - [ ] staging on that commit: smoke 17/17, acceptance 57/57
 - [ ] production Supabase `ACTIVE_HEALTHY`, verified empty before migration
+- [ ] RLS posture diffed against staging — `relrowsecurity`, `relforcerowsecurity`
+      and policy counts per table match (incident §7)
 - [ ] `pgcrypto` and `vector` available
 - [ ] `PRODUCTION_MIGRATION_DATABASE_URL` set: `postgres.<ref>`, port 5432
 - [ ] Doppler production config populated with all nine runtime values
@@ -473,6 +475,27 @@ Supabase project's auth service before assuming a deployment fault.
 The pipeline is green and the product is not. Do not leave it live on the strength of a
 green pipeline: roll back the application, keep the schema, and reproduce against staging —
 where creating identities is safe — before trying again.
+
+**7 — The environments differ, so staging proved nothing (observed 2026-09-06).**
+Production carried an event trigger, `ensure_rls`, created out of band: it ran
+`ALTER TABLE ... ENABLE ROW LEVEL SECURITY` on every table created in `public`. On the
+tenant tables this changed nothing — the RLS migration enables, forces and attaches
+policies to those anyway. It landed on the three tables that migration deliberately leaves
+alone, and RLS with **zero policies is deny-all** for any role that is neither the owner
+nor `BYPASSRLS` — exactly `app_user`. `users` and `user_profiles` back the identity mirror
+on sign-up and are read on every authenticated request, so production would have refused to
+register a single user.
+
+Nothing in the pipeline would have said so. The smoke suite never signs up, and
+`POST /v1/auth/sign-in` is answered by the rate limiter, whose table does carry a policy —
+17/17 either way. Staging was clean, which is precisely why it could not warn: **a posture
+that differs between the two makes the acceptance run evidence about staging only.**
+
+Caught by diffing `pg_class.relrowsecurity`, `relforcerowsecurity` and policy counts
+between the two databases before deploying. Corrected by migration
+`20260906000000_restore_intended_rls_posture`, which drops the trigger and restores the
+documented posture; it is a no-op on staging. **Run that diff as part of GO / NO-GO.** An
+identical schema is an assumption, not a fact, and it is cheap to check.
 
 ---
 
