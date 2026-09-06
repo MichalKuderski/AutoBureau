@@ -58,7 +58,7 @@ it, and marked with whether it has ever been proven to work.
 
 | Name | Used by | Proven |
 | --- | --- | --- |
-| `PRODUCTION_HOST` | production smoke + rollback verification | `project-5i2bs.vercel.app`; equality with `APP_ORIGIN` verified by parsing |
+| `PRODUCTION_HOST` | production smoke + rollback verification | set to `project-5i2bs.vercel.app`; equality with `APP_ORIGIN` **no longer verifiable** — see §"What could NOT be verified" |
 | `STAGING_HOST` | staging only | yes |
 
 Variables, not secrets, deliberately: a public hostname is not a credential, and filing it
@@ -220,8 +220,7 @@ deploying, without connecting to any database, and without printing any value:
   `postgresql`, username `postgres.hdoknvqnjyttondgidvi`, host
   `aws-0-us-east-2.pooler.supabase.com`, port `5432`, database `postgres`, no query
   parameters. Never used to connect.
-- `hostname(APP_ORIGIN) == PRODUCTION_HOST` — verified by parsing against
-  `project-5i2bs.vercel.app`.
+- `PRODUCTION_HOST` is set to `project-5i2bs.vercel.app`.
 
 ### What could NOT be verified, and why it matters
 
@@ -233,7 +232,13 @@ remain unverified going into F:
 - that `DATABASE_URL` uses `app_user.hdoknvqnjyttondgidvi`, port 6543, and
   `?pgbouncer=true&connection_limit=1`;
 - that the `AUTH_*` URLs name `hdoknvqnjyttondgidvi` rather than the staging project;
-- that `project-5i2bs.vercel.app` is a domain of the `autobureau-production` project.
+- that `project-5i2bs.vercel.app` is a domain of the `autobureau-production` project;
+- that `hostname(APP_ORIGIN) == PRODUCTION_HOST`. An earlier run *did* verify this by
+  parsing, while `APP_ORIGIN` was still readable. The Doppler sync has since rewritten it
+  as Sensitive, so that verification describes a value that may no longer be there — treat
+  the invariant as **unverified**, not as verified. **G-2 is its detector**: the sign-in
+  check reads 401 when the two agree and 403 when they do not, and the score is 17/17
+  either way.
 
 **A malformed `DATABASE_URL` will not fail the smoke suite.** The limiter is the first thing
 to touch the database on the auth path and it fails OPEN by design, so a database the
