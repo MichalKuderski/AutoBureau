@@ -21,6 +21,16 @@ on:
         default: staging
         type: choice
         options: [staging, production]
+      stage:
+        description: >-
+          production only. `migrate` applies migrations and stops, so that D-4 — granting
+          app_user LOGIN, which no automated path performs — happens before a build is
+          shipped against a database it cannot reach. `deploy` then builds and ships. `all`
+          fuses both and is only correct once app_user can already log in.
+        required: false
+        default: all
+        type: choice
+        options: [all, migrate, deploy]
 
 concurrency:
   # Never two deployments to the same target at once; a queued production deploy that
@@ -217,32 +227,45 @@ jobs:
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
-  # ── production ─────────────────────────────────────────────────────────────────────
+  # ── production · stage 1 of 2: migrate ─────────────────────────────────────────────
   # Gated by a GitHub protected environment: the approval is the promotion. Production is
   # never deployed by a push alone — a human names the commit that ships (doc 09 §2/§4).
-  production:
-    name: production
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
+  #
+  # Migration and deploy are separate dispatches, and the reason is not cosmetic.
+  # `20260728000001_rls` creates `app_user` NOLOGIN — deliberately, because a password in a
+  # version-controlled migration would be a password in the repository. Until somebody runs,
+  # once per environment (runbook D-4):
+  #
+  #     ALTER ROLE app_user WITH LOGIN PASSWORD '…';
+  #     GRANT CONNECT ON DATABASE postgres TO app_user;
+  #
+  # the runtime `DATABASE_URL` cannot authenticate no matter how correctly it is formed.
+  # Fused into one job, the deploy would ship a build whose database is unreachable — and
+  # the smoke suite would still score 17/17, because the rate limiter fails open (ADR-013),
+  # so a database nothing can reach changes no HTTP status the suite looks at. The green
+  # score would be indistinguishable from a healthy deployment.
+  #
+  # Splitting the stages puts a human decision where that failure would otherwise be
+  # silent: migrate, perform D-4, verify the role, then deploy.
+  production_migrate:
+    name: production · migrate
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      && github.event.inputs.environment == 'production'
+      && contains(fromJSON('["all", "migrate"]'), github.event.inputs.stage)
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: ${{ steps.deploy.outputs.url }}
     steps:
-      # First, and before anything mutates. Pointing the smoke above at `PRODUCTION_HOST`
-      # gives that variable teeth it did not have: unset, it used to cost only the proof
-      # that a rollback landed, but now it would fail the primary smoke — and a failed
-      # smoke rolls production back. An unset variable would therefore roll back a
-      # deployment that was never shown to be bad.
-      #
-      # So it is checked here instead, ahead of the migration and the deploy, where the
-      # cost of being wrong is a red job that changed nothing. A public hostname is not a
-      # credential (§9.4), but there is no reason to echo it, so this reports only whether
-      # it is set.
+      # First, and before anything mutates — for the same reason it guards the deploy
+      # stage: an unset `PRODUCTION_HOST` fails the smoke there, and a failed smoke rolls
+      # production back. Checked here too so a two-stage cutover cannot migrate against a
+      # configuration that is already doomed to roll back two dispatches later.
       - name: Require PRODUCTION_HOST before anything mutates
         run: |
           if [ -z "${{ vars.PRODUCTION_HOST }}" ]; then
-            echo "::error::vars.PRODUCTION_HOST is unset. Refusing to migrate or deploy production:"
-            echo "::error::the post-deploy smoke targets that host, and would fail and trigger a rollback."
+            echo "::error::vars.PRODUCTION_HOST is unset. Refusing to migrate production:"
+            echo "::error::the deploy stage smokes that host, and would fail and roll back."
             exit 1
           fi
           echo "PRODUCTION_HOST is set."
@@ -260,6 +283,63 @@ jobs:
         run: pnpm --filter @autobureau/db exec prisma migrate deploy
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_MIGRATION_DATABASE_URL }}
+
+      - name: What has to happen before the deploy stage
+        run: |
+          echo "Migrations applied. app_user now exists, and cannot log in yet."
+          echo
+          echo "Before dispatching stage 2 (environment=production, stage=deploy):"
+          echo "  D-2  verify _prisma_migrations: 6 rows, all finished, none rolled back"
+          echo "  D-3  verify RLS enabled and policies present on the tenant tables"
+          echo "  D-4  ALTER ROLE app_user WITH LOGIN PASSWORD '<the password already in DATABASE_URL>';"
+          echo "       GRANT CONNECT ON DATABASE postgres TO app_user;"
+          echo "  D-5  verify app_user is not superuser, has no BYPASSRLS, and owns no tables"
+          echo
+          echo "Deploying without D-4 produces a 17/17 smoke against an unreachable database."
+
+  # ── production · stage 2 of 2: build and deploy ────────────────────────────────────
+  # Runs after the migrate stage in a fused `all` dispatch, or on its own once D-4 has
+  # been performed and verified. `skipped` is accepted as a predecessor result precisely so
+  # the `deploy` stage can be dispatched by itself.
+  production_deploy:
+    name: production · deploy
+    needs: [production_migrate]
+    if: >-
+      !cancelled()
+      && github.event_name == 'workflow_dispatch'
+      && github.event.inputs.environment == 'production'
+      && contains(fromJSON('["all", "deploy"]'), github.event.inputs.stage)
+      && (needs.production_migrate.result == 'success' || needs.production_migrate.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      # Pointing the smoke below at `PRODUCTION_HOST` gives that variable teeth it did not
+      # have: unset, it used to cost only the proof that a rollback landed, but now it would
+      # fail the primary smoke — and a failed smoke rolls production back. An unset variable
+      # would therefore roll back a deployment that was never shown to be bad.
+      #
+      # So it is checked here, ahead of the deploy, where the cost of being wrong is a red
+      # job that changed nothing. A public hostname is not a credential (§9.4), but there is
+      # no reason to echo it, so this reports only whether it is set.
+      - name: Require PRODUCTION_HOST before anything mutates
+        run: |
+          if [ -z "${{ vars.PRODUCTION_HOST }}" ]; then
+            echo "::error::vars.PRODUCTION_HOST is unset. Refusing to deploy production:"
+            echo "::error::the post-deploy smoke targets that host, and would fail and trigger a rollback."
+            exit 1
+          fi
+          echo "PRODUCTION_HOST is set."
+
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
 
       - run: npm install --global vercel@latest
 

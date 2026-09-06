@@ -265,8 +265,25 @@ runtime database connection is wrong, whatever the smoke score says.
 | D-4 | **Grant `app_user` the ability to log in** | Supabase SQL | `ALTER ROLE app_user WITH LOGIN PASSWORD …` + `GRANT CONNECT` | **MUTATING** | D-1 | `app_user` can authenticate; password matches the one in `DATABASE_URL` | omitted → the application cannot connect at all, and every request fails at the boundary | `ALTER ROLE app_user NOLOGIN` restores the migrated state | **YES** |
 | D-5 | Confirm `app_user` is not over-privileged | Supabase SQL | `pg_roles` | read-only | D-4 | `app_user` is not superuser, has no `BYPASSRLS`, and does not own the tables | any of those true → RLS does not actually constrain it — **STOP** | — | no |
 
-The migration step is part of the production job; it is not run separately. D-1 therefore
-happens inside F, and D-2/D-3 are performed immediately afterwards.
+**The production job is two dispatches, and D-4 sits between them.** It was originally one
+job — preflight, migrate, pull, build, deploy, smoke — with no pause anywhere. Fused like
+that, the deploy shipped a build against a database `app_user` could not yet log in to, and
+the smoke suite still returned 17/17, because the rate limiter fails open (ADR-013) and an
+unreachable database changes no HTTP status the suite inspects.
+
+So the job is split into `production_migrate` and `production_deploy`, selected by the
+`stage` input:
+
+| `stage` | Runs |
+| --- | --- |
+| `migrate` | preflight, install, `prisma migrate deploy`, then stop |
+| `deploy` | preflight, install, pull, build, deploy, smoke, rollback-on-failure |
+| `all` | both, in order — correct **only** once D-4 has already been performed |
+
+D-1 is stage 1. D-2, D-3, D-4 and D-5 happen between the two dispatches. D-4 is performed by
+a human with admin access, against the Supabase SQL editor: the password belongs in Doppler
+and in the database, and putting a copy in GitHub Actions to automate one once-per-environment
+statement would spread it to a third system for no gain.
 
 ---
 
@@ -285,10 +302,16 @@ Note: `--git-branch` is not passed. Vercel accepts that flag only with
 
 | # | Action | System | Item | Mode | Prereq | Expected | Failure | Rollback | Approval |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| F-1 | Dispatch the Deploy workflow with `environment: production` | GitHub Actions | Deploy workflow | **MUTATING** | A-4, B, C | production job starts | — | — | **YES** |
+| F-1 | Dispatch Deploy with `environment: production`, `stage: migrate` | GitHub Actions | Deploy workflow | **MUTATING** | A-4, B, C | `production · migrate` starts | — | — | **YES** |
 | F-2 | Approve the protected environment | GitHub | `production` environment | **MUTATING** | F-1 | job proceeds | — | decline to approve | **YES** |
 | F-3 | Preflight guard passes | GitHub Actions | `PRODUCTION_HOST` | read-only | C-5 | "PRODUCTION_HOST is set." | unset → job fails **before** migrating or deploying | nothing changed | no |
-| F-4 | Migrations, build, deploy | GitHub Actions → Vercel | `--prod` deploy | **MUTATING** | F-3 | deployment aliased onto the stable host | see incident section | `vercel rollback` | no |
+| F-4 | Migrations apply, then the run stops | GitHub Actions → Supabase | `prisma migrate deploy` | **MUTATING** | F-3 | 6 migrations applied; no build, no deploy | `P1000` → incident §1 | expand-only | no |
+| F-5 | Perform D-2 … D-5 | Supabase SQL | `app_user` | **MUTATING** (D-4 only) | F-4 | `app_user` can log in and is not over-privileged | **STOP** — do not dispatch stage 2 | `ALTER ROLE app_user NOLOGIN` | **YES** |
+| F-6 | Dispatch Deploy with `environment: production`, `stage: deploy` | GitHub Actions | Deploy workflow | **MUTATING** | F-5 | build and deploy proceed | — | — | **YES** |
+| F-7 | Build, deploy, smoke | GitHub Actions → Vercel | `--prod` deploy | **MUTATING** | F-6 | deployment aliased onto the stable host | see incident section | `vercel rollback` | no |
+
+> **STOP** — never dispatch `stage: all` for a first cutover. `app_user` cannot log in until
+> D-4, and a deploy made before it scores a clean 17/17 against a database it cannot reach.
 
 Production cannot be reached by a push. It requires `workflow_dispatch`, an explicit
 `environment: production` input, and the protected environment's approval — three
