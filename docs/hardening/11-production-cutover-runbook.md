@@ -47,10 +47,10 @@ it, and marked with whether it has ever been proven to work.
 
 | Name | Used by | Proven |
 | --- | --- | --- |
-| `PRODUCTION_MIGRATION_DATABASE_URL` | production migration step | **never exercised** |
+| `PRODUCTION_MIGRATION_DATABASE_URL` | production migration step | **structure verified 2026-09-06**; not yet used to connect |
 | `VERCEL_TOKEN` | all three jobs | yes — staging runs today |
 | `VERCEL_ORG_ID` | all three jobs | yes — staging runs today |
-| `VERCEL_PROJECT_ID` | production job only | historically resolved to the production Vercel project; not exercised since |
+| `VERCEL_PROJECT_ID` | production job only | **verified 2026-09-06** — resolves to `data-analyst-mike/autobureau-production` |
 | `VERCEL_AUTOMATION_BYPASS_SECRET` | smoke and acceptance | yes for staging; unproven against the production project |
 | `STAGING_MIGRATION_DATABASE_URL` | staging only — **not** used by production | yes |
 
@@ -58,7 +58,7 @@ it, and marked with whether it has ever been proven to work.
 
 | Name | Used by | Proven |
 | --- | --- | --- |
-| `PRODUCTION_HOST` | production smoke + rollback verification | unverified |
+| `PRODUCTION_HOST` | production smoke + rollback verification | set to `project-5i2bs.vercel.app`; equality with `APP_ORIGIN` verified by parsing |
 | `STAGING_HOST` | staging only | yes |
 
 Variables, not secrets, deliberately: a public hostname is not a credential, and filing it
@@ -202,6 +202,33 @@ Nothing here is a code change. Every item is set in a console.
 D-1 creates it, and cannot authenticate until D-4 gives it `LOGIN` and a password. Choose that
 password now, use it in `DATABASE_URL` here, and apply the identical value at D-4. Between C-3
 and D-4, `DATABASE_URL` is correct-but-unexercised configuration, not a working connection.
+
+### Verified state as of 2026-09-06
+
+A read-only run of `.github/workflows/verify-production-config.yml` established, without
+deploying or connecting to any database:
+
+- `PRODUCTION_MIGRATION_DATABASE_URL` — **present and structurally correct**: scheme
+  `postgresql`, username `postgres.hdoknvqnjyttondgidvi` (production tenant), host
+  `aws-0-us-east-2.pooler.supabase.com`, port `5432`, database `postgres`, no query
+  parameters. It has **not** been used to connect.
+- `VERCEL_PROJECT_ID` — **resolves to `data-analyst-mike/autobureau-production`**, not
+  staging.
+- The production project's **Production scope** holds `APP_ORIGIN` and `SENTRY_DSN` (both
+  Sensitive, so unreadable here) and Doppler's own `DOPPLER_PROJECT` / `DOPPLER_CONFIG` /
+  `DOPPLER_ENVIRONMENT` stamps — so a Doppler sync **is** wired to the correct destination.
+- **Seven names are ABSENT from that scope**: `AUTH_ISSUER`, `AUTH_AUDIENCE`,
+  `AUTH_JWKS_URL`, `AUTH_API_URL`, `AUTH_ANON_KEY`, `AUTH_COOKIE_NAME`, `DATABASE_URL`.
+  The sync destination is right; the config it carries is incomplete. Deploying in this
+  state produces a 503 at the auth boundary — incident §2.
+- `hostname(APP_ORIGIN) == PRODUCTION_HOST` — verified by parsing against
+  `project-5i2bs.vercel.app`: scheme https, no port, no path, no query, byte-identical.
+
+**Still unconfirmed:** that `project-5i2bs.vercel.app` is a domain of the
+`autobureau-production` project. The deploy targets that project by id and the smoke targets
+that hostname; if the hostname belongs elsewhere, the smoke tests a different application.
+It fails safely — a failed smoke rolls back — but confirm it in the project's Domains list
+before F.
 
 > **STOP** — C-4 and C-5 are the two most failure-prone steps in this runbook, and both fail
 > silently or confusingly. Do not proceed to F without completing G's prerequisites.
