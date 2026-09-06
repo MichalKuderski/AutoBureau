@@ -58,7 +58,7 @@ it, and marked with whether it has ever been proven to work.
 
 | Name | Used by | Proven |
 | --- | --- | --- |
-| `PRODUCTION_HOST` | production smoke + rollback verification | set to `project-5i2bs.vercel.app`; equality with `APP_ORIGIN` verified by parsing |
+| `PRODUCTION_HOST` | production smoke + rollback verification | `project-5i2bs.vercel.app`; equality with `APP_ORIGIN` verified by parsing |
 | `STAGING_HOST` | staging only | yes |
 
 Variables, not secrets, deliberately: a public hostname is not a credential, and filing it
@@ -205,30 +205,45 @@ and D-4, `DATABASE_URL` is correct-but-unexercised configuration, not a working 
 
 ### Verified state as of 2026-09-06
 
-A read-only run of `.github/workflows/verify-production-config.yml` established, without
-deploying or connecting to any database:
+Established by a read-only run of a temporary verification workflow (since removed), without
+deploying, without connecting to any database, and without printing any value:
 
-- `PRODUCTION_MIGRATION_DATABASE_URL` — **present and structurally correct**: scheme
-  `postgresql`, username `postgres.hdoknvqnjyttondgidvi` (production tenant), host
+- **All nine runtime names are present** in the production Vercel project's Production scope:
+  `AUTH_ISSUER`, `AUTH_AUDIENCE`, `AUTH_JWKS_URL`, `AUTH_API_URL`, `AUTH_ANON_KEY`,
+  `AUTH_COOKIE_NAME`, `DATABASE_URL`, `APP_ORIGIN`, `SENTRY_DSN` — each present and marked
+  Sensitive.
+- `VERCEL_PROJECT_ID` **resolves to `data-analyst-mike/autobureau-production`**, printed by
+  the Vercel CLI. Not staging.
+- A Doppler sync is wired into that project's Production scope (its own stamps sit there
+  alongside the nine).
+- `PRODUCTION_MIGRATION_DATABASE_URL` is **present and structurally correct**: scheme
+  `postgresql`, username `postgres.hdoknvqnjyttondgidvi`, host
   `aws-0-us-east-2.pooler.supabase.com`, port `5432`, database `postgres`, no query
-  parameters. It has **not** been used to connect.
-- `VERCEL_PROJECT_ID` — **resolves to `data-analyst-mike/autobureau-production`**, not
-  staging.
-- The production project's **Production scope** holds `APP_ORIGIN` and `SENTRY_DSN` (both
-  Sensitive, so unreadable here) and Doppler's own `DOPPLER_PROJECT` / `DOPPLER_CONFIG` /
-  `DOPPLER_ENVIRONMENT` stamps — so a Doppler sync **is** wired to the correct destination.
-- **Seven names are ABSENT from that scope**: `AUTH_ISSUER`, `AUTH_AUDIENCE`,
-  `AUTH_JWKS_URL`, `AUTH_API_URL`, `AUTH_ANON_KEY`, `AUTH_COOKIE_NAME`, `DATABASE_URL`.
-  The sync destination is right; the config it carries is incomplete. Deploying in this
-  state produces a 503 at the auth boundary — incident §2.
+  parameters. Never used to connect.
 - `hostname(APP_ORIGIN) == PRODUCTION_HOST` — verified by parsing against
-  `project-5i2bs.vercel.app`: scheme https, no port, no path, no query, byte-identical.
+  `project-5i2bs.vercel.app`.
 
-**Still unconfirmed:** that `project-5i2bs.vercel.app` is a domain of the
-`autobureau-production` project. The deploy targets that project by id and the smoke targets
-that hostname; if the hostname belongs elsewhere, the smoke tests a different application.
-It fails safely — a failed smoke rolls back — but confirm it in the project's Domains list
-before F.
+### What could NOT be verified, and why it matters
+
+Every one of the nine is marked **Sensitive**, which makes it write-only: `vercel pull`
+returns `[SENSITIVE]` rather than the value. Their *presence* is authoritative; their
+*contents* are not inspectable from any surface short of a running deployment. So these
+remain unverified going into F:
+
+- that `DATABASE_URL` uses `app_user.hdoknvqnjyttondgidvi`, port 6543, and
+  `?pgbouncer=true&connection_limit=1`;
+- that the `AUTH_*` URLs name `hdoknvqnjyttondgidvi` rather than the staging project;
+- that `project-5i2bs.vercel.app` is a domain of the `autobureau-production` project.
+
+**A malformed `DATABASE_URL` will not fail the smoke suite.** The limiter is the first thing
+to touch the database on the auth path and it fails OPEN by design, so a database the
+deployment cannot reach produces no error in any status the suite checks — 17/17 is
+achievable with the database entirely unreachable. That is not hypothetical: it is exactly
+how a Prisma engine defect hid behind a perfect score earlier in this project.
+
+The detector is **`auth_rate_limits` receiving rows** (§J). After G passes, check that table
+before believing the deployment is healthy. An empty table alongside real traffic means the
+runtime database connection is wrong, whatever the smoke score says.
 
 > **STOP** — C-4 and C-5 are the two most failure-prone steps in this runbook, and both fail
 > silently or confusingly. Do not proceed to F without completing G's prerequisites.
@@ -375,7 +390,7 @@ Watch for at least one quiet hour before K.
 | --- | --- | --- | --- |
 | Errors | Sentry | no new issue groups | new groups, or a spike in an existing one |
 | Authentication | Supabase auth logs | sign-ins and token grants arriving | 4xx/5xx bursts, or silence when traffic exists |
-| `auth_rate_limits` | production database | **rows arriving** | **empty** |
+| `auth_rate_limits` | production database | **rows arriving** | **empty — the runtime `DATABASE_URL` is wrong, whatever smoke said** |
 | HTTP errors | Vercel | 5xx flat | any sustained 5xx |
 | Auth failures | application | ordinary 401s | 403 clusters → origin mismatch; 503 → configuration |
 | Rollback readiness | Vercel | previous deployment present | none available |
