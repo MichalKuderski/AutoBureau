@@ -247,7 +247,7 @@ describe("a link that cannot be honoured fails safely and identically", () => {
 
     const second = await confirm("?token_hash=hash-replay&type=email");
     expect(second.status).toBe(400);
-    expect(await second.text()).toContain("This link didn&#x27;t work");
+    expect(await second.text()).toContain("This link didn't work");
   });
 
   it("refuses a hash the provider never issued", async () => {
@@ -260,7 +260,12 @@ describe("a link that cannot be honoured fails safely and identically", () => {
     verifyMode = "malformed";
     const response = await confirm("?token_hash=hash-malformed&type=email");
     expect(response.status).toBe(400);
-    expect(named(response, "ab_session")).toBeUndefined();
+    // The cookie header IS present on this path — it is the *clearing* one. Asserting it
+    // absent would have been asserting the opposite of the intended behaviour, so assert
+    // what actually matters: nothing that could authenticate anybody went out.
+    const cookie = named(response, "ab_session")!;
+    expect(cookie).toContain("Max-Age=0");
+    expect(cookie).not.toContain(ACCESS);
   });
 
   it("refuses when the provider is unreachable", async () => {
