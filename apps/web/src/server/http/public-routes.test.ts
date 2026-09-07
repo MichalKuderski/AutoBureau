@@ -15,6 +15,10 @@ describe("A4 · the public surface is exactly this and nothing more", () => {
       [
         "/",
         "/auth/callback",
+        // P1-02 follow-up: email confirmation is completed server-side here. Public because
+        // it is only ever reached by following a link from an inbox, with no session and,
+        // often, on a different device from the one that signed up.
+        "/auth/confirm",
         "/auth/refresh",
         "/forgot-password",
         "/sign-in",
