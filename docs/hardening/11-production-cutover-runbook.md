@@ -499,6 +499,72 @@ identical schema is an assumption, not a fact, and it is cheap to check.
 
 ---
 
+**8 — The confirmation-email hand-off does not complete (observed 2026-09-07, OPEN).**
+With Supabase "Confirm email" ON — production's setting; staging's is OFF — `/v1/auth/sign-up`
+correctly returns 202 with no session, and the account is inert until the emailed link is
+followed. The route's header comment says that link "lands on `/auth/callback`, where
+mirroring and household bootstrap already run." **It does not.** `/auth/callback` is the
+magic-link PKCE redemption endpoint: it requires `?code=` *and* the HttpOnly verifier cookie,
+and calls `abandon()` without either. The 202 path sets no cookies at all, and `signUp` sends
+no `code_challenge` — only `requestMagicLink` does. So the confirmation link cannot satisfy
+the callback under any configuration, including a correct Site URL and the same browser tab.
+
+Observed: GoTrue confirmed the address and issued a session (`email_confirmed_at`,
+`confirmed_at`, `last_sign_in_at` all set); every application table stayed empty; no partial
+state. The user is confirmed but unknown to the application until they sign in with their
+password — which does mirror and bootstrap correctly, so the defect is confined to the
+hand-off. Staging cannot detect it: with confirmation OFF, all 57 acceptance checks take the
+204 branch. The same lesson as §7 — an environment difference makes staging's green
+irrelevant to the path production actually runs.
+
+---
+
+## Production cutover record — 2026-09-06/07
+
+First production deployment. `main` at `10e5504`.
+
+| Step | Result |
+| --- | --- |
+| Migrations | 7/7 finished, 0 rolled back |
+| Stable-origin smoke | 17/17; sign-in **401** (not 403, not 503) |
+| Runtime database proof | `auth_rate_limits` rows written by smoke traffic — the check that a green score cannot give |
+| Password sign-in | wrong password 401, correct 204 |
+| Identity + household bootstrap | completed exactly once: users 1, user_profiles 1, households 1, household_users 1 (owner), entitlements 1 |
+| Authorization | `GET /v1/households/current` 200, role owner |
+| Session refresh | `GET /auth/refresh` 303, same-origin `Location`, `no-store`; GoTrue confirmed rotation — parent token revoked, child token sole active, `sessions.refreshed_at` stamped, same session continued |
+| Sign-out | 204; protected endpoint 401 afterwards; GoTrue sessions and refresh tokens both dropped to 0 |
+| Confirmation-email hand-off | **FAILED — incident §8, open** |
+
+Three deploy attempts were needed, and the first two are the instructive ones: both scored a
+clean 17/17 while the runtime database was entirely unreachable, because the rate limiter
+fails open (ADR-013) and a malformed `DATABASE_URL` changes no HTTP status the suite inspects.
+The first carried a bare password where a URL belonged; the second was still malformed
+(`PrismaClientInitializationError: the URL must start with the protocol`). **Never read a
+production smoke score without checking `auth_rate_limits` for new rows.**
+
+### Controlled test account cleanup
+
+The acceptance identity and its tenant data were removed on 2026-09-07, scoped by explicit id
+to one user and one household. Order is forced by the schema, not by preference:
+
+1. `audit_log` — **no foreign key**, so it is never cascaded and must go explicitly
+2. `outbox_events` — likewise
+3. `households` — cascades `household_users`, `entitlements`, `household_members`,
+   `documents`, `items`, `obligations`, `idempotency_keys`
+4. `public.users` — **must follow the household**: `households_created_by_fkey` is
+   `ON DELETE RESTRICT`
+5. `auth.users` — cascades identities, sessions, refresh tokens, one-time tokens
+
+`public.users` and `auth.users` are decoupled by design — the mirror copies the id and no
+foreign key joins them — so neither cascades to the other and both need deleting.
+
+Verified afterwards: every application and auth table at 0; migrations still 7/7 with 0
+rolled back; 19 tables; 15 forced-RLS; policy fingerprint `ddc5270c…` and `app_user` grant
+fingerprint `2ee4e553…` **identical to staging**; no `ensure_rls` trigger; `app_user` still
+LOGIN, not superuser, no BYPASSRLS. Staging untouched.
+
+---
+
 ## What this runbook does not cover
 
 - DNS and custom-domain configuration for the production host.
