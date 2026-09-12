@@ -9,3 +9,5 @@ If verification cannot reach a usable key service, middleware returns 503 with n
 Regression evidence covers concurrent cold calls from separate verifiers, URL isolation, transient/permanent failures, hung requests, recovery, rotation, expired caches, signature/claim negative controls and cookie-preserving middleware responses. A full exact-SHA staging run remains required; local tests do not close the previously observed staging availability gate.
 
 Reference: jose 6.2.8 [remote JWKS options](https://github.com/panva/jose/blob/v6.2.8/docs/jwks/remote/interfaces/RemoteJWKSetOptions.md).
+
+A separate regression reproduced on local PostgreSQL 18: the old `DELETE ... WHERE id IN (SELECT ... LIMIT 100 FOR UPDATE SKIP LOCKED)` removed all 150 expired fixtures. The query now selects the batch once in a MATERIALIZED CTE before deleting its IDs. The existing lower-bound assertion was retained, not relaxed. PostgreSQL 16 CI is still required. No hosted database, migration, role or policy was changed. [PostgreSQL CTE materialization](https://www.postgresql.org/docs/current/queries-with.html#QUERIES-WITH-CTE-MATERIALIZATION) explains the evaluation boundary.
