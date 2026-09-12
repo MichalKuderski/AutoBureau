@@ -10,11 +10,12 @@ import type {
   NotificationView,
   ObligationView,
   TimelineEntry,
+  TimelineLens,
 } from "./types";
 import * as fixtures from "./fixtures";
 import { useCollection } from "./collection";
 
-/** Scoped queries share contract shapes with the server. Timeline/notification cutover remains pending. */
+/** Scoped queries share contract shapes with the server. Notification cutover remains pending. */
 
 const LATENCY_MS = 220;
 
@@ -33,7 +34,7 @@ export const queryKeys = {
   item: (h: string, id: string) => ["item", h, id] as const,
   documents: (h: string, params?: DocumentFilters) => ["documents", h, params ?? {}] as const,
   document: (h: string, id: string) => ["document", h, id] as const,
-  timeline: (h: string) => ["timeline", h] as const,
+  timeline: (h: string, lens?: TimelineLens) => ["timeline", h, ...(lens ? [lens] : [])] as const,
   notifications: (h: string) => ["notifications", h] as const,
   currentHousehold: () => ["household", "current"] as const,
 };
@@ -121,11 +122,9 @@ export function useDocument(householdId: string, id: string) {
     queryFn: ({ signal }) => detail(`/documents/${encodeURIComponent(id)}`, householdId, signal) });
 }
 
-export function useTimeline(householdId: string) {
-  return useQuery<TimelineEntry[]>({
-    queryKey: queryKeys.timeline(householdId),
-    queryFn: () => resolve(fixtures.TIMELINE),
-  });
+export function useTimeline(householdId: string, lens: TimelineLens = "all") {
+  return useCollection<TimelineEntry>(queryKeys.timeline(householdId, lens), householdId,
+    pathWithFilters("/timeline", { lens }));
 }
 
 export function useNotifications(householdId: string) {

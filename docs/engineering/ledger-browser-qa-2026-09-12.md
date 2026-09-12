@@ -41,4 +41,8 @@ The separate published `d09ac057f0cbd198a9de0d2a02a0c66b7f85d138` increment pass
 
 ## Remaining release gaps
 
-Timeline/notification fixtures, persisted onboarding, manual record creation, document processing/review/reminder dispatch, recovery/MFA/privacy and Stripe lifecycle still require implementation and end-to-end evidence. A cancelled reminder is not proof of a functioning reminder sender. A disabled review save is not a completed document workflow. Refer to `launch-risk-register.md`; Production preflight remains NO-GO.
+Notification fixtures, persisted onboarding, manual record creation, document processing/review/reminder dispatch, recovery/MFA/privacy and Stripe lifecycle still require implementation and end-to-end evidence. A cancelled reminder is not proof of a functioning reminder sender. A disabled review save is not a completed document workflow. Refer to `launch-risk-register.md`; Production preflight remains NO-GO.
+
+## Activity history follow-up
+
+The rebuilt local application shows four saved obligation lifecycle actions instead of sample history. Documents correctly has no audit history for the admin-seeded fixture; switching back to Deadlines restores the saved entries, and the completion entry opens the current obligation. Date headings and times follow the saved Denver timezone. Captured browser warning/error logs are empty. Activity tests cover microsecond pagination, cross-tenant targets, filter-bound cursors, failed reads/retry and timezone day boundaries (5 integration + 12 UI checks).

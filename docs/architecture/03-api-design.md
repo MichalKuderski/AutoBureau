@@ -53,6 +53,7 @@ One versioned REST API, OpenAPI-first (ADR-008). The contract in `packages/contr
 | GET/POST | `/v1/items` | Filter: `kind, member_id, status, expiring_within` |
 | GET/PATCH/DELETE | `/v1/items/{id}` | PATCH validates `attrs` against the kind's schema version |
 | GET | `/v1/items/{id}/timeline` | Documents + obligations + task runs for one item |
+| GET | `/v1/timeline` | Household audit history; `lens` filters all, obligations, documents or items; cursor-paginated |
 | PUT | `/v1/items/{id}/secrets/{field}` | Write-only; response returns `last4` only (doc 12 §5) |
 | GET/POST | `/v1/obligations` | Filter: `status, kind, due_before, member_id, priority` |
 | GET/PATCH | `/v1/obligations/{id}` | |

@@ -28,23 +28,7 @@ export type { Page } from "@autobureau/contracts";
 
 export type { Provenance, ObligationView, ItemView, DocumentView, ProposedChange, DashboardSummary } from "@autobureau/contracts";
 
-export interface TimelineEntry {
-  id: string;
-  at: string;
-  kind:
-    | "document_added"
-    | "obligation_created"
-    | "obligation_completed"
-    | "item_added"
-    | "item_expiring"
-    | "reminder_sent"
-    | "value_found";
-  title: string;
-  detail?: string;
-  member_name?: string | null;
-  href?: string;
-  amount_cents?: number | null;
-}
+export type { TimelineEntry, TimelineLens } from "@autobureau/contracts";
 
 export interface NotificationView {
   id: string;
