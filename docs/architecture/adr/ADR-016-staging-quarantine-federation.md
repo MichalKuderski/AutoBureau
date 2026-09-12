@@ -1,12 +1,14 @@
 # ADR-016: Bucket-scoped federation for staging document quarantine
 
-**Status: Proposed; not applied.** September 12, 2026. Scope: staging only. This does not change Production storage or approve public launch.
+**Status: Approved by the founder; not yet applied.** September 12, 2026. Scope: staging only. Approval is recorded in the release-director conversation and remains conditional on every pre-apply proof below. This does not change Production storage or approve public launch.
 
 ## Evidence and decision needed
 
 The upload adapter currently targets Supabase Storage. Its generated S3 keys bypass storage RLS and grant all operations across all project buckets. Automatic approval review rejected creation of that persistent key; subsequent dashboard read-back confirms that no key exists. Retrying the same operation through another API is excluded.
 
-The founder has authorized AWS staging account `792394000571`, Ohio `us-east-2`, with a $100 monthly infrastructure ceiling. A safer alternative is a dedicated AWS S3 quarantine bucket and short-lived Vercel OIDC roles with access only to that bucket. AWS and Vercel are existing approved vendors, but moving primary document storage changes the binding architecture in docs 01, 03 and 05. This ADR makes that decision explicit; it is awaiting approval rather than silently amending those documents.
+The founder has authorized AWS staging account `792394000571`, Ohio `us-east-2`, with a $100 monthly infrastructure ceiling. The approved staging architecture is a dedicated AWS S3 quarantine bucket and short-lived Vercel OIDC roles with access only to that bucket. This ADR supersedes the Supabase quarantine-storage choice in docs 01, 03 and 05 for staging only. Production and processed-document storage are unchanged.
+
+The founder authorizes the real staging apply without another approval only after live account/region/resource checks, verified Vercel claims, bounded trust policies, encrypted remote state and a scoped deployment role are established, and an exact saved plan contains only intended staging additions. Replacements, deletions, unrelated changes, persistent AWS keys and Supabase S3 keys are excluded. Effective policies and every synthetic provider probe must be verified afterward. Intake and worker/model processing remain disabled. Safe pre-provider redaction is a hard prerequisite to sending real document contents to any model provider.
 
 Read-only staging inspection finds zero documents, upload ledgers and storage objects. There is no uploaded data to migrate. The empty Supabase quarantine bucket is retained untouched while this proposal is evaluated.
 
@@ -28,7 +30,7 @@ Temporary AWS session tokens in a SigV4 URL are provider signing context; they a
 
 Before any real plan/apply:
 
-1. Approve this architecture change and restore the correct Vercel team session. The connected Vercel app currently belongs to a different team; the browser is signed out. Verify the actual staging project issuer mode and exact claims without printing a token.
+1. Architecture approval is complete. Verify the actual staging project issuer mode and exact claims through an authorized provider session or the existing staging CI credentials without printing a token. The connected Vercel app currently belongs to a different team; its result is not evidence about the staging project.
 2. Recheck AWS account/region, bucket-name availability, OIDC/role inventory and existing cost. Read-only inspection currently reports zero OIDC providers. Do not modify any pre-existing migration host or unrelated resource.
 3. Establish encrypted, access-controlled remote Terraform state and deployment-role boundaries. This local proposal is not a substitute for the controlled apply path in doc 09.
 4. Review a saved exact plan. It must only add the named staging resources; no replacements or deletions. Set staging budget alerts and resource limits before continuous worker hosting. Billing alerts are not a hard spending cap.

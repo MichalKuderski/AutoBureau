@@ -1,0 +1,34 @@
+name: Staging storage preflight
+on:
+  push:
+    branches: [codex/launch-foundations]
+    paths:
+      - .github/workflows/staging-storage-preflight.yml
+      - scripts/staging-oidc-settings.mjs
+      - scripts/staging-oidc-settings.test.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.repository == 'MichalKuderski/AutoBureau' && github.ref == 'refs/heads/codex/launch-foundations'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: preview
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test scripts/staging-oidc-settings.test.mjs
+      - name: Read staging project metadata only
+        run: node scripts/staging-oidc-settings.mjs
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_STAGING_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-oidc-settings
+          path: staging-oidc-settings.json
+          retention-days: 7
