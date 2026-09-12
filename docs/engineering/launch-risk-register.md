@@ -86,3 +86,13 @@ Final validation: build, lint and typecheck pass; 353/353 web integration checks
 Local browser QA creates one deadline, edits it to September 20 at 17:30 America/Denver, reloads, and verifies $125.50, its person and related record. Read-back confirms one row, one create + one detail-change audit, one created + one updated outbox event, and no reminders. Spring-gap rejection, fall-hour choice, direction/priority controls, mobile layout at 390 px and cancellation/focus restoration pass. Timeline shows the two intended changes; captured console warning/error logs are empty.
 
 Remaining obligation work includes reminder materialization/delivery, snooze and recurrence lifecycles, and editing source-derived windows. Manual CRUD evidence does not establish those flows or complete the staging candidate.
+
+## Notification schema foundation
+
+The manual deadline commit `dc63a495732374e58359dadba67d2fc981a683a9` passes CI 34710349355 and Preview 34710349357, including 17/17 smoke and 57/57 acceptance. The prior setup Preview and this Preview add six expected synthetic households after the last direct count of 90; a fresh staging inventory is required before migration.
+
+The next additive foundation creates notifications, channel deliveries and per-user preferences. Request-role policies enforce both recipient and household boundaries; only read timestamps and the user's own preferences are writable. The trusted dispatcher owns composition and delivery state. Security notices cannot be disabled. New notice/recipient and channel uniqueness prevent duplicate persistence. No delivery readiness is claimed.
+
+Both migrations apply to disposable local PostgreSQL 18, and the final schema diff is empty. Full database integration passes 54/54, full web integration 353/353, and repository units 1,004/1,004. Build, lint and typecheck pass. The final six notification isolation checks also pass after adding the recipient index. An initial rerun used a nonexistent package config; correcting the test command changes no implementation.
+
+[The staging migration plan](notification-migration-plan.md) requires a fresh legacy-state fingerprint, a target-checked migration-only job, read-back verification and immediate removal of the exact temporary branch allowance. Expected additive posture is 9 completed migrations, 18 forced-RLS tables and 24 policies; original role flags, owners, policies and rows must remain unchanged. Hosted migration has not yet occurred. Notifications UI still uses fixtures until the dependent API increment.
