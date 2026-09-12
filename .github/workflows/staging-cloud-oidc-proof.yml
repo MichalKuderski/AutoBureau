@@ -1,0 +1,53 @@
+name: Staging Preview cloud OIDC proof
+on:
+  pull_request:
+    paths:
+      - .github/workflows/staging-cloud-oidc-proof.yml
+      - scripts/staging-cloud-oidc-proof.mjs
+      - scripts/staging-cloud-oidc-proof.test.mjs
+permissions:
+  contents: read
+jobs:
+  prove:
+    if: >-
+      github.repository == 'MichalKuderski/AutoBureau'
+      && github.event.pull_request.number == 5
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.head_ref == 'codex/launch-foundations'
+    environment: preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+      VERCEL_STAGING_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+      VERCEL_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify the live staging project before deployment
+        run: |
+          node scripts/staging-oidc-settings.mjs
+          node --input-type=module -e 'import fs from "node:fs"; const p=JSON.parse(fs.readFileSync("staging-oidc-settings.json")); if(p.projectId!=="prj_qAjK6wDYXoGn02Sl8jjSmrvy4NLR" || p.teamId!=="team_CNQd2ynmaV1xtRhB6NMMeYBs" || p.issuerMode!=="team" || p.oidcEnabled!==true) process.exit(1)'
+      - run: npm install --global vercel@59.16.0
+      - name: Verify claims inside a native Preview build
+        # The token stays inside Vercel. Only allow-listed, verified claims leave it.
+        # This job has no production target, promotion, environment pull, or AWS action.
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel deploy --yes --logs \
+            --build-env PELLUM_STAGING_OIDC_PROOF=1 \
+            --build-env PELLUM_STAGING_OIDC_SCOPE=preview \
+            --build-env "VERCEL_PROJECT_ID=$VERCEL_PROJECT_ID" \
+            --build-env "VERCEL_ORG_ID=$VERCEL_ORG_ID" \
+            --token="$VERCEL_TOKEN" 2>&1 | tee cloud-build.log
+          node --input-type=module -e 'import fs from "node:fs"; const lines=fs.readFileSync("cloud-build.log","utf8").split("\n"); const marker="PELLUM_OIDC_PROOF "; const proof=lines.find(x=>x.includes(marker)); if(!proof) throw new Error("Build emitted no verified OIDC proof"); const value=JSON.parse(proof.slice(proof.indexOf(marker)+marker.length)); if(value.signatureVerified!==true || value.environment!=="preview") throw new Error("Wrong proof scope"); fs.writeFileSync("staging-oidc-claims.json",JSON.stringify(value,null,2)+"\n")'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-oidc-claims-preview
+          path: staging-oidc-claims.json
+          retention-days: 7
