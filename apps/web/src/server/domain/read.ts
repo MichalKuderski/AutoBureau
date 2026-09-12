@@ -180,11 +180,12 @@ export function detailId(request: Request): string {
 }
 export async function item({ request, ctx, db }: HandlerInput) {
   const id = detailId(request);
-  return db.withHousehold(ctx.householdId, async (tx) => {
-    const row = await tx.item.findUnique({ where: { id, householdId: ctx.householdId }, select: ITEM_SELECT });
-    if (!row) throw new HttpProblem("not-found", "That record was not found.");
-    return itemView(row);
-  });
+  return db.withHousehold(ctx.householdId, (tx) => readItem(tx, id, ctx.householdId));
+}
+export async function readItem(tx: ScopedClient, id: string, householdId: string) {
+  const row = await tx.item.findUnique({ where: { id, householdId }, select: ITEM_SELECT });
+  if (!row) throw new HttpProblem("not-found", "That record was not found.");
+  return itemView(row);
 }
 export async function document({ request, ctx, db }: HandlerInput) {
   const id = detailId(request);

@@ -62,6 +62,7 @@ export async function editMember(input: HandlerInput) {
   const id = memberId(input);
   const body = await jsonBody(input.request, MemberPatchSchema);
   return input.db.withHousehold(input.ctx.householdId, async (tx) => {
+    await lockMembers(tx, input.ctx.householdId);
     const row = await tx.householdMember.findUnique({ where: { id, householdId: input.ctx.householdId } });
     if (!row) throw new HttpProblem("not-found", "That person was not found.");
     if (row.archivedAt) throw new HttpProblem("conflict", "Restore this person before editing their details.");
@@ -79,6 +80,7 @@ export async function editMember(input: HandlerInput) {
 export async function archiveMember(input: HandlerInput) {
   const id = memberId(input);
   return input.db.withHousehold(input.ctx.householdId, async (tx) => {
+    await lockMembers(tx, input.ctx.householdId);
     const row = await tx.householdMember.findUnique({ where: { id, householdId: input.ctx.householdId } });
     if (row && !row.archivedAt) await tx.householdMember.update({ where: { id }, data: { archivedAt: new Date() } });
     return noContent();

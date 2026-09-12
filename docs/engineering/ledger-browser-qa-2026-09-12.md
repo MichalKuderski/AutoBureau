@@ -41,8 +41,14 @@ The separate published `d09ac057f0cbd198a9de0d2a02a0c66b7f85d138` increment pass
 
 ## Remaining release gaps
 
-Notification fixtures, persisted onboarding, manual record creation, document processing/review/reminder dispatch, recovery/MFA/privacy and Stripe lifecycle still require implementation and end-to-end evidence. A cancelled reminder is not proof of a functioning reminder sender. A disabled review save is not a completed document workflow. Refer to `launch-risk-register.md`; Production preflight remains NO-GO.
+Notification fixtures, persisted onboarding, manual deadline creation, document processing/review/reminder dispatch, recovery/MFA/privacy and Stripe lifecycle still require implementation and end-to-end evidence. A cancelled reminder is not proof of a functioning reminder sender. A disabled review save is not a completed document workflow. Refer to `launch-risk-register.md`; Production preflight remains NO-GO.
 
 ## Activity history follow-up
 
 The rebuilt local application shows four saved obligation lifecycle actions instead of sample history. Documents correctly has no audit history for the admin-seeded fixture; switching back to Deadlines restores the saved entries, and the completion entry opens the current obligation. Date headings and times follow the saved Denver timezone. Captured browser warning/error logs are empty. Activity tests cover microsecond pagination, cross-tenant targets, filter-bound cursors, failed reads/retry and timezone day boundaries (5 integration + 12 UI checks).
+
+## Manual record follow-up
+
+A new record was created in the disposable local household, edited, and opened with Enter after reload. Its name/provider, Alex Local association, $125.50 amount and September 12, 2027 expiry persist. A read-only database check confirms exactly one record, 12550 cents, unverified status, one create audit, one update audit and two outbox intents. Records activity displays those two changes with the current label.
+
+At 390 px the form fits the viewport and scrolls; an invalid 12.345 amount is rejected without a write. Cancel restores focus to Add item after removing an autofocus conflict discovered during QA. The viewport override was reset. Captured warning/error console logs are empty. Native date changes were committed with keyboard input, since automation fill alone only changed the visible native control value. Full web integration now passes 336/336; repository units pass 990; the final focus/form/API rerun passes 22/22. Final build/lint/typecheck pass.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ItemForm } from "@/components/patterns/item-form";
 import { CollectionMore } from "@/components/patterns/collection-more";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Chip, ITEM_TONE } from "@/components/ui/chip";
@@ -32,9 +33,10 @@ import { cn } from "@/lib/cn";
  * that was true before the audited path existed and stays true once it does.
  */
 export function HouseholdScreen() {
-  const { household } = useHousehold();
+  const { household, can } = useHousehold();
   const [search, setSearch] = useState("");
   const [memberId, setMemberId] = useState<string | null>(null);
+  const [editor, setEditor] = useState<ItemView | "new" | null>(null);
   const [selected, setSelected] = useState<ItemView | null>(null);
 
   const query = useItems(household.id, { search, memberId });
@@ -55,13 +57,13 @@ export function HouseholdScreen() {
   );
 
   const byMember = useMemo(() => {
-    const groups = new Map<string, { name: string; items: ItemView[] }>();
+    const groups = new Map<string, { id: string; name: string; items: ItemView[] }>();
     for (const item of items) {
       const key = item.member_id ?? "__household";
       const name = item.member_name ?? "Whole household";
       const existing = groups.get(key);
       if (existing) existing.items.push(item);
-      else groups.set(key, { name, items: [item] });
+      else groups.set(key, { id: key, name, items: [item] });
     }
     return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [items]);
@@ -91,7 +93,7 @@ export function HouseholdScreen() {
       cell: (row) =>
         row.expires_at ? (
           <time dateTime={row.expires_at} className="tabular-nums text-ink-secondary">
-            {formatDate(row.expires_at, { timeZone: household.timezone, style: "medium" })}
+            {formatDate(row.expires_at, { style: "medium" })}
           </time>
         ) : (
           <span className="text-ink-tertiary">—</span>
@@ -123,18 +125,9 @@ export function HouseholdScreen() {
         title={householdName}
         description="Everything we're tracking for the people you look after."
         actions={
-          // Blueprint P0-11. No onClick, no request, nothing — the screen's primary
-          // CTA did nothing when pressed. No item-creation endpoint or mutation exists
-          // anywhere in this repository. Disabled with an adjacent caption rather than
-          // a bare disabled button with no explanation, matching the treatment used
-          // for the other three P0-11 controls.
-          <div className="flex flex-col items-end gap-1">
-            <Button variant="primary" size="sm" disabled>
-              <Icon.Plus className="size-4" />
-              Add item
-            </Button>
-            <p className="text-xs text-ink-tertiary">Not available yet.</p>
-          </div>
+          can("write") ? <Button variant="primary" size="sm" onClick={() => setEditor("new")}>
+            <Icon.Plus className="size-4" />Add item
+          </Button> : undefined
         }
       />
 
@@ -170,7 +163,7 @@ export function HouseholdScreen() {
       ) : (
         <div className="flex flex-col gap-8">
           {byMember.map((group) => (
-            <section key={group.name} aria-labelledby={`m-${group.name}`}>
+            <section key={group.id} aria-labelledby={`m-${group.id}`}>
               <div className="mb-3 flex items-center gap-2.5">
                 <span
                   aria-hidden="true"
@@ -178,7 +171,7 @@ export function HouseholdScreen() {
                 >
                   {initialsOf(group.name)}
                 </span>
-                <h2 id={`m-${group.name}`} className="text-sm font-medium text-ink">
+                <h2 id={`m-${group.id}`} className="text-sm font-medium text-ink">
                   {group.name}
                 </h2>
                 <span className="text-xs text-ink-tertiary">
@@ -197,6 +190,9 @@ export function HouseholdScreen() {
         </div>
       )}
 
+      {editor !== null && <ItemForm {...(editor === "new" ? {} : { item: editor })} onClose={() => setEditor(null)} onSaved={(saved) => {
+        setEditor(null); setSelected(saved);
+      }} />}
       <CollectionMore query={query} />
       <Modal
         variant="drawer"
@@ -205,13 +201,15 @@ export function HouseholdScreen() {
         title={selected?.name ?? ""}
         description={selected?.vendor_name ?? undefined}
       >
-        {selected ? <ItemDetail item={selected} timeZone={household.timezone} /> : null}
+        {selected ? <><ItemDetail item={selected} />
+          {can("write") && <Button className="mt-5" variant="secondary" onClick={() => { setEditor(selected); setSelected(null); }}>Edit item</Button>}
+        </> : null}
       </Modal>
     </>
   );
 }
 
-function ItemDetail({ item, timeZone }: { item: ItemView; timeZone: string }) {
+function ItemDetail({ item }: { item: ItemView }) {
   return (
     <div className="flex flex-col gap-5">
       <dl className="grid grid-cols-2 gap-4">
@@ -221,8 +219,8 @@ function ItemDetail({ item, timeZone }: { item: ItemView; timeZone: string }) {
         <Detail label="Member">{item.member_name ?? "Whole household"}</Detail>
         <Detail label="Expires">
           {item.expires_at
-            ? formatDate(item.expires_at, { timeZone, style: "long" })
-            : "No expiry"}
+            ? formatDate(item.expires_at, { style: "long" })
+            : "Not recorded"}
         </Detail>
         <Detail label="Cost">
           {item.amount_cents != null

@@ -126,7 +126,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
       type: "https://autobureau.com/problems/unavailable",
       title: "Can't reach Pellum",
       status: 503,
-      detail: "Check your connection — we'll retry automatically.",
+      detail: "Check your connection and try again.",
     });
   }
 
