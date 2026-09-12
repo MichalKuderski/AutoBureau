@@ -279,7 +279,7 @@ model Document {
   storagePath  String     @map("storage_path")
   mimeType     String     @map("mime_type")
   sizeBytes    BigInt     @map("size_bytes")
-  sha256       Bytes
+  sha256       Bytes?     // Set only after hashing actual quarantined bytes.
   status       DocStatus  @default(received)
   docType      String?    @map("doc_type")
   confidence   Decimal?   @db.Decimal(4, 3)
@@ -293,6 +293,7 @@ model Document {
   updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   household Household       @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  upload    DocumentUpload?
   chunks    DocumentChunk[]
   items     Item[]
 
@@ -300,6 +301,21 @@ model Document {
   @@index([householdId, status])
   @@index([householdId, docType, docDate])
   @@map("documents")
+}
+
+/// Upload capability metadata is separate from trusted processed document metadata.
+/// Tenant access is derived through the parent document's forced-RLS policy.
+model DocumentUpload {
+  documentId  String    @id @map("document_id") @db.Uuid
+  objectKey   String    @unique @map("object_key") @db.VarChar(300)
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("document_uploads")
 }
 
 /// A3/F-05: NO vector index at launch. Retrieval is exact KNN inside one household
