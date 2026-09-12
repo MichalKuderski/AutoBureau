@@ -58,7 +58,7 @@ export function OnboardingShell({ children }: { children: React.ReactNode }) {
                   >
                     <span className="sr-only">
                       Step {index + 1} of {ONBOARDING_STEPS.length}
-                      {state === "done" ? ", complete" : ""}:{" "}
+                      :{" "}
                     </span>
                     <span className="block truncate">{step.label}</span>
                   </span>

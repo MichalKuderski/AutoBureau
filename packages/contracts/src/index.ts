@@ -38,3 +38,5 @@ export * from "./domain/members.js";
 export * from "./domain/obligation-actions.js";
 export * from "./domain/timeline.js";
 export * from "./domain/item-input.js";
+export * from "./domain/census.js";
+export * from "./domain/onboarding.js";

@@ -26,6 +26,7 @@ One versioned REST API, OpenAPI-first (ADR-008). The contract in `packages/contr
 |---|---|---|
 | GET | `/v1/me` | Profile + memberships + capabilities |
 | PATCH | `/v1/me` | Profile, timezone, locale |
+| GET/PATCH | `/v1/onboarding` | Owner-only saved setup; atomic people/census save; unverified record seeding without dated obligations |
 | DELETE | `/v1/me` | Starts account deletion workflow (doc 13 §4) — 202 |
 | GET/POST | `/v1/households` | List mine / create |
 | GET/PATCH/DELETE | `/v1/households/{id}` | Delete: owner-only, typed-confirmation, 202 async |

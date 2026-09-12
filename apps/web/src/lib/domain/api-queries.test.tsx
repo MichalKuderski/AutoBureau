@@ -83,4 +83,17 @@ describe("screens use the tenant API and its actual result", () => {
     expect(screen.queryByText(/next weekly summary/i)).not.toBeInTheDocument();
     expect(screen.queryByText("No saved deadlines in the next 45 days")).not.toBeInTheDocument();
   });
+  it("labels census confirmation as a bounded measure rather than household completeness", async () => {
+    const fixture = domainFixtureFetch();
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/v1/dashboard") return json({ action_needed: 0, upcoming_30d: 0, needs_review: 0, items_tracked: 8,
+        coverage: { captured: 1, expected: 2 }, value_found_cents: null, next_digest_at: null });
+      return fixture(input, init);
+    }));
+    renderScreen(<DashboardScreen />);
+    expect(await screen.findByRole("progressbar", { name: "Setup records confirmed" })).toHaveAttribute("aria-valuenow", "50");
+    expect(screen.getByText(/1 of 2 records selected during setup are confirmed/)).toBeInTheDocument();
+    expect(screen.getByText(/not all your household's paperwork/)).toBeInTheDocument();
+    expect(screen.queryByText(/% covered/)).not.toBeInTheDocument();
+  });
 });

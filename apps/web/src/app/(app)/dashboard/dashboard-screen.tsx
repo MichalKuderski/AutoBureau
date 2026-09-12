@@ -260,7 +260,7 @@ function CoveragePanel() {
   if (!data) return null;
 
   if (data.coverage.expected === null) return <Card><CardHeader><CardTitle>Building your ledger</CardTitle></CardHeader><CardContent>
-    <p className="text-sm text-ink-secondary">{data.coverage.captured} verified {data.coverage.captured === 1 ? "record" : "records"}. Coverage will be available once your household setup is saved.</p>
+    <p className="text-sm text-ink-secondary">{data.coverage.captured} verified {data.coverage.captured === 1 ? "record" : "records"}. Add your household's records to keep them in one place.</p>
     <Link href="/household" className="mt-3 inline-block text-sm text-accent">Review your records</Link>
   </CardContent></Card>;
   const pct = Math.min(100, Math.round((data.coverage.captured / data.coverage.expected) * 100));
@@ -269,10 +269,10 @@ function CoveragePanel() {
     <Card>
       <CardHeader>
         <div className="w-full">
-          <CardTitle className="text-lg">How complete is your ledger?</CardTitle>
+          <CardTitle className="text-lg">Setup records confirmed</CardTitle>
           <p className="mt-1 text-sm text-ink-secondary">
-            You told us about {data.coverage.expected} things during setup. We're tracking{" "}
-            {data.coverage.captured}.
+            {data.coverage.captured} of {data.coverage.expected} records selected during setup are confirmed.
+            This measures your selections, not all your household's paperwork.
           </p>
         </div>
       </CardHeader>
@@ -282,16 +282,16 @@ function CoveragePanel() {
           aria-valuenow={pct}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label="Ledger coverage"
+          aria-label="Setup records confirmed"
           className="h-2 overflow-hidden rounded-full bg-surface-sunken"
         >
           <div
-            className="h-full rounded-full bg-accent transition-[width] duration-500"
+            className="h-full rounded-full bg-accent motion-safe:transition-[width] motion-safe:duration-500"
             style={{ width: `${pct}%` }}
           />
         </div>
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-sm font-medium">{pct}% covered</span>
+          <span className="text-sm font-medium">{pct}% confirmed</span>
           <Link href="/household" className="text-sm font-medium text-accent hover:text-accent-hover">
             Fill the gaps
           </Link>
