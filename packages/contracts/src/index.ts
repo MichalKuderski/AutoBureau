@@ -33,3 +33,5 @@ export {
 export * from "./domain/common.js";
 export * from "./domain/entities.js";
 export * from "./domain/settings.js";
+export * from "./domain/views.js";
+export * from "./domain/members.js";

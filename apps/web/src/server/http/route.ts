@@ -19,6 +19,8 @@ import {
   withTraceHeader,
 } from "../observability";
 import { HttpProblem, jsonResponse, problemResponse } from "./problem";
+import { ListQueryError } from "./list";
+import { fieldErrorsFrom } from "./problem";
 
 /**
  * The `/v1` request boundary (ADR-009 D1–D5).
@@ -239,6 +241,10 @@ interface ProblemContext {
  * entirely absent today. An unexpected throw is the opposite — a defect, with a stack.
  */
 function toProblem(cause: unknown, context: ProblemContext): Response {
+  if (cause instanceof ListQueryError) {
+    return problemResponse("validation", { detail: "Check the filters or page cursor.",
+      ...(cause.issues ? { errors: fieldErrorsFrom(cause.issues) } : {}) });
+  }
   if (cause instanceof HttpProblem) {
     return problemResponse(cause.kind, {
       detail: cause.detail,

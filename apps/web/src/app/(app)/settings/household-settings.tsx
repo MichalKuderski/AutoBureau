@@ -11,7 +11,7 @@ import { Icon } from "@/components/ui/icon";
 import { Alert } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/toast";
 import { useHousehold } from "@/providers/household-provider";
-import { initialsOf } from "@/lib/format";
+import { MemberSettings } from "./member-settings";
 import { ApiError, apiFetch } from "@/lib/api-client";
 
 /**
@@ -107,43 +107,7 @@ export function HouseholdSettings() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>People</CardTitle>
-          <CardDescription>
-            Everyone whose paperwork you manage. They don't need their own account.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="flex flex-col divide-y divide-line">
-            {household.members.map((m) => (
-              <li key={m.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                <span
-                  aria-hidden="true"
-                  className="flex size-8 items-center justify-center rounded-full bg-accent-soft text-xs font-medium text-accent"
-                >
-                  {initialsOf(m.displayName)}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <span className="block truncate text-sm text-ink">{m.displayName}</span>
-                  <span className="block text-xs text-ink-tertiary capitalize">{m.kind}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
-          {/*
-           * Blueprint P0-11. No onClick, no request, nothing. Onboarding's `addMember`
-           * only edits a local draft before a household exists — there is no
-           * add-member flow for a household that's already been created. Disabled
-           * rather than removed.
-           */}
-          <Button variant="secondary" size="sm" className="mt-4" disabled>
-            <Icon.Plus className="size-4" />
-            Add someone
-          </Button>
-          <p className="mt-2 text-xs text-ink-tertiary">Not available yet.</p>
-        </CardContent>
-      </Card>
+      <MemberSettings />
     </div>
   );
 }
