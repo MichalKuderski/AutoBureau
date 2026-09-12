@@ -41,3 +41,4 @@ export * from "./domain/item-input.js";
 export * from "./domain/census.js";
 export * from "./domain/onboarding.js";
 export * from "./domain/notifications.js";
+export * from "./domain/document-upload.js";

@@ -31,6 +31,7 @@ export const AUDIT_ACTIONS = [
   /** Owner-only household configuration (doc 06 §3). */
   "household.settings_changed",
   "notification.preferences_changed",
+  "document.upload_completed",
   "household.member_added",
   "household.member_changed",
   "household.member_archived",
