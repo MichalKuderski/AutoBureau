@@ -122,8 +122,8 @@ export function ProfileSettings() {
       </Card>
 
       <Alert tone="info" title="Your data belongs to you">
-        You can export everything or delete your account at any time, from Privacy &amp; data.
-        Deletion is real — we tell you exactly what happens and when.
+        Privacy &amp; data explains the current export and deletion limitations.
+        These workflows are not available in this preview yet.
       </Alert>
     </div>
   );

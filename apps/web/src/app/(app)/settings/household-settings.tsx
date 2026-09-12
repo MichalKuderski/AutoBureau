@@ -30,7 +30,7 @@ export function HouseholdSettings() {
   const { toast } = useToast();
   const [name, setName] = useState(household.name);
   const [timezone, setTimezone] = useState(household.timezone);
-  const alias = `h-${household.id.slice(0, 6)}@in.autobureau.com`;
+  const alias = household.emailAlias;
 
   return (
     <div className="flex flex-col gap-6">
@@ -71,29 +71,32 @@ export function HouseholdSettings() {
         <CardHeader>
           <CardTitle>Forwarding address</CardTitle>
           <CardDescription>
-            Forward any bill, notice, or renewal here and we'll read it, file it, and watch the
-            dates.
+            Only an address actually assigned to your household appears here. Forwarding
+            ingestion is not enabled in this preview.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <div className="flex items-center gap-2 rounded-md border border-line bg-surface-sunken px-3 py-2.5">
+          {alias ? <div className="flex items-center gap-2 rounded-md border border-line bg-surface-sunken px-3 py-2.5">
             <Icon.Documents className="size-4 shrink-0 text-ink-tertiary" />
             <code className="min-w-0 flex-1 truncate font-mono text-sm text-ink">{alias}</code>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                void navigator.clipboard?.writeText(alias);
-                toast({ tone: "success", title: "Copied", description: "Address copied." });
+              onClick={async () => {
+                try {
+                  if (!navigator.clipboard) throw new Error("Clipboard unavailable");
+                  await navigator.clipboard.writeText(alias);
+                  toast({ tone: "success", title: "Copied", description: "Address copied." });
+                } catch {
+                  toast({ tone: "critical", title: "Couldn’t copy the address", description: "Select and copy the address manually." });
+                }
               }}
             >
               Copy
             </Button>
-          </div>
-          <Alert tone="info" title="What happens to mail sent here">
-            Attachments are processed automatically. Mail from senders we don't recognise is held
-            for you to accept first, so nobody can add things to your household but you.
-          </Alert>
+          </div> : <Alert tone="info" title="No forwarding address yet">
+            An address will appear here once forwarding is configured for your household.
+          </Alert>}
         </CardContent>
       </Card>
 

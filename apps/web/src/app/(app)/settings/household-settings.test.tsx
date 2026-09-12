@@ -1,20 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderScreen } from "@/test/render";
 import { HouseholdSettings } from "./household-settings";
 
-/**
- * Blueprint P0-11.
- *
- * "Add someone" rendered as an ordinary, clickable button with no `onClick` at all.
- * Onboarding has its own `addMember`, but that edits a local draft before a household
- * exists — there is no add-member flow reachable from an already-created household's
- * settings screen. These assertions prove the button is now genuinely non-interactive
- * rather than merely muted, and that the rest of this screen — including the
- * already-known-fabricated forwarding alias (P0-08 deferred it; this file is not the
- * one P0-08 was scoped to) — is otherwise untouched.
- */
+/** Disabled member creation and truthful forwarding-address behavior. */
 
 describe("P0-11 · Add someone is not actionable", () => {
   it("is a disabled button, not merely styled to look inactive", () => {
@@ -42,8 +32,8 @@ describe("P0-11 · Add someone is not actionable", () => {
   });
 });
 
-describe("unrelated household settings remain intact", () => {
-  it("still renders the household name/timezone fields and the working save action", async () => {
+describe("household settings and forwarding address", () => {
+  it("still renders the household name/timezone fields and the existing preview save action", async () => {
     renderScreen(<HouseholdSettings />);
     expect(screen.getByLabelText("Household name")).toBeInTheDocument();
     expect(screen.getByLabelText("Timezone")).toBeInTheDocument();
@@ -54,13 +44,30 @@ describe("unrelated household settings remain intact", () => {
     expect(await screen.findByText("Saved")).toBeInTheDocument();
   });
 
-  it("still renders the forwarding-address card and its working copy button", async () => {
-    renderScreen(<HouseholdSettings />);
-    expect(screen.getByRole("heading", { name: "Forwarding address" })).toBeInTheDocument();
-    const copy = screen.getByRole("button", { name: /copy/i });
-    expect(copy).toBeEnabled();
-    await userEvent.click(copy);
+  it("copies the assigned address only after clipboard success", async () => {
+    const user = userEvent.setup();
+    const copyText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
+    renderScreen(<HouseholdSettings />, { household: { emailAlias: "assigned@example.test" } });
+    await user.click(screen.getByRole("button", { name: "Copy" }));
+    expect(copyText).toHaveBeenCalledWith("assigned@example.test");
     expect(await screen.findByText("Copied")).toBeInTheDocument();
+    copyText.mockRestore();
+  });
+
+  it("does not invent an address for a household without one", () => {
+    renderScreen(<HouseholdSettings />, { household: { emailAlias: null } });
+    expect(screen.getByText("No forwarding address yet")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Copy" })).not.toBeInTheDocument();
+  });
+
+  it("reports a failed clipboard operation without a success claim", async () => {
+    const user = userEvent.setup();
+    const copyText = vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(new Error("Denied"));
+    renderScreen(<HouseholdSettings />, { household: { emailAlias: "assigned@example.test" } });
+    await user.click(screen.getByRole("button", { name: "Copy" }));
+    expect(await screen.findByText("Couldn’t copy the address")).toBeInTheDocument();
+    expect(screen.queryByText("Copied")).not.toBeInTheDocument();
+    copyText.mockRestore();
   });
 
   it("still renders the People card and its members", () => {
