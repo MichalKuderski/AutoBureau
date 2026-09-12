@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authConfigFromEnv } from "@/server/auth/config";
-import { createJwtVerifier, TokenError } from "@/server/auth/jwt";
+import { createJwtVerifier, TokenError, VerificationUnavailableError } from "@/server/auth/jwt";
 import { createGoTrueProvider, ProviderError } from "@/server/auth/provider";
 import { getDatabase } from "@/server/db";
 import { MirrorError, mirrorIdentity } from "@/server/identity/mirror";
@@ -146,7 +146,7 @@ export async function POST(request: Request): Promise<Response> {
     // than the caller's, and neither may explain itself: the detail is the same neutral
     // sentence a transport failure gets, and nothing from the database or the provider
     // reaches the response.
-    if (cause instanceof TokenError || cause instanceof MirrorError) {
+    if (cause instanceof TokenError || cause instanceof VerificationUnavailableError || cause instanceof MirrorError) {
       // A deployment or provider fault, not a caller error: the `reason` enum on both of
       // these becomes `error_code`, which is the field that distinguishes "the provider
       // issued a token we reject" from "the identity could not be mirrored".
@@ -170,7 +170,8 @@ export async function POST(request: Request): Promise<Response> {
         return problemResponse("rate-limited", { detail: "Too many attempts — try again shortly." });
       }
       if (cause.reason === "unavailable") {
-        return problemResponse("unavailable", { detail: "Sign-in is briefly unavailable." });
+        log({ event: "auth.sign_in_provider_unavailable", level: "error", traceId, route, method: request.method, status: 503, error: cause });
+        return withTraceHeader(problemResponse("unavailable", { detail: "Sign-in is briefly unavailable." }), traceId);
       }
       // One message for wrong password and unknown address alike: distinguishing them
       // tells an attacker which addresses have accounts.
