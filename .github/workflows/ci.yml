@@ -20,6 +20,24 @@ env:
   DATABASE_URL: postgresql://app_user:app_local_only@localhost:5432/autobureau
 
 jobs:
+  staging-storage-plan:
+    name: proposed staging storage boundaries (mocked)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform/envs/staging/storage
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.2
+          terraform_wrapper: false
+      - run: terraform init -backend=false -input=false -lockfile=readonly
+      - run: terraform fmt -check
+      - run: terraform validate
+      # The test file mocks AWS. There are no AWS credentials, plans or real applies in CI.
+      - run: terraform test
+
   verify:
     name: lint · build · typecheck · test
     runs-on: ubuntu-latest
