@@ -41,7 +41,7 @@ The separate published `d09ac057f0cbd198a9de0d2a02a0c66b7f85d138` increment pass
 
 ## Remaining release gaps
 
-Notification fixtures, manual deadline creation, document processing/review/reminder dispatch, recovery/MFA/privacy and Stripe lifecycle still require implementation and end-to-end evidence. A cancelled reminder is not proof of a functioning reminder sender. A disabled review save is not a completed document workflow. Refer to `launch-risk-register.md`; Production preflight remains NO-GO.
+Notification fixtures, document processing/review/reminder dispatch, recovery/MFA/privacy and Stripe lifecycle still require implementation and end-to-end evidence. A cancelled reminder is not proof of a functioning reminder sender. A disabled review save is not a completed document workflow. Refer to `launch-risk-register.md`; Production preflight remains NO-GO.
 
 ## Activity history follow-up
 
@@ -58,3 +58,11 @@ At 390 px the form fits the viewport and scrolls; an invalid 12.345 amount is re
 `/onboarding`, `/onboarding/census`, `/onboarding/document` and `/onboarding/ready` now load and save through the scoped API. In the disposable household, the two saved people resume correctly. Home insurance and Vehicle selections survive reload, create two unverified records, and show two dateless claims without scheduling anything. Finishing setup again leaves all record/audit/outbox counts unchanged: 4 items total, 2 people, 1 pre-existing obligation, 0 reminders, 2 census create audits and 2 census outbox intents. The final dashboard correctly displays 0 of 2 setup records confirmed despite another unrelated verified record.
 
 The rebuilt Ready page fits at 390 px without horizontal overflow; its button saves and returns to the real dashboard. Progress labels do not announce earlier steps as completed merely from the current URL. Console warning/error capture is empty, and the viewport override was reset. Final build/lint/typecheck pass, all 987 repository units pass, and the final affected onboarding/registry integration checks pass 24/24. The earlier full web integration run passes 344/344; coverage adds one new boundary check. These local checks still require exact-SHA hosted staging QA later.
+
+## Manual deadline follow-up
+
+The local browser creates a confirmed deadline associated with Alex Local and the manual renewal record, then edits the same deadline's title and due time. Reload confirms September 20, 2026, 5:30 PM America/Denver and $125.50. Read-back confirms exactly one row and the two expected audit/outbox actions. The timeline links both creation and editing to its real detail route.
+
+The form rejects March 8, 2026 at 02:30 in Denver as nonexistent and requires a choice for November 1 at 01:30. Both repeated-hour choices appear; the second is selectable. Direction and priority controls are operable. The validation draft is cancelled. Native date/time changes use keyboard events because automation fill alone does not reliably commit browser-native controls.
+
+At 390 px the edit form scrolls without horizontal overflow; Cancel restores focus to Edit deadline. The viewport override was reset. Captured warning/error console logs are empty. Final build/lint/typecheck, 353 integration checks and 996 repository units pass. Reminder sending, snooze/recurrence and source-window editing remain separate open requirements.

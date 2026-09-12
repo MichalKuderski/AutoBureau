@@ -28,6 +28,7 @@ const KIND: Record<
   obligation_completed: { Glyph: Icon.Check, ring: "border-success/40", tint: "text-success" },
   obligation_dismissed: { Glyph: Icon.Check, ring: "border-line", tint: "text-ink-tertiary" },
   obligation_status_changed: { Glyph: Icon.Clock, ring: "border-line", tint: "text-ink-tertiary" },
+  obligation_changed: { Glyph: Icon.Clock, ring: "border-line", tint: "text-ink-tertiary" },
   item_changed: { Glyph: Icon.Household, ring: "border-line", tint: "text-ink-tertiary" },
   item_added: { Glyph: Icon.Household, ring: "border-line", tint: "text-ink-tertiary" },
   item_expiring: { Glyph: Icon.Clock, ring: "border-warning/40", tint: "text-warning" },

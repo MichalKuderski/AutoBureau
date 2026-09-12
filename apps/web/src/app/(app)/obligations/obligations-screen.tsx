@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { CollectionMore } from "@/components/patterns/collection-more";
+import { ObligationForm } from "@/components/patterns/obligation-form";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/patterns/page-header";
 import { ObligationCard } from "@/components/patterns/obligation-card";
 import { FilterBar, SearchInput, type FilterOption } from "@/components/ui/filter-bar";
@@ -33,7 +35,8 @@ const FILTERS: Array<{ value: StatusFilter; label: string }> = [
  * count so the shape of the workload is readable without counting cards.
  */
 export function ObligationsScreen() {
-  const { household } = useHousehold();
+  const { household, can } = useHousehold();
+  const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<StatusFilter>("open");
   const [search, setSearch] = useState("");
   const [memberId, setMemberId] = useState<string | null>(null);
@@ -78,7 +81,12 @@ export function ObligationsScreen() {
       <PageHeader
         title="Obligations"
         description="Everything your household owes, and everything it's owed."
+        actions={can("write") ? <Button variant="primary" onClick={() => setCreating(true)}>Add deadline</Button> : undefined}
       />
+      {creating && <ObligationForm onClose={() => setCreating(false)} onSaved={(saved) => {
+        setCreating(false); setFilter("all"); setSearch(""); setMemberId(null);
+        toast({ title: "Deadline saved", description: saved.title, tone: "success" });
+      }} />}
 
       <div className="mb-5 flex flex-col gap-3">
         <SearchInput
@@ -181,5 +189,5 @@ function emptyDescription(filter: StatusFilter, search: string): string {
   if (filter === "owed_to_us")
     return "We flag warranties, deposits, and refunds as we find them in your documents.";
   if (filter === "done") return "Completed obligations will collect here.";
-  return "We're watching every deadline we know about. Add a document to widen the net.";
+  return "No saved deadlines match this view. You can add a date you have confirmed.";
 }

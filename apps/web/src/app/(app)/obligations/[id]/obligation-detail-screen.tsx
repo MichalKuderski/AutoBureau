@@ -19,9 +19,10 @@ import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { Skeleton, SkeletonGroup } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { ReviewPanel } from "@/components/patterns/review-panel";
+import { ObligationForm } from "@/components/patterns/obligation-form";
 import { OutcomeDialog } from "./outcome-dialog";
 import { useDocument, useObligation, useUpdateObligationStatus } from "@/lib/domain/queries";
-import { formatDate, formatDueLabel, formatMoney, formatRecurrence } from "@/lib/format";
+import { formatDate, formatTime, formatDueLabel, formatMoney, formatRecurrence } from "@/lib/format";
 import { useHousehold } from "@/providers/household-provider";
 import type { ObligationView } from "@/lib/domain/types";
 import type { ObligationOutcome } from "@autobureau/contracts";
@@ -96,6 +97,7 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
   const [completing, setCompleting] = useState(false);
   const [dismissing, setDismissing] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const isClosed = obligation.status === "done" || obligation.status === "dismissed";
   const isEntitlement = obligation.direction === "owed_to_household";
@@ -153,6 +155,7 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
         </div>
 
         <h1 className="text-2xl leading-tight sm:text-3xl">{obligation.title}</h1>
+        {canWrite && <Button className="mt-3" variant="secondary" onClick={() => setEditing(true)}>Edit deadline</Button>}
 
         <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-secondary">
           <span>{obligation.member_name ?? "Whole household"}</span>
@@ -187,6 +190,7 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
                       style: "long",
                     })}
                   </time>
+                  <span className="mt-0.5 block text-sm text-ink-secondary">{formatTime(obligation.due_at, { locale: household.locale, timeZone: household.timezone })} · {household.timezone}</span>
                   <span className="mt-0.5 block text-xs text-ink-tertiary">
                     {formatDueLabel(obligation.due_at, household.timezone)}
                   </span>
@@ -321,6 +325,9 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
         loading={updateStatus.isPending}
       />
 
+      {editing && <ObligationForm obligation={obligation} onClose={() => setEditing(false)} onSaved={() => {
+        setEditing(false); toast({ title: "Deadline updated", tone: "success" });
+      }} />}
       {sourceDocumentId ? (
         <SourceDocumentDrawer
           open={sourceOpen}
@@ -442,6 +449,7 @@ function ProvenanceCard({
       <CardContent className="flex flex-col gap-4">
         {provenance ? (
           <div className="rounded-md border border-line bg-surface-sunken/60 p-3.5">
+            {obligation.source === "user" && <p className="mb-2 text-xs text-ink-secondary">Original related document. The current details were confirmed by someone in your household.</p>}
             <p className="flex items-center gap-2 text-sm font-medium text-ink">
               <Icon.Documents className="size-4 shrink-0 text-ink-tertiary" />
               <span className="min-w-0 truncate">{provenance.document_title}</span>
@@ -472,8 +480,7 @@ function ProvenanceCard({
         {obligation.ai_confidence != null ? (
           <p className="flex items-start gap-2 text-xs text-ink-tertiary">
             <Icon.Sparkle className="mt-0.5 size-3.5 shrink-0" />
-            We read this at {Math.round(obligation.ai_confidence * 100)}% confidence. Anything you
-            correct teaches us.
+            This extraction has {Math.round(obligation.ai_confidence * 100)}% recorded confidence. Check the source before relying on it.
           </p>
         ) : null}
       </CardContent>
@@ -488,7 +495,7 @@ function originLine(source: ObligationView["source"]): string {
     case "system":
       return "Pellum created this from a cycle it already tracks for you.";
     case "user":
-      return "Someone in your household added this by hand.";
+      return "Someone in your household entered or confirmed these details.";
   }
 }
 
@@ -503,7 +510,7 @@ function FreshnessNote({ obligation }: { obligation: ObligationView }) {
         locale: household.locale,
         timeZone: household.timezone,
       })}
-      . We re-check facts as new documents arrive.
+      . Check the details again if your circumstances change.
     </p>
   );
 }

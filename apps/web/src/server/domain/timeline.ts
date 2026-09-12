@@ -12,6 +12,7 @@ const actions = [
   { target: "item", action: "item.create", lens: "items", kind: "item_added", title: "Record added" },
   { target: "item", action: "item.update", lens: "items", kind: "item_changed", title: "Record updated" },
   { target: "obligation", action: "obligation.create", lens: "obligations", kind: "obligation_created", title: "Deadline added" },
+  { target: "obligation", action: "obligation.details_changed", lens: "obligations", kind: "obligation_changed", title: "Deadline updated" },
   { target: "obligation", action: "obligation.completed", lens: "obligations", kind: "obligation_completed", title: "Deadline completed" },
   { target: "obligation", action: "obligation.dismissed", lens: "obligations", kind: "obligation_dismissed", title: "Deadline dismissed" },
   // A reopen also emits an explicit audit marker. Its one canonical lifecycle row

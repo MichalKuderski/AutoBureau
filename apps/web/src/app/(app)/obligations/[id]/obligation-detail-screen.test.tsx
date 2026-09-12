@@ -26,7 +26,7 @@ describe("ObligationDetailScreen", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/found this in a document/i)).toBeInTheDocument();
     expect(screen.getByText(AI_SOURCED.provenance!.document_title)).toBeInTheDocument();
-    expect(screen.getByText(/94% confidence/)).toBeInTheDocument();
+    expect(screen.getByText(/94% recorded confidence/)).toBeInTheDocument();
   });
 
   it("says plainly when there is no source document rather than implying one", async () => {
