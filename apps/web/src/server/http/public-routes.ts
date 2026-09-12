@@ -32,6 +32,12 @@ const PUBLIC_AUTH_ENDPOINTS = [
   // authorization code that is inert without the verifier cookie, so being public costs
   // nothing: the code alone authenticates no one.
   "/auth/callback",
+  // Also reached only by following an emailed link. Unlike the callback above, the hash it
+  // carries IS the credential — it has to be, because a confirmation link is followed on
+  // whatever device opened the email and no cookie from sign-up is there to pair with it.
+  // Being public is therefore load-bearing rather than free, and the compensating property
+  // is the hash itself: single-use, provider-validated, and bounded before it is sent.
+  "/auth/confirm",
 ] as const;
 
 export const PUBLIC_PATHS: readonly string[] = [...PUBLIC_PAGES, ...PUBLIC_AUTH_ENDPOINTS];

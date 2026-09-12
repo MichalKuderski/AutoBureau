@@ -81,6 +81,17 @@ const TokenResponseSchema = z.object({
  * is how this honours the project's confirmation setting instead of assuming one — and it
  * is why nothing here reads a flag of our own that could disagree with the provider.
  */
+/**
+ * The confirmation types this application actually emits links for.
+ *
+ * A closed union rather than a passthrough string: `type` arrives from a URL, and GoTrue
+ * accepts several values whose side effects differ. Only the two that correspond to a link
+ * this application asks the provider to send are accepted; anything else is refused before
+ * a request is made.
+ */
+export const EMAIL_OTP_TYPES = ["email", "signup"] as const;
+export type EmailOtpType = (typeof EMAIL_OTP_TYPES)[number];
+
 export type SignUpOutcome =
   | { readonly kind: "session"; readonly tokens: SessionTokens }
   | { readonly kind: "confirmation-required" };
@@ -95,6 +106,16 @@ export interface AuthProvider {
   requestMagicLink(email: string, codeChallenge: string, redirectTo: string): Promise<void>;
   /** Redeem that code. Useless without the verifier that produced the challenge. */
   exchangeCode(authCode: string, codeVerifier: string): Promise<SessionTokens>;
+  /**
+   * Redeem the single-use hash from a confirmation email.
+   *
+   * Deliberately not the PKCE grant above. A confirmation link is followed minutes or days
+   * later, and routinely on a different device from the one that signed up, so it cannot
+   * depend on a verifier cookie held by the originating browser. The hash is the credential,
+   * it is single-use, and GoTrue validates it server-side — which is what lets this stay
+   * inside the server-mediated architecture instead of handing a token to the browser.
+   */
+  verifyEmailToken(tokenHash: string, type: EmailOtpType): Promise<SessionTokens>;
 }
 
 /**
@@ -131,14 +152,23 @@ export function createGoTrueProvider(
     apikey: config.anonKey,
   };
 
-  async function tokenGrant(
-    grant: "password" | "refresh_token" | "pkce",
+  /**
+   * One POST that must come back as a session.
+   *
+   * Extracted from `tokenGrant` when `/verify` joined it: email confirmation redeems a
+   * single-use token hash at a different endpoint, but every other property — the timeout,
+   * the silence about the provider's body, the classification of a refusal, and the refusal
+   * to accept a response that does not parse as tokens — must be identical. Two copies of
+   * that reasoning would be two places for it to drift.
+   */
+  async function postForTokens(
+    url: string,
     body: Record<string, string>,
     onRejection: ProviderRejection,
   ): Promise<SessionTokens> {
     let response: Response;
     try {
-      response = await fetchImpl(`${config.apiUrl}/token?grant_type=${grant}`, {
+      response = await fetchImpl(url, {
         method: "POST",
         headers,
         body: JSON.stringify(body),
@@ -166,6 +196,14 @@ export function createGoTrueProvider(
       refreshToken: parsed.data.refresh_token,
       expiresIn: parsed.data.expires_in,
     };
+  }
+
+  function tokenGrant(
+    grant: "password" | "refresh_token" | "pkce",
+    body: Record<string, string>,
+    onRejection: ProviderRejection,
+  ): Promise<SessionTokens> {
+    return postForTokens(`${config.apiUrl}/token?grant_type=${grant}`, body, onRejection);
   }
 
   return {
@@ -223,6 +261,17 @@ export function createGoTrueProvider(
 
     exchangeCode(authCode, codeVerifier) {
       return tokenGrant("pkce", { auth_code: authCode, code_verifier: codeVerifier }, "invalid-code");
+    },
+
+    verifyEmailToken(tokenHash, type) {
+      // `invalid-code` on refusal, for the same reason redemption uses it: expired, already
+      // consumed, and never-issued must be one outcome. Distinguishing them would tell a
+      // stranger holding a guessed hash which guess was closer.
+      return postForTokens(
+        `${config.apiUrl}/verify`,
+        { type, token_hash: tokenHash },
+        "invalid-code",
+      );
     },
 
     async requestMagicLink(email, codeChallenge, redirectTo) {
