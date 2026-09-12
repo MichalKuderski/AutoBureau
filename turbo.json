@@ -32,6 +32,20 @@
       "dependsOn": [
         "^build"
       ]
+    },
+    "@autobureau/db#build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**"
+      ],
+      "cache": false
+    },
+    "@autobureau/db#typecheck": {
+      "dependsOn": [
+        "build"
+      ]
     }
   }
 }

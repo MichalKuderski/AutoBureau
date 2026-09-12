@@ -11,3 +11,9 @@ Regression evidence covers concurrent cold calls from separate verifiers, URL is
 Reference: jose 6.2.8 [remote JWKS options](https://github.com/panva/jose/blob/v6.2.8/docs/jwks/remote/interfaces/RemoteJWKSetOptions.md).
 
 A separate regression reproduced on local PostgreSQL 18: the old `DELETE ... WHERE id IN (SELECT ... LIMIT 100 FOR UPDATE SKIP LOCKED)` removed all 150 expired fixtures. The query now selects the batch once in a MATERIALIZED CTE before deleting its IDs. The existing lower-bound assertion was retained, not relaxed. PostgreSQL 16 CI is still required. No hosted database, migration, role or policy was changed. [PostgreSQL CTE materialization](https://www.postgresql.org/docs/current/queries-with.html#QUERIES-WITH-CTE-MATERIALIZATION) explains the evaluation boundary.
+
+## CI generation ordering (September 12)
+
+CI at launch head 4077c36 passed the build but failed the following parallel typecheck with missing PrismaClient exports. The DB typecheck ran `prisma generate` while the web typecheck was resolving that same generated client. Generation can replace those files, so it must not run concurrently with a consumer.
+
+The DB build remains the single owner of generation. Its Turbo task is uncached because the generated client is written under node_modules, outside the declared dist outputs. The DB typecheck depends on that build and only runs TypeScript. Web consumers already depend on the DB build through `^build`. This ordering also regenerates the client after an install when dist artifacts happen to be cached. No type errors are suppressed and no dependency versions changed.

@@ -9,7 +9,7 @@
   "files": ["dist", "prisma"],
   "scripts": {
     "build": "prisma generate && tsc -p tsconfig.json",
-    "typecheck": "prisma generate && tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --dir tests/unit",
     "test:integration": "vitest run --dir tests/integration --no-file-parallelism",
     "db:generate": "prisma generate",
