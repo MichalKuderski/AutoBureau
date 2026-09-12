@@ -28,6 +28,8 @@ import { z } from "zod";
  */
 
 export const AUDIT_ACTIONS = [
+  /** Owner-only household configuration (doc 06 §3). */
+  "household.settings_changed",
   /** doc 12 §5.3 / PRD §13, F8: revealing an identifier-grade value is always audited. */
   "secret.revealed",
   /** doc 02 §9's own worked example, and the reason the verb layer exists at all. */

@@ -1,8 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderScreen } from "@/test/render";
 import { HouseholdSettings } from "./household-settings";
+const refresh = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+afterEach(() => { vi.unstubAllGlobals(); refresh.mockClear(); });
 
 /** Disabled member creation and truthful forwarding-address behavior. */
 
@@ -33,15 +36,39 @@ describe("P0-11 · Add someone is not actionable", () => {
 });
 
 describe("household settings and forwarding address", () => {
-  it("still renders the household name/timezone fields and the existing preview save action", async () => {
+  it("persists the household name and refreshes its server context", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ name: "Saved household" }));
+    vi.stubGlobal("fetch", fetchMock);
     renderScreen(<HouseholdSettings />);
-    expect(screen.getByLabelText("Household name")).toBeInTheDocument();
-    expect(screen.getByLabelText("Timezone")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Household name" })).toBeInTheDocument();
+    // Timezone belongs to the account profile, not the household record.
+    expect(screen.queryByLabelText("Timezone")).not.toBeInTheDocument();
 
     const save = screen.getByRole("button", { name: /save changes/i });
     expect(save).toBeEnabled();
     await userEvent.click(save);
     expect(await screen.findByText("Saved")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/^\/v1\/households\//), expect.objectContaining({ method: "PATCH" }));
+    expect(screen.getByRole("textbox", { name: "Household name" })).toHaveValue("Saved household");
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it("does not report success when persistence fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    renderScreen(<HouseholdSettings />);
+    await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(await screen.findByText("Couldn’t save your household")).toBeInTheDocument();
+    expect(screen.queryByText("Saved")).not.toBeInTheDocument();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("does not offer household edits to a viewer", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    renderScreen(<HouseholdSettings />, { household: { role: "viewer" } });
+    expect(screen.getByRole("textbox", { name: "Household name" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("copies the assigned address only after clipboard success", async () => {

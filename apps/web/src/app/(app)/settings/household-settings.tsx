@@ -1,21 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { type Household } from "@autobureau/contracts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { TextInput, Select } from "@/components/ui/field";
+import { TextInput } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Alert } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/toast";
 import { useHousehold } from "@/providers/household-provider";
 import { initialsOf } from "@/lib/format";
-
-const TIMEZONES = [
-  { value: "America/New_York", label: "Eastern (New York)" },
-  { value: "America/Chicago", label: "Central (Chicago)" },
-  { value: "America/Denver", label: "Mountain (Denver)" },
-  { value: "America/Los_Angeles", label: "Pacific (Los Angeles)" },
-];
+import { ApiError, apiFetch } from "@/lib/api-client";
 
 /**
  * Household settings — members and the ingestion alias.
@@ -26,11 +23,23 @@ const TIMEZONES = [
  * not fine print.
  */
 export function HouseholdSettings() {
-  const { household } = useHousehold();
+  const { household, can } = useHousehold();
   const { toast } = useToast();
+  const router = useRouter();
+  const client = useQueryClient();
   const [name, setName] = useState(household.name);
-  const [timezone, setTimezone] = useState(household.timezone);
   const alias = household.emailAlias;
+  const save = useMutation({
+    mutationFn: () => apiFetch<Household>(`/households/${household.id}`, {
+      method: "PATCH", householdId: household.id, body: { name },
+    }),
+    onSuccess: async (saved) => {
+      setName(saved.name);
+      await client.invalidateQueries({ queryKey: ["household", "current"] });
+      router.refresh();
+      toast({ tone: "success", title: "Saved", description: "Household updated." });
+    },
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -38,32 +47,30 @@ export function HouseholdSettings() {
         <CardHeader>
           <CardTitle>Household</CardTitle>
           <CardDescription>
-            Reminders are scheduled in this timezone, so a deadline never arrives a day late.
+            Choose a name for the household whose paperwork you manage.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+        <CardContent>
+          <form className="flex flex-col gap-4" onSubmit={(event) => { event.preventDefault(); if (!save.isPending && can("manage")) save.mutate(); }}>
           <TextInput
             label="Household name"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            required maxLength={200} disabled={!can("manage") || save.isPending}
+            error={save.error instanceof ApiError ? save.error.fieldErrors["name"] : undefined}
           />
-          <Select
-            label="Timezone"
-            options={TIMEZONES}
-            value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
-          />
+          {save.isError && <Alert tone="critical" title="Couldn’t save your household">{save.error.message}</Alert>}
+          {!can("manage") && <p className="text-sm text-ink-secondary">Only the household owner can change these settings.</p>}
           <div>
             <Button
               variant="primary"
               size="sm"
-              onClick={() =>
-                toast({ tone: "success", title: "Saved", description: "Household updated." })
-              }
+              type="submit" loading={save.isPending} loadingLabel="Saving household" disabled={!can("manage")}
             >
               Save changes
             </Button>
           </div>
+          </form>
         </CardContent>
       </Card>
 

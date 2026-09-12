@@ -18,7 +18,7 @@ import {
   traceIdFrom,
   withTraceHeader,
 } from "../observability";
-import { jsonResponse, problemResponse } from "./problem";
+import { HttpProblem, jsonResponse, problemResponse } from "./problem";
 
 /**
  * The `/v1` request boundary (ADR-009 D1–D5).
@@ -239,6 +239,12 @@ interface ProblemContext {
  * entirely absent today. An unexpected throw is the opposite — a defect, with a stack.
  */
 function toProblem(cause: unknown, context: ProblemContext): Response {
+  if (cause instanceof HttpProblem) {
+    return problemResponse(cause.kind, {
+      detail: cause.detail,
+      ...(cause.errors ? { errors: cause.errors } : {}),
+    });
+  }
   if (cause instanceof VerificationUnavailableError) {
     log({ event: "auth.key_service_unavailable", level: "error", ...context, status: 503, error: cause });
     const response = problemResponse("unavailable", { detail: "Session verification is briefly unavailable. Please retry." });

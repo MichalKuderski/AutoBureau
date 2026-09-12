@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
+import type { ProfileView } from "@autobureau/contracts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { TextInput, Toggle } from "@/components/ui/field";
+import { TextInput, Toggle, Select } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Icon } from "@/components/ui/icon";
 import { useToast } from "@/components/ui/toast";
 import { useHousehold } from "@/providers/household-provider";
+import { ApiError, apiFetch } from "@/lib/api-client";
+import { timezoneOptions } from "@/lib/timezones";
 
 /**
  * Your profile — identity, security, and session.
@@ -19,9 +24,22 @@ import { useHousehold } from "@/providers/household-provider";
  * front); this component doesn't get to imply that shape exists before it does.
  */
 export function ProfileSettings() {
-  const { viewer } = useHousehold();
+  const { viewer, household } = useHousehold();
   const { toast } = useToast();
+  const router = useRouter();
   const [name, setName] = useState(viewer.displayName);
+  const [timezone, setTimezone] = useState(household.timezone);
+  const save = useMutation({
+    mutationFn: () => apiFetch<ProfileView>("/me", {
+      method: "PATCH", householdId: household.id, body: { display_name: name, timezone },
+    }),
+    onSuccess: (saved) => {
+      setName(saved.display_name);
+      setTimezone(saved.timezone);
+      router.refresh();
+      toast({ tone: "success", title: "Saved", description: "Profile updated." });
+    },
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,26 +48,30 @@ export function ProfileSettings() {
           <CardTitle>Your details</CardTitle>
           <CardDescription>How you appear in your household.</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <TextInput label="Name" value={name} onChange={(e) => setName(e.target.value)} />
+        <CardContent>
+          <form className="flex flex-col gap-4" onSubmit={(event) => { event.preventDefault(); if (!save.isPending) save.mutate(); }}>
+          <TextInput label="Name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} disabled={save.isPending}
+            error={save.error instanceof ApiError ? save.error.fieldErrors["display_name"] : undefined} />
           <TextInput
             label="Email"
             type="email"
             value={viewer.email}
             readOnly
-            description="Used for reminders and sign-in. Contact support to change it."
+            description="Your sign-in address. Changing it is not available in this preview."
           />
+          <Select label="Timezone" options={timezoneOptions(timezone)} value={timezone} onChange={(event) => setTimezone(event.target.value)} disabled={save.isPending}
+            error={save.error instanceof ApiError ? save.error.fieldErrors["timezone"] : undefined} />
+          {save.isError && <Alert tone="critical" title="Couldn’t save your profile">{save.error.message}</Alert>}
           <div>
             <Button
               variant="primary"
               size="sm"
-              onClick={() =>
-                toast({ tone: "success", title: "Saved", description: "Profile updated." })
-              }
+              type="submit" loading={save.isPending} loadingLabel="Saving profile"
             >
               Save changes
             </Button>
           </div>
+          </form>
         </CardContent>
       </Card>
 
