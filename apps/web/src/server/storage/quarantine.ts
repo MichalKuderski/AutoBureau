@@ -1,5 +1,6 @@
 import { CopyObjectCommand, DeleteObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { awsCredentialsProvider } from "@vercel/oidc-aws-credentials-provider";
 import { UPLOAD_MAX_BYTES, UPLOAD_TTL_SECONDS, UPLOAD_MIME_TYPES, type UploadMime } from "@autobureau/contracts";
 export { UPLOAD_MAX_BYTES, UPLOAD_TTL_SECONDS, UPLOAD_MIME_TYPES, type UploadMime } from "@autobureau/contracts";
 export type StorageFailure = "not-found" | "changed" | "invalid-object" | "unavailable";
@@ -8,10 +9,27 @@ export type StorageFailure = "not-found" | "changed" | "invalid-object" | "unava
 export class StorageError extends Error {
   constructor(readonly code: StorageFailure) { super(`Document storage: ${code}`); this.name = "StorageError"; }
 }
-export interface StorageConfig { endpoint: string; region: string; bucket: string; accessKeyId: string; secretAccessKey: string }
+interface StorageLocation { endpoint: string; region: string; bucket: string }
+export type StorageConfig = StorageLocation & (
+  | { kind: "aws-oidc"; roleArn: string }
+  | { kind?: "supabase"; accessKeyId: string; secretAccessKey: string }
+);
+type CredentialProvider = ReturnType<typeof awsCredentialsProvider>;
 export interface UploadClaim { key: string; mime: UploadMime; size: number }
 
 export function storageConfigFromEnv(env: NodeJS.ProcessEnv = process.env): StorageConfig {
+  if (env["STORAGE_PROVIDER"] === "aws-oidc") {
+    // ADR-016 is staging-only. Scope/role mismatch fails before any provider call.
+    const scope = env["VERCEL_ENV"] === "production" ? "stg" : env["VERCEL_ENV"] === "preview" ? "preview" : null;
+    const roleArn = `arn:aws:iam::792394000571:role/pellum-${scope}-upload-signer`;
+    if (!scope || env["AUTH_ISSUER"] !== "https://kdqnfruwgocfqwpbpuxo.supabase.co/auth/v1"
+      || env["STORAGE_AWS_ROLE_ARN"] !== roleArn || env["STORAGE_S3_REGION"] !== "us-east-2"
+      || env["STORAGE_QUARANTINE_BUCKET"] !== "pellum-stg-quarantine-792394000571-us-east-2"
+      || env["STORAGE_S3_ACCESS_KEY_ID"] || env["STORAGE_S3_SECRET_ACCESS_KEY"]) throw new StorageError("unavailable");
+    return { kind: "aws-oidc", endpoint: "https://s3.us-east-2.amazonaws.com", region: "us-east-2",
+      bucket: "pellum-stg-quarantine-792394000571-us-east-2", roleArn };
+  }
+  if (env["STORAGE_PROVIDER"] && env["STORAGE_PROVIDER"] !== "supabase") throw new StorageError("unavailable");
   // Derive the endpoint from this deployment's verified issuer configuration. A
   // separate arbitrary URL would make a misconfiguration a credential/SSRF leak.
   let issuer: URL;
@@ -38,9 +56,17 @@ function failure(cause: unknown): StorageError {
 /** Network methods must be called outside Database.withHousehold. */
 export class QuarantineStorage {
   private readonly client: S3Client;
+  private readonly credentials: CredentialProvider;
   constructor(private readonly config: StorageConfig) {
-    this.client = new S3Client({ endpoint: config.endpoint, region: config.region, forcePathStyle: true,
-      credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },
+    this.credentials = config.kind === "aws-oidc"
+      ? awsCredentialsProvider({ roleArn: config.roleArn, durationSeconds: 900,
+        clientConfig: { region: "us-east-2", maxAttempts: 1, requestHandler: { connectionTimeout: 3_000, requestTimeout: 10_000 } } })
+      : async () => ({ accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey });
+    this.client = this.createClient(this.credentials);
+  }
+
+  private createClient(credentials: CredentialProvider): S3Client {
+    return new S3Client({ endpoint: this.config.endpoint, region: this.config.region, forcePathStyle: true, credentials,
       maxAttempts: 1, requestHandler: { connectionTimeout: 3_000, requestTimeout: 10_000 },
       requestChecksumCalculation: "WHEN_REQUIRED", responseChecksumValidation: "WHEN_REQUIRED" });
   }
@@ -48,12 +74,23 @@ export class QuarantineStorage {
   async issue(claim: UploadClaim, issuedAt = new Date()): Promise<{ url: string; expiresAt: Date }> {
     assertClaim(claim);
     const signingDate = new Date(Math.floor(issuedAt.getTime() / 1_000) * 1_000);
+    let signer: S3Client | undefined;
     try {
-      const url = await getSignedUrl(this.client, new PutObjectCommand({ Bucket: this.config.bucket, Key: claim.key,
-        ContentType: claim.mime, ContentLength: claim.size }), { expiresIn: UPLOAD_TTL_SECONDS, signingDate,
+      // Freeze the exact credential snapshot used for both expiry and signature.
+      // Never fall back to host credentials or a key without an STS expiry.
+      const credentials = await this.credentials();
+      if (this.config.kind === "aws-oidc" && (!credentials.sessionToken || !credentials.expiration)) throw new StorageError("unavailable");
+      const expiresIn = credentials.expiration
+        ? Math.min(UPLOAD_TTL_SECONDS, Math.floor((credentials.expiration.getTime() - signingDate.getTime()) / 1_000))
+        : UPLOAD_TTL_SECONDS;
+      if (!Number.isInteger(expiresIn) || expiresIn < 1) throw new StorageError("unavailable");
+      signer = this.createClient(async () => credentials);
+      const url = await getSignedUrl(signer, new PutObjectCommand({ Bucket: this.config.bucket, Key: claim.key,
+        ContentType: claim.mime, ContentLength: claim.size }), { expiresIn, signingDate,
         signableHeaders: new Set(["content-type", "content-length"]) });
-      return { url, expiresAt: new Date(signingDate.getTime() + UPLOAD_TTL_SECONDS * 1_000) };
+      return { url, expiresAt: new Date(signingDate.getTime() + expiresIn * 1_000) };
     } catch { throw new StorageError("unavailable"); }
+    finally { signer?.destroy(); }
   }
 
   async seal(claim: UploadClaim, destination: string): Promise<void> {

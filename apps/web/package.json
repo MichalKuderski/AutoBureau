@@ -19,6 +19,7 @@
     "@js-temporal/polyfill": "0.5.1",
     "@sentry/core": "^10.71.0",
     "@tanstack/react-query": "^5.62.0",
+    "@vercel/oidc-aws-credentials-provider": "3.3.7",
     "clsx": "^2.1.1",
     "jose": "^6.2.8",
     "next": "^15.1.0",

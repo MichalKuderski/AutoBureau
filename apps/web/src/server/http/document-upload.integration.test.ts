@@ -33,6 +33,7 @@ describe("document intake through the real tenant boundary", () => {
   it("reserves one unknown-hash document on an idempotent retry, with no filename or processing event stored", async () => {
     const headers = { "idempotency-key": randomUUID() };
     const first = await uploads.POST(await h.request("/v1/documents/uploads", { method: "POST", body, headers }));
+    expect(first.headers.get("cache-control")).toBe("no-store");
     const ticket = await first.json(); firstId = ticket.document_id;
     expect(first.status).toBe(201); expect(ticket).toMatchObject({ status: "received", method: "PUT", headers: { "content-type": "application/pdf" } });
     const again = await uploads.POST(await h.request("/v1/documents/uploads", { method: "POST", body, headers }));

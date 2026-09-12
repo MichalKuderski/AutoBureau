@@ -66,6 +66,8 @@ jobs:
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
+      - name: OIDC proof negative controls
+        run: node --test scripts/staging-oidc-settings.test.mjs scripts/staging-cloud-oidc-proof.test.mjs
 
       # Tenant isolation is the one property we never ship unverified (review F-01).
       - name: Integration tests (RLS / tenancy / outbox)
