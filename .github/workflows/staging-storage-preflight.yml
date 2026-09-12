@@ -1,7 +1,6 @@
 name: Staging storage preflight
 on:
-  push:
-    branches: [codex/launch-foundations]
+  pull_request:
     paths:
       - .github/workflows/staging-storage-preflight.yml
       - scripts/staging-oidc-settings.mjs
@@ -11,7 +10,11 @@ permissions:
   contents: read
 jobs:
   inspect:
-    if: github.repository == 'MichalKuderski/AutoBureau' && github.ref == 'refs/heads/codex/launch-foundations'
+    if: >-
+      github.repository == 'MichalKuderski/AutoBureau'
+      && github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.head_ref == 'codex/launch-foundations'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: preview
