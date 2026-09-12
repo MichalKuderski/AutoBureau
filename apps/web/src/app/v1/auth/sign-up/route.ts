@@ -142,7 +142,8 @@ export async function POST(request: Request): Promise<Response> {
         return problemResponse("rate-limited", { detail: "Too many attempts — try again shortly." });
       }
       if (cause.reason === "unavailable") {
-        log({ event: "auth.sign_up_provider_unavailable", level: "error", traceId, route, method: request.method, status: 503, error: cause });
+        log({ event: "auth.sign_up_provider_unavailable", level: "error", traceId, route, method: request.method, status: 503, error: cause,
+          ...(cause.httpStatus === undefined ? {} : { meta: { upstream_status: cause.httpStatus } }) });
         return withTraceHeader(problemResponse("unavailable", { detail: "Sign-up is briefly unavailable." }), traceId);
       }
       // Everything else the provider refused is a fact about the account rather than the

@@ -129,6 +129,16 @@ jobs:
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
+      - name: Read redacted Preview auth diagnostics after a failure
+        if: failure() && steps.deploy.outputs.url != ''
+        continue-on-error: true
+        run: node scripts/preview-auth-diagnostics.mjs "$PREVIEW_URL"
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.url }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+
   # ── staging ────────────────────────────────────────────────────────────────────────
   # Migrations run before the code that depends on them, and staging is where a
   # migration is proved. Deploy order is always: migrate (expand) → deploy (doc 09 §4).
