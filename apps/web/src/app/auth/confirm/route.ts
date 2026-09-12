@@ -114,7 +114,7 @@ export async function GET(request: Request): Promise<Response> {
   try {
     config = authConfigFromEnv();
   } catch {
-    return Response.redirect(new URL(SIGN_IN_PATH, url.origin), 303);
+    return new Response(null, { status: 303, headers: { location: new URL(SIGN_IN_PATH, url.origin).toString(), "cache-control": "no-store", "referrer-policy": "no-referrer" } });
   }
 
   const failed = (): Response =>
