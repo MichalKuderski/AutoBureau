@@ -47,6 +47,7 @@ export async function domainHarness() {
       }, ...(options.rawBody !== undefined ? { body: options.rawBody } : options.body !== undefined ? { body: JSON.stringify(options.body) } : {}) });
     },
     async close() {
+      await admin.outboxEvent.deleteMany({ where: { householdId: { in: [household, foreignHousehold] } } });
       await admin.auditLog.deleteMany({ where: { householdId: { in: [household, foreignHousehold] } } });
       await admin.idempotencyKey.deleteMany({ where: { householdId: { in: [household, foreignHousehold] } } });
       await admin.household.deleteMany({ where: { id: { in: [household, foreignHousehold] } } });

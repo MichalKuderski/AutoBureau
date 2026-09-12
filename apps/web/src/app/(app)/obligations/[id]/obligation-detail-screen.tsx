@@ -113,7 +113,8 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
     updateStatus.mutate(
       outcome === undefined ? { id: obligation.id, status } : { id: obligation.id, status, outcome },
       {
-        onSuccess: () =>
+        onSuccess: () => {
+          setCompleting(false); setDismissing(false);
           toast({
             tone: status === "done" ? "success" : "info",
             title: TRANSITION_TOAST[status] ?? "Updated",
@@ -122,7 +123,8 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
               label: "Undo",
               onClick: () => updateStatus.mutate({ id: obligation.id, status: previousStatus }),
             },
-          }),
+          });
+        },
         onError: () =>
           toast({
             tone: "critical",
@@ -269,7 +271,7 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
                     variant="primary"
                     fullWidth
                     iconLeft={<Icon.Check className="size-4" />}
-                    onClick={() => setCompleting(true)}
+                    onClick={() => { updateStatus.reset(); setCompleting(true); }}
                   >
                     Mark as done
                   </Button>
@@ -283,7 +285,7 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
                       I&apos;m working on it
                     </Button>
                   ) : null}
-                  <Button variant="ghost" fullWidth onClick={() => setDismissing(true)}>
+                  <Button variant="ghost" fullWidth onClick={() => { updateStatus.reset(); setDismissing(true); }}>
                     Dismiss
                   </Button>
                 </>
@@ -295,25 +297,25 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
         </div>
       </div>
 
-      <OutcomeDialog
-        open={completing}
+      {completing && <OutcomeDialog
+        open
+        pending={updateStatus.isPending}
+        error={updateStatus.error?.message}
         obligation={obligation}
         onClose={() => setCompleting(false)}
         onSubmit={(outcome) => {
-          setCompleting(false);
           transition("done", outcome);
         }}
-      />
+      />}
 
       <ConfirmDialog
         open={dismissing}
         onClose={() => setDismissing(false)}
         onConfirm={() => {
-          setDismissing(false);
           transition("dismissed");
         }}
         title="Dismiss this obligation?"
-        description="We'll stop reminding you about it. You can bring it back for the next 30 days."
+        description="Any scheduled reminders will be cancelled. You can bring it back for the next 30 days."
         confirmLabel="Dismiss"
         tone="primary"
         loading={updateStatus.isPending}
@@ -366,7 +368,7 @@ function StatusBanner({
   if (obligation.status === "dismissed") {
     return (
       <Alert tone="info" title="You dismissed this">
-        We&apos;ve stopped reminding you. Reopen it any time in the next 30 days.
+        Scheduled reminders have been cancelled. Reopen it within 30 days of dismissal.
       </Alert>
     );
   }
@@ -404,7 +406,7 @@ function StatusBanner({
 
   return (
     <Alert tone="info" title={formatDueLabel(obligation.due_at, household.timezone)}>
-      You have room. We&apos;ll remind you again as the date gets closer.
+      Check the source and decide what you need to do before this date.
     </Alert>
   );
 }

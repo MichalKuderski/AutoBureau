@@ -14,7 +14,7 @@ const q = z.string().trim().max(160).optional();
 const member_id = UuidSchema.optional();
 const multiStatus = z.preprocess((v) => typeof v === "string" ? [v] : v, z.array(ObligationStatusSchema).min(1).max(7).optional());
 export const ItemFiltersSchema = z.object({ q, member_id, kind: ItemKindSchema.optional(), status: ItemStatusSchema.optional() }).strict();
-export const DocumentFiltersSchema = z.object({ q, member_id, status: DocStatusSchema.optional(), doc_type: DocTypeSchema.optional() }).strict();
+export const DocumentFiltersSchema = z.object({ q, member_id, status: z.preprocess((v) => typeof v === "string" ? [v] : v, z.array(DocStatusSchema).min(1).max(10).optional()), doc_type: DocTypeSchema.optional() }).strict();
 export const ObligationFiltersSchema = z.object({
   q, member_id, status: multiStatus, direction: ObligationDirectionSchema.optional(),
   due_before: IsoDateTimeSchema.optional(), due_after: IsoDateTimeSchema.optional(),
@@ -136,7 +136,7 @@ export async function documents({ request, ctx, db }: HandlerInput) {
   return db.withHousehold(ctx.householdId, async (tx) => {
     const rows = await tx.document.findMany({ select: DOCUMENT_SELECT, take: query.limit + 1,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }], where: { AND: [
-        { householdId: ctx.householdId, ...(f.status ? { status: f.status } : {}), ...(f.doc_type ? { docType: f.doc_type } : {}), ...(f.member_id ? { items: { some: { memberId: f.member_id } } } : {}) },
+        { householdId: ctx.householdId, ...(f.status ? { status: { in: f.status } } : {}), ...(f.doc_type ? { docType: f.doc_type } : {}), ...(f.member_id ? { items: { some: { memberId: f.member_id } } } : {}) },
         ...(f.q ? [{ title: { contains: f.q, mode: "insensitive" as const } }] : []),
         ...(query.after ? [dateCursor(query)!] : []),
       ] } });
@@ -196,9 +196,11 @@ export async function document({ request, ctx, db }: HandlerInput) {
 }
 export async function obligation({ request, ctx, db }: HandlerInput) {
   const id = detailId(request);
-  return db.withHousehold(ctx.householdId, async (tx) => {
-    const row = await tx.obligation.findUnique({ where: { id, householdId: ctx.householdId }, select: OBLIGATION_SELECT });
-    if (!row) throw new HttpProblem("not-found", "That record was not found.");
-    return (await obligationViews(tx, [row], await timezoneFor(tx, ctx.userId), new Date()))[0]!;
-  });
+  return db.withHousehold(ctx.householdId, (tx) => readObligation(tx, id, ctx.householdId, ctx.userId));
+}
+
+export async function readObligation(tx: ScopedClient, id: string, householdId: string, userId: string) {
+  const row = await tx.obligation.findUnique({ where: { id, householdId }, select: OBLIGATION_SELECT });
+  if (!row) throw new HttpProblem("not-found", "That record was not found.");
+  return (await obligationViews(tx, [row], await timezoneFor(tx, userId), new Date()))[0]!;
 }

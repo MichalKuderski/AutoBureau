@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { installDomainHttpFixtures } from "@/test/domain-http-fixtures";
+import { describe, expect, it } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderScreen } from "@/test/render";
@@ -15,19 +16,7 @@ import { HouseholdScreen } from "./household-screen";
  * narrow: stop claiming the storage and audit trail are already real.
  */
 
-const NO_CONTENT_HOUSEHOLD = (): Response =>
-  new Response(JSON.stringify({ id: "h-1", name: "Reyes Household", role: "owner" }), {
-    status: 200,
-    headers: { "content-type": "application/json" },
-  });
-
-beforeEach(() => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(NO_CONTENT_HOUSEHOLD()));
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
+installDomainHttpFixtures();
 
 async function openPassportDetail(): Promise<void> {
   renderScreen(<HouseholdScreen />);

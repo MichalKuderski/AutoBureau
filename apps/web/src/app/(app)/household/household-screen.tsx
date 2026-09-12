@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CollectionMore } from "@/components/patterns/collection-more";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Chip, ITEM_TONE } from "@/components/ui/chip";
 import { FilterBar, SearchInput, type FilterOption } from "@/components/ui/filter-bar";
@@ -158,13 +159,13 @@ export function HouseholdScreen() {
         <EmptyState
           tone="reassuring"
           icon={<Icon.Household className="size-5" />}
-          title={search ? "Nothing matches that" : "Your registry is empty"}
+          title={search ? "Nothing matches that" : memberId ? "No records for this person" : "Your registry is empty"}
           description={
             search
               ? "Try a different word, or clear the search to see everything."
-              : "Forward a policy, a registration, or a bill and we'll start the registry for you."
+              : memberId ? "No saved items are linked to this person. Choose Everyone to see the whole household." : "No items have been saved for this household yet."
           }
-          action={search ? { label: "Clear search", onClick: () => setSearch("") } : undefined}
+          action={search ? { label: "Clear search", onClick: () => setSearch("") } : memberId ? { label: "See everyone", onClick: () => setMemberId(null) } : undefined}
         />
       ) : (
         <div className="flex flex-col gap-8">
@@ -196,6 +197,7 @@ export function HouseholdScreen() {
         </div>
       )}
 
+      <CollectionMore query={query} />
       <Modal
         variant="drawer"
         open={selected !== null}

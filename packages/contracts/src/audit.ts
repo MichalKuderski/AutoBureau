@@ -42,6 +42,7 @@ export const AUDIT_ACTIONS = [
   "obligation.completed",
   /** PRD F9: dismissed obligations are recoverable for 30 days — the inverse transition. */
   "obligation.reopened",
+  "obligation.status_changed",
 ] as const;
 
 export const AuditActionSchema = z.enum(AUDIT_ACTIONS);

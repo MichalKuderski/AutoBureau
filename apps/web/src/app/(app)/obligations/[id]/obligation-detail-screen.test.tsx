@@ -1,9 +1,12 @@
+import { installDomainHttpFixtures } from "@/test/domain-http-fixtures";
 import { describe, expect, it } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderScreen } from "@/test/render";
 import { OBLIGATIONS } from "@/lib/domain/fixtures";
 import { ObligationDetailScreen } from "./obligation-detail-screen";
+
+installDomainHttpFixtures();
 
 /**
  * The detail screen carries two promises the rest of the product rests on: that a

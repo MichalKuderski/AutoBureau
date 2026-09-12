@@ -1,9 +1,12 @@
+import { installDomainHttpFixtures } from "@/test/domain-http-fixtures";
 import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderScreen } from "@/test/render";
 import { matchesKnownRoute } from "@/test/route-manifest";
 import { CommandPalette } from "./command-palette";
+
+installDomainHttpFixtures();
 
 /**
  * Blueprint P0-14.

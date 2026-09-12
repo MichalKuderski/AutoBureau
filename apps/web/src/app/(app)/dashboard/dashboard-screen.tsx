@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CollectionMore } from "@/components/patterns/collection-more";
 import { PageHeader } from "@/components/patterns/page-header";
 import { ObligationCard } from "@/components/patterns/obligation-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,8 +29,8 @@ export function DashboardScreen() {
   const { household, viewer } = useHousehold();
   const summary = useSummary(household.id);
   const actionNeeded = useObligations(household.id, { status: ["action_needed"] });
-  const upcoming = useObligations(household.id, { status: ["upcoming"], dueWithinDays: 45 });
-  const entitlements = useObligations(household.id, { direction: "owed_to_household" });
+  const upcoming = useObligations(household.id, { status: ["upcoming", "action_needed", "in_progress", "waiting"], dueWithinDays: 45 });
+  const entitlements = useObligations(household.id, { direction: "owed_to_household", status: ["upcoming", "action_needed", "in_progress", "waiting", "missed"] });
   const updateStatus = useUpdateObligationStatus(household.id);
   const { toast } = useToast();
 
@@ -113,11 +114,12 @@ export function DashboardScreen() {
               <ObligationCard
                 key={o.id}
                 obligation={o}
-                onComplete={() => complete(o.id, o.title)}
+                pending={updateStatus.isPending} onComplete={() => complete(o.id, o.title)}
               />
             ))}
           </div>
         )}
+        <CollectionMore query={actionNeeded} />
       </section>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -127,16 +129,19 @@ export function DashboardScreen() {
           </h2>
           {upcoming.isPending ? (
             <SkeletonList count={3} />
-          ) : upcoming.data && upcoming.data.length > 0 ? (
+          ) : upcoming.isError ? (
+            <ErrorState {...describeError(upcoming.error)} onRetry={() => void upcoming.refetch()} />
+          ) : upcoming.data.length > 0 ? (
             <div className="flex flex-col gap-2.5">
               {upcoming.data.slice(0, 4).map((o) => (
                 <ObligationCard key={o.id} obligation={o} compact />
               ))}
+              <Link href="/obligations" className="text-sm text-accent">View all obligations</Link>
             </div>
           ) : (
             <EmptyState
-              title="Nothing in the next six weeks"
-              description="Your horizon is clear. We'll surface things as they approach."
+              title="No saved deadlines in the next 45 days"
+              description="Add important dates to keep this view useful."
             />
           )}
         </section>
@@ -161,6 +166,8 @@ export function DashboardScreen() {
                     <Skeleton className="h-4 w-2/3" />
                     <Skeleton className="h-4 w-1/2" />
                   </SkeletonGroup>
+                ) : entitlements.isError ? (
+                  <ErrorState {...describeError(entitlements.error)} onRetry={() => void entitlements.refetch()} />
                 ) : openEntitlements.length === 0 ? (
                   <p className="text-sm text-ink-secondary">
                     Nothing outstanding — we'll flag warranties, deposits, and refunds as we find them.
@@ -188,6 +195,7 @@ export function DashboardScreen() {
                     ))}
                   </ul>
                 )}
+                <CollectionMore query={entitlements} />
               </CardContent>
             </Card>
           </ErrorBoundary>
@@ -251,7 +259,11 @@ function CoveragePanel() {
   const { data } = useSummary(household.id);
   if (!data) return null;
 
-  const pct = Math.round((data.coverage.captured / data.coverage.expected) * 100);
+  if (data.coverage.expected === null) return <Card><CardHeader><CardTitle>Building your ledger</CardTitle></CardHeader><CardContent>
+    <p className="text-sm text-ink-secondary">{data.coverage.captured} verified {data.coverage.captured === 1 ? "record" : "records"}. Coverage will be available once your household setup is saved.</p>
+    <Link href="/household" className="mt-3 inline-block text-sm text-accent">Review your records</Link>
+  </CardContent></Card>;
+  const pct = Math.min(100, Math.round((data.coverage.captured / data.coverage.expected) * 100));
 
   return (
     <Card>
@@ -284,10 +296,10 @@ function CoveragePanel() {
             Fill the gaps
           </Link>
         </div>
-        <p className="mt-3 flex items-center gap-1.5 text-2xs text-ink-tertiary">
+        {data.next_digest_at && <p className="mt-3 flex items-center gap-1.5 text-2xs text-ink-tertiary">
           <Icon.Clock className="size-3.5" />
           Next weekly summary {formatDate(data.next_digest_at, { timeZone: household.timezone })}
-        </p>
+        </p>}
       </CardContent>
     </Card>
   );
