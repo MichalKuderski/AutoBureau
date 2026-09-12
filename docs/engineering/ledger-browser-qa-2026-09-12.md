@@ -66,3 +66,12 @@ The local browser creates a confirmed deadline associated with Alex Local and th
 The form rejects March 8, 2026 at 02:30 in Denver as nonexistent and requires a choice for November 1 at 01:30. Both repeated-hour choices appear; the second is selectable. Direction and priority controls are operable. The validation draft is cancelled. Native date/time changes use keyboard events because automation fill alone does not reliably commit browser-native controls.
 
 At 390 px the edit form scrolls without horizontal overflow; Cancel restores focus to Edit deadline. The viewport override was reset. Captured warning/error console logs are empty. Final build/lint/typecheck, 353 integration checks and 996 repository units pass. Reminder sending, snooze/recurrence and source-window editing remain separate open requirements.
+
+
+## Notifications and preferences
+
+Rebuilt local application / disposable issuer and PostgreSQL only. Empty feed contains no fixture fallbacks. Three explicitly seeded local notices test a deadline destination, a security notice with distinct presentation and a missing destination rendered as plain text. Individual read via keyboard, mark-all-read, unread-empty state and reload persist. The deadline link opens the exact saved obligation.
+
+All twelve editable kind/channel checkboxes were toggled and saved; the three security controls remain checked/disabled. Explicit urgent opt-in, Tuesday digest, quiet hours 22:15–07:45 and digest time 18:30 America/Denver survive reload. Equal boundaries show validation and do not write. Restoring the saved boundary and saving again produces no database delta. The saved setup namespace is unchanged. Three notices remain read, three seeded channel deliveries remain queued with no sent timestamp, twelve preference rows persist, one preference-change action and two read-batch actions exist. No provider send occurred. Native time fields were committed with keyboard events after fill.
+
+The preference layout fits 390 and 320 CSS pixels without horizontal overflow. Captured console warnings/errors are empty. UI tests cover fetch failure, server save refusal, retained edits, owner restrictions and successful retry; real-database tests cover recipient isolation, bounded batches, malformed/foreign cursors, no-op writes, security suppression refusal and unknown stored versions.

@@ -36,3 +36,7 @@ Rollback application code first and leave the additive objects in place. Once no
 Local PostgreSQL 18: both migrations apply, Prisma schema diff is empty, database integration passes 54 checks, web integration passes 353 checks, and repository units pass 1,004 checks. Build/lint/typecheck pass. The migration target guard has eight acceptance/refusal/redaction cases. A final recipient-index isolation rerun is recorded with the rollout evidence. GitHub CI uses PostgreSQL 16 and must pass before hosted mutation.
 
 The endpoint guard follows [Supabase Prisma connection guidance](https://supabase.com/docs/guides/database/prisma): direct or session connections on port 5432, excluding transaction-pooler port 6543. Credentials are never printed.
+
+## Executed staging evidence
+
+Completed from `fc1024a07db55f0040a784fe01708ac0789f71bc` in run 34711543385 after CI 34711314774 and Preview 34711314779 passed. Read-back: 9 completed / 0 rolled-back migrations, 18 forced-RLS tables, 24 policies, no ensure trigger, three empty new tables and the recipient index. All 17 old data fingerprints, original migration checksums, policies, owners, role flags and controlled account/session state match. Households and entitlements remain 99/99. Temporary launch policy 59813384 removed; original main policy 58428124 remains alone. Production and application-deploy jobs did not run.

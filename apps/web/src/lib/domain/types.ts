@@ -30,12 +30,4 @@ export type { Provenance, ObligationView, ItemView, DocumentView, ProposedChange
 
 export type { TimelineEntry, TimelineLens } from "@autobureau/contracts";
 
-export interface NotificationView {
-  id: string;
-  kind: string;
-  title: string;
-  body: string;
-  created_at: string;
-  read_at: string | null;
-  href: string | null;
-}
+export type { NotificationView } from "@autobureau/contracts";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ObligationOutcome } from "@autobureau/contracts";
+import type { ObligationOutcome, NotificationLens } from "@autobureau/contracts";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import type {
   DashboardSummary,
@@ -12,19 +12,9 @@ import type {
   TimelineEntry,
   TimelineLens,
 } from "./types";
-import * as fixtures from "./fixtures";
 import { useCollection } from "./collection";
 
-/** Scoped queries share contract shapes with the server. Notification cutover remains pending. */
-
-const LATENCY_MS = 220;
-
-async function resolve<T>(value: T): Promise<T> {
-  // Simulated latency keeps loading states honest during development. Without it,
-  // skeletons never render and their bugs ship.
-  await new Promise((r) => setTimeout(r, LATENCY_MS));
-  return value;
-}
+/** Scoped queries share contract shapes with the server. */
 
 export const queryKeys = {
   summary: (h: string) => ["summary", h] as const,
@@ -35,7 +25,7 @@ export const queryKeys = {
   documents: (h: string, params?: DocumentFilters) => ["documents", h, params ?? {}] as const,
   document: (h: string, id: string) => ["document", h, id] as const,
   timeline: (h: string, lens?: TimelineLens) => ["timeline", h, ...(lens ? [lens] : [])] as const,
-  notifications: (h: string) => ["notifications", h] as const,
+  notifications: (h: string, lens?: NotificationLens) => ["notifications", h, ...(lens ? [lens] : [])] as const,
   currentHousehold: () => ["household", "current"] as const,
 };
 
@@ -127,11 +117,9 @@ export function useTimeline(householdId: string, lens: TimelineLens = "all") {
     pathWithFilters("/timeline", { lens }));
 }
 
-export function useNotifications(householdId: string) {
-  return useQuery<NotificationView[]>({
-    queryKey: queryKeys.notifications(householdId),
-    queryFn: () => resolve(fixtures.NOTIFICATIONS),
-  });
+export function useNotifications(householdId: string, lens: NotificationLens = "all") {
+  return useCollection<NotificationView>(queryKeys.notifications(householdId, lens), householdId,
+    pathWithFilters("/notifications", { lens }));
 }
 
 export interface ObligationStatusUpdate {
@@ -165,20 +153,9 @@ export function useUpdateObligationStatus(householdId: string) {
 export function useMarkNotificationsRead(householdId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (ids: string[]) => {
-      await new Promise((r) => setTimeout(r, 150));
-      return ids;
-    },
-    onMutate: async (ids) => {
-      await qc.cancelQueries({ queryKey: queryKeys.notifications(householdId) });
-      const previous = qc.getQueryData<NotificationView[]>(queryKeys.notifications(householdId));
-      qc.setQueryData<NotificationView[]>(queryKeys.notifications(householdId), (old) =>
-        old?.map((n) => (ids.includes(n.id) ? { ...n, read_at: new Date().toISOString() } : n)),
-      );
-      return { previous };
-    },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.previous) qc.setQueryData(queryKeys.notifications(householdId), ctx.previous);
-    },
+    mutationFn: (ids: string[]) => apiFetch<{ read_ids: string[]; changed: number }>("/notifications/read", {
+      method: "POST", householdId, body: { ids },
+    }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.notifications(householdId) }),
   });
 }
