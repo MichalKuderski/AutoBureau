@@ -248,7 +248,7 @@ export function CommandPalette() {
         <div className="flex items-center gap-4 border-t border-line bg-surface-sunken/60 px-4 py-2 text-2xs text-ink-tertiary">
           <span>↑↓ to navigate</span>
           <span>↵ to open</span>
-          <span className="ml-auto">Search only — AutoBureau doesn't chat</span>
+          <span className="ml-auto">Search only — Pellum doesn't chat</span>
         </div>
       </div>
     </div>,

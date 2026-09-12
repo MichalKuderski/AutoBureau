@@ -122,7 +122,7 @@ describe("Test D · no fake asynchronous behavior remains", () => {
  * Blueprint P0-10.
  *
  * The identity-number bullet said passport and account numbers "are encrypted" and
- * that AutoBureau's own systems "cannot decrypt them" — present tense, for a control
+ * that Pellum's own systems "cannot decrypt them" — present tense, for a control
  * with no code behind it anywhere in the repository. ADR-007 is the real design; its
  * own status line says "Accepted; not yet implemented." Test A proves the false
  * present-tense claim is gone. Test B proves the replacement states a commitment
@@ -136,7 +136,7 @@ describe("P0-10 Test A · no present-tense encryption claim", () => {
     expect(screen.queryByText(/numbers are encrypted/i)).not.toBeInTheDocument();
   });
 
-  it("does not claim AutoBureau's systems already cannot decrypt them", () => {
+  it("does not claim Pellum's systems already cannot decrypt them", () => {
     renderScreen(<PrivacySettings />);
     expect(screen.queryByText(/cannot decrypt them/i)).not.toBeInTheDocument();
   });
@@ -161,7 +161,7 @@ describe("P0-10 Test B · the replacement is accurate commitment tense", () => {
 });
 
 describe("P0-10 Test C · the rest of the privacy page is untouched", () => {
-  it("still states what AutoBureau currently reads and builds", () => {
+  it("still states what Pellum currently reads and builds", () => {
     renderScreen(<PrivacySettings />);
     expect(screen.getByText(/documents you send us, so we can find dates/i)).toBeInTheDocument();
     expect(screen.getByText(/the registry we build from them/i)).toBeInTheDocument();

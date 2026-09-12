@@ -27,7 +27,7 @@ const GLYPH: Record<string, typeof Icon.Bell> = {
  * Notification feed.
  *
  * The in-app mirror of what we sent by email and push. It exists so a user can
- * always reconstruct "what did AutoBureau tell me, and when" — which matters both
+ * always reconstruct "what did Pellum tell me, and when" — which matters both
  * for trust and for the moment someone says "I never got a warning about that".
  */
 export function NotificationsScreen() {

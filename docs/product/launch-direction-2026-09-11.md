@@ -9,7 +9,7 @@ Owner: founder approval in the release-director conversation. This records a go-
 - Develop Free/Premium with provisional pricing of $12/month or $99/year. Validate unit economics and entitlement caps before enabling payments.
 - Use Stripe-hosted Checkout and Customer Portal; test/sandbox mode first. Secure provider account access is still required.
 - Defer Plaid and bank-data ingestion.
-- Rework the brand toward a simple, memorable standalone name. No new name, public domain, logo or rename is approved.
+- Pellum is the approved product name. Implement the rebrand while retaining stable database, package and infrastructure identifiers. Select the domain autonomously; registration/DNS and public launch remain separate gates.
 - Keep the controlled staging confirmation identity intact.
 
 The founder approved PR #4's final regression, CI/staging verification, temporary staging branch allowance/restoration, and merge after those gates. PR #4 was squash-merged as 3695e6cbb219d46674bbc5ffd891de2793fd002c on September 12 UTC.
@@ -24,7 +24,7 @@ The founder approved PR #4's final regression, CI/staging verification, temporar
 6. Verify complete user journeys with real tenant-isolation tests, retries/failures, document and payment lifecycles, responsive/accessibility checks, and a final founder staging acceptance.
 7. Produce a separate exact-SHA release packet with configuration differences, rollback and remaining external/legal requirements before requesting consequential rollout approval.
 
-Name selection/clearance runs alongside steps 2–4. Avoid a mass rename until the name and domain route are settled.
+Brand clearance and domain screening run alongside implementation. Local Pellum branding is approved; no trademark clearance or domain ownership is implied.
 
 ## Explicitly retained gates
 

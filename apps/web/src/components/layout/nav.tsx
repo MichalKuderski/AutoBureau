@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { BrandMark } from "@/components/brand/brand-mark";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/cn";
@@ -56,13 +57,8 @@ export function SidebarNav({
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2.5 px-4 py-4">
-        <div
-          aria-hidden
-          className="flex size-8 items-center justify-center rounded-md bg-accent text-accent-ink"
-        >
-          <Icon.Shield className="size-4.5" />
-        </div>
-        <span className="font-serif text-lg font-semibold tracking-tight">AutoBureau</span>
+        <BrandMark className="size-8 shrink-0 text-accent" />
+        <span className="font-serif text-lg font-semibold tracking-tight">Pellum</span>
         {showClose ? (
           <button
             type="button"

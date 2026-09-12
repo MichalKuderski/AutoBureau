@@ -482,9 +482,9 @@ function ProvenanceCard({
 function originLine(source: ObligationView["source"]): string {
   switch (source) {
     case "ai":
-      return "AutoBureau found this in a document your household sent us.";
+      return "Pellum found this in a document your household sent us.";
     case "system":
-      return "AutoBureau created this from a cycle it already tracks for you.";
+      return "Pellum created this from a cycle it already tracks for you.";
     case "user":
       return "Someone in your household added this by hand.";
   }

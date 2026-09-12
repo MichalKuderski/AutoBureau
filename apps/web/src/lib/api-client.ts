@@ -124,7 +124,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     if (cause instanceof DOMException && cause.name === "AbortError") throw cause;
     throw new ApiError({
       type: "https://autobureau.com/problems/unavailable",
-      title: "Can't reach AutoBureau",
+      title: "Can't reach Pellum",
       status: 503,
       detail: "Check your connection — we'll retry automatically.",
     });

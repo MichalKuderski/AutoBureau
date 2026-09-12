@@ -33,7 +33,7 @@ export function DashboardScreen() {
   const updateStatus = useUpdateObligationStatus(household.id);
   const { toast } = useToast();
 
-  const firstName = viewer.displayName.split(" ")[0];
+  const firstName = viewer.displayName.includes("@") ? "there" : viewer.displayName.split(" ")[0];
 
   const complete = (id: string, title: string) => {
     updateStatus.mutate(
@@ -105,7 +105,7 @@ export function DashboardScreen() {
             tone="reassuring"
             icon={<Icon.Check className="size-5" />}
             title="Nothing needs you right now"
-            description="We're watching every deadline in your household. You'll hear from us before anything is at risk."
+            description="No saved obligations need action right now. Add your important records to start building a clearer picture."
           />
         ) : (
           <div className="flex flex-col gap-3">
