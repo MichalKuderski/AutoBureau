@@ -29,6 +29,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Generate client for read-only migration inventory
+        run: pnpm --filter @autobureau/db exec prisma generate
+        env:
+          # Generation is local and never connects. Hosted credentials enter only below.
+          DATABASE_URL: postgresql://unused:unused@127.0.0.1:5432/unused
       - name: Reverify target, schema, privileges and row fingerprints
         run: node scripts/staging-jobs-migration.mjs before
         env:
