@@ -1,10 +1,10 @@
 # ADR-017 staging continuation — September 13
 
-Status: implemented locally; no SQS resource or worker deployed. PR #5 remains draft. Document intake and real/model processing remain disabled.
+Status: database foundation applied and verified in staging (run 34785388749); no SQS resource or worker deployed. PR #5 remains draft. Document intake and real/model processing remain disabled.
 
 Completed local checks: build, typecheck, lint (script console warnings only), 1,070 unit tests, 70 DB integration tests and 373 web integration tests. The database suite includes real restricted-role transaction/crash/isolation checks and provider API-role TRUNCATE denial. Infrastructure checks cover 18 bootstrap controls, 23 saved-plan negative controls, 3 signed workflow-identity controls and 2 Terraform mock tests. These evidence classes are distinct from provider probes.
 
-The first broad unit attempt failed because the sandbox prohibited local JWKS listeners. The loopback-enabled rerun passes without assertion changes. The first web integration command omitted local connection variables and was stopped; the explicit verified local PostgreSQL 18 run passes. GitHub CI uses PostgreSQL 16 and must independently pass after commit.
+The first broad unit attempt failed because the sandbox prohibited local JWKS listeners. The loopback-enabled rerun passes without assertion changes. The first web integration command omitted local connection variables and was stopped; the explicit verified local PostgreSQL 18 run passes. GitHub CI uses PostgreSQL 16; runs 34784714659 and 34785073100 independently pass. The first migration run lacked a generated Prisma client and skipped all DDL. Explicit generation fixed the runner; the second run passes all pre/post checks.
 
 ## Migration order
 

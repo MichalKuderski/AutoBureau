@@ -285,3 +285,14 @@ describe("redactMeta always yields an object", () => {
     expect(redactMeta([1, 2, 3] as unknown as Record<string, unknown>)).toEqual({});
   });
 });
+
+describe("Plaid capabilities in arbitrary text", () => {
+  for (const kind of ["access", "public", "link"]) for (const environment of ["sandbox", "development", "production"]) {
+    it(`removes ${kind}/${environment} under an innocent key and in errors`, () => {
+      const value = `${kind}-${environment}-synthetic_token-123`;
+      expect(scrubString(`provider said ${value}`)).toBe(`provider said ${REDACTED}`);
+      expect(redactValue({ detail: value })).toEqual({ detail: REDACTED });
+      expect(JSON.stringify(describeError(new Error(value)))).not.toContain(value);
+    });
+  }
+});

@@ -104,11 +104,10 @@ const SCRUBBERS: ReadonlyArray<readonly [RegExp, string]> = [
   // enough that ordinary dotted identifiers and version strings are not eaten.
   [/\b[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\b/g, REDACTED],
   [/\bBearer\s+[^\s"',;]+/gi, `Bearer ${REDACTED}`],
-  // Known credential prefixes. Cheap, and the ones this product has already committed to
-  // meeting (Stripe post-launch per doc 13 §7; Plaid only behind ADR-011).
+  // Known credential prefixes, including all Plaid capability types (PRD §21.1).
   [/\b(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]+/g, REDACTED],
   [/\bwhsec_[A-Za-z0-9]+/g, REDACTED],
-  [/\baccess-(?:sandbox|development|production)-[A-Za-z0-9-]+/g, REDACTED],
+  [/\b(?:access|public|link)-(?:sandbox|development|production)-[A-Za-z0-9_-]+/gi, REDACTED],
   // `name=value` where the name itself says the value is a secret.
   [
     /\b([A-Za-z0-9_-]*(?:authorization|cookie|token|secret|password|apikey|csrf|verifier|challenge|signature)[A-Za-z0-9_-]*)\s*=\s*([^\s;,&"']+)/gi,

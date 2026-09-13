@@ -1,0 +1,29 @@
+{
+  "before": "2026-09-13T21:59:03.637Z",
+  "after": "2026-09-13T21:59:15.290Z",
+  "project": "kdqnfruwgocfqwpbpuxo",
+  "run": 34785388749,
+  "sourceSHA": "1302829048d356d972733173eca889cb3a7623d9",
+  "migrations": 13,
+  "rolledBack": 0,
+  "forcedRls": 21,
+  "policies": 27,
+  "households": 161,
+  "entitlements": 161,
+  "existingRowFingerprintsUnchanged": true,
+  "jobDeliveries": 0,
+  "jobInbox": 0,
+  "apiTableGrantsBefore": 207,
+  "apiTableGrantsAfter": 0,
+  "workerRole": {
+    "name": "app_job_worker",
+    "superuser": false,
+    "bypass": false,
+    "create_role": false,
+    "create_db": false,
+    "login": false,
+    "inherit": false
+  },
+  "ensureRlsTrigger": 0,
+  "productionTouched": false
+}
