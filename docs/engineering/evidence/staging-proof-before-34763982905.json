@@ -1,0 +1,24 @@
+{
+  "team": "Data Analyst Mike",
+  "teamSlug": "data-analyst-mike",
+  "teamId": "team_CNQd2ynmaV1xtRhB6NMMeYBs",
+  "project": "autobureau-staging",
+  "projectId": "prj_qAjK6wDYXoGn02Sl8jjSmrvy4NLR",
+  "issuerMode": "team",
+  "oidcEnabled": true,
+  "protection": {
+    "sso": "all_except_custom_domains",
+    "passwordEnabled": false,
+    "passwordScope": null,
+    "trustedIpsEnabled": false
+  },
+  "stable": {
+    "alias": "autobureau-staging.vercel.app",
+    "aliasId": "c6bee696e99245a6ccba0c99a95ca606ead3a4fffda686f7265edef33170642605c077f79e18827aed13fe4e627fa1f6420775e5dddee156de2946c4a67ee538",
+    "projectId": "prj_qAjK6wDYXoGn02Sl8jjSmrvy4NLR",
+    "deploymentId": "dpl_G5PaLPvpjwExBKFUpKXh2jf4gnu4",
+    "deploymentUrl": "autobureau-staging-1th6fcfxl-data-analyst-mike.vercel.app",
+    "target": "production",
+    "readyState": "READY"
+  }
+}
