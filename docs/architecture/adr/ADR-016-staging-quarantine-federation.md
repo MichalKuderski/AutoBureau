@@ -1,6 +1,6 @@
 # ADR-016: Bucket-scoped federation for staging document quarantine
 
-**Status: Approved by the founder; not yet applied.** September 12, 2026. Scope: staging only. Approval is recorded in the release-director conversation and remains conditional on every pre-apply proof below. This does not change Production storage or approve public launch.
+**Status: Applied to staging; live synthetic probes pending.** Approved September 12, 2026. Scope: staging only. Approval is recorded in the release-director conversation and remains conditional on every pre-apply proof below. This does not change Production storage or approve public launch.
 
 ## Evidence and decision needed
 
@@ -64,3 +64,10 @@ The September 13 bootstrap draft in `infra/cloudformation/staging` prepares eigh
 The founder explicitly approved the exact temporary GitHub staging rule. Native build 34763982905 completed signed stable-scope verification; its alias guard stopped on the legitimate generated team alias. Read-only recovery 34764846521 verifies unchanged stable assignment and protection, both proof names protected by Vercel authentication, and the [native claim record](../../engineering/evidence/staging-proof-inspection-20260913.json). No raw token was exported. The guard now recognizes that exact team-alias shape and preserves evidence before later cleanup checks; project/environment/signature checks remain unchanged.
 
 The [signed GitHub job proof](../../engineering/evidence/staging-github-oidc-proof-20260913.json) emits the immutable subject `repo:MichalKuderski@177895094/AutoBureau@1336298759:environment:staging`. The bootstrap trust now pins this live value and rejects the earlier assumed legacy subject. No AWS resources have been applied. AWS temporary login expired, and renewal did not complete. Fresh inventory, cost, remote-state bootstrap, saved real plan, effective-policy readbacks and real assumption/storage probes remain mandatory. The temporary rule was removed; staging is main-only again.
+
+
+### September 13 applied storage checkpoint
+
+The latest checkpoint supersedes the earlier historical not-applied paragraphs. The separate eight-resource bootstrap is live and verified. An independently reviewed, expiring deployment grant was added to its bounded deployment role. GitHub run [34779180000](https://github.com/MichalKuderski/AutoBureau/actions/runs/34779180000) successfully applied the exact saved plan from run 34777452159: twelve additions, no replacements/deletions. See the [saved-plan semantic review](../../engineering/adr016-saved-plan-review-20260913.md).
+
+Effective live read-back at 19:59 UTC confirms the exact reviewed bucket policy, two role trusts/policies and permission boundary, all public-access blocks, BucketOwnerEnforced, AES256, Ohio region, seven-day quarantine expiry, one-day multipart cleanup and zero objects. This establishes configuration, not native runtime access or the required synthetic probes. Intake and worker/model processing remain disabled; Production remains untouched. ADR-017 is separate and unapplied.

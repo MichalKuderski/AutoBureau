@@ -35,6 +35,10 @@ export async function runProof(env, emit = console.log) {
     || env.VERCEL_ENV !== env.PELLUM_STAGING_OIDC_SCOPE) throw new Error('Staging build identity mismatch');
   const evidence = await proveClaims({ token: env.VERCEL_OIDC_TOKEN, environment: env.PELLUM_STAGING_OIDC_SCOPE });
   emit(`PELLUM_OIDC_PROOF ${JSON.stringify(evidence)}`);
+  if (env.PELLUM_STAGING_STORAGE_PROBE === '1') {
+    const { runStorageProbe } = await import('./staging-storage-probe-runner.mjs');
+    await runStorageProbe(emit);
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

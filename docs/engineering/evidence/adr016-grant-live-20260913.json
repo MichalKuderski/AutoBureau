@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "capturedAt": "2026-09-13T19:47:23.433767+00:00",
+  "stackStatus": "CREATE_COMPLETE",
+  "exactEffectiveGrant": true,
+  "policyNames": [
+    "apply-reviewed-adr016-storage-plan",
+    "plan-read-only"
+  ],
+  "expires": "2026-09-13T22:00:00Z"
+}
