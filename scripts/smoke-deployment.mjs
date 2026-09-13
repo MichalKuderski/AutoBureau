@@ -12,8 +12,8 @@
  *
  * `--expect-unconfigured` asserts the *stricter* posture of a deployment that has no
  * `AUTH_*` set yet: the boundary must refuse every domain request. Without the flag the
- * boundary is expected to be configured, and the assertion relaxes to "never serves
- * domain data unauthenticated" — which is the property that must hold in production.
+ * boundary is expected to be configured: protected data must return 401 and the
+ * synthetic invalid credentials must receive the application's neutral 401 problem.
  *
  * WHY `/v1` IS NOT UNIFORMLY 503
  * ------------------------------
@@ -31,6 +31,8 @@
  * asserts what the architecture actually guarantees: neither route ever serves data, and
  * the *reachable* boundary reports itself unconfigured.
  */
+
+import { configuredSignInRefusal, authSmokeEvidence } from './smoke-auth-evidence.mjs';
 
 const BASE = (process.argv[2] ?? process.env.SMOKE_BASE_URL ?? "").replace(/\/+$/, "");
 const EXPECT_UNCONFIGURED = process.argv.includes("--expect-unconfigured");
@@ -87,6 +89,7 @@ async function get(path, init) {
   // sets it today, and none should have to think about it.
   const response = await fetch(`${BASE}${path}`, {
     redirect: "manual",
+    signal: AbortSignal.timeout(30_000),
     ...init,
     headers: { ...BYPASS_HEADERS, ...init?.headers },
   });
@@ -187,8 +190,8 @@ check(
 // ── 4. The domain boundary refuses safely ─────────────────────────────────────────────
 const protectedRoute = await get("/v1/households/current");
 check(
-  "GET /v1/households/current never serves data unauthenticated",
-  protectedRoute.status !== 200,
+  "GET /v1/households/current refuses unauthenticated access with 401",
+  protectedRoute.status === 401,
   { status: protectedRoute.status },
 );
 if (EXPECT_UNCONFIGURED) {
@@ -201,6 +204,8 @@ if (EXPECT_UNCONFIGURED) {
 }
 
 // The public auth endpoint reaches the boundary, so it is the one that can report 503.
+const signInStartedAt = new Date().toISOString();
+const signInStart = performance.now();
 const signIn = await get("/v1/auth/sign-in", {
   method: "POST",
   headers: {
@@ -210,6 +215,9 @@ const signIn = await get("/v1/auth/sign-in", {
   },
   body: JSON.stringify({ email: "smoke@example.invalid", password: "not-a-real-password" }),
 });
+const signInDuration = performance.now() - signInStart;
+const signInBody = await signIn.clone().json().catch(() => null);
+const signInEvidence = authSmokeEvidence(signIn, signInBody, signInStartedAt, signInDuration);
 check("POST /v1/auth/sign-in never returns 200 for smoke credentials", signIn.status !== 200, {
   status: signIn.status,
 });
@@ -223,13 +231,13 @@ if (EXPECT_UNCONFIGURED) {
   check(
     "503 body is problem+json naming configuration, not a stack",
     body?.status === 503 && typeof body?.detail === "string" && /not configured/i.test(body.detail),
-    body?.detail,
+    signInEvidence,
   );
 } else {
   check(
-    "configured boundary does not answer 503",
-    signIn.status !== 503,
-    { status: signIn.status, hint: "AUTH_* appears unset on this deployment" },
+    "configured auth returns the neutral application 401 for invalid credentials",
+    configuredSignInRefusal(signIn, signInBody),
+    signInEvidence,
   );
 }
 

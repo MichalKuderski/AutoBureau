@@ -49,6 +49,7 @@ const TOO_COMMON = new Set([
   "football",
   "baseball",
   "autobureau",
+  "pellum",
 ]);
 
 const MIN_LENGTH = 8;

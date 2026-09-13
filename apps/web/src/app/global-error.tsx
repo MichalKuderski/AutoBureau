@@ -39,7 +39,7 @@ export default function GlobalError({
       >
         <main style={{ maxWidth: "28rem", textAlign: "center" }}>
           <h1 style={{ fontSize: "1.25rem", fontWeight: 600, margin: "0 0 0.5rem" }}>
-            AutoBureau couldn&rsquo;t start
+            Pellum couldn&rsquo;t start
           </h1>
           <p style={{ margin: "0 0 1.5rem", lineHeight: 1.6, color: "#9db0a7" }}>
             Something failed before the app could load. Your documents and deadlines are

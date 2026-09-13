@@ -14,35 +14,17 @@ import type { SessionTokens } from "./session";
  * reachable with the publishable key, and a request path holding the privileged key
  * would violate doc 06 §5's confinement of it to migrations and two named jobs.
  *
- * PROVIDER COMPATIBILITY IS UNVERIFIED. There is no Supabase project yet, so these
- * request shapes are written against the documented contract and exercised against a
- * contract-shaped local server in the tests. What is proved is our client — its headers,
- * its parsing, its error mapping, and that it never leaks a provider response. Whether
- * the real provider agrees is the first thing to check once a project exists.
- *
- * EVERY CALL IS BOUNDED (blueprint P1-06). Before this, none of the three `fetchImpl`
- * calls carried an `AbortSignal`, so a hung GoTrue left the request open until the
- * platform's own timeout — turning a dependency outage into an availability outage for
- * sign-in, refresh, and the magic-link request alike. `PROVIDER_TIMEOUT_MS` is not an
- * SLO: it is a deadline on one outbound call, chosen to outlast ordinary provider and
- * mobile-network latency while still bounding a genuine hang. No architecture document
- * prescribes a value, so 10 seconds is this module's own choice — generous next to a
- * token exchange's usual sub-second reply, short next to the minutes a stuck connection
- * would otherwise cost. All three calls share it: nothing here suggests sign-in, refresh,
- * and the OTP request need different budgets, and a single constant is one fewer place
- * for that judgement call to drift.
- *
- * A timeout aborts the `fetch`, which rejects with a `DOMException`/`AbortError` — caught
- * by the same `catch` that already handles a network failure, so it becomes the existing
- * `unavailable` classification rather than a distinct error path. Callers do not change:
- * they already treat "the provider could not be reached" and "the provider hung" as the
- * same fault, because from here they are indistinguishable and equally not the caller's
- * problem to solve.
+ * Stable staging has verified signup, confirmation, password sessions and replay.
+ * A provider 504 was observed separately from our deadline. Every call stays single-
+ * attempt and bounded: ambiguous credential mutations are never automatically replayed.
+ * Coarse user-facing errors remain identical; internal allow-listed diagnostics distinguish
+ * an HTTP response from a local deadline or transport failure without retaining bodies,
+ * credentials, URLs or arbitrary headers.
  */
 
 /**
- * The deadline on one outbound provider call. See the module header for why 10s and why
- * shared — this is deliberately the only place the number is written.
+ * The existing shared ten-second ceiling bounds a stalled outbound call. It is not
+ * a guarantee that the provider will answer before its own gateway timeout.
  */
 const PROVIDER_TIMEOUT_MS = 10_000;
 
@@ -56,14 +38,32 @@ export type ProviderRejection =
   | "rate-limited"
   | "unavailable";
 
+type ProviderFailure = "http" | "timeout" | "network" | "invalid-response";
+interface ProviderDiagnostics { failure: ProviderFailure; durationMs: number; requestId?: string }
+const REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export class ProviderError extends Error {
   override readonly name = "ProviderError";
   constructor(
     readonly reason: ProviderRejection,
     message: string,
+    /** Numeric HTTP status only; never the provider body or submitted credentials. */
+    readonly httpStatus?: number,
+    readonly diagnostics?: ProviderDiagnostics,
   ) {
     super(message);
   }
+}
+
+/** Explicit projection: safe even if a future caller constructs an error incorrectly. */
+export function providerFailureMeta(error: ProviderError): Record<string, unknown> {
+  const d = error.diagnostics;
+  return {
+    ...(Number.isInteger(error.httpStatus) && error.httpStatus! >= 100 && error.httpStatus! < 600 ? { upstream_status: error.httpStatus } : {}),
+    ...(d && ["http", "timeout", "network", "invalid-response"].includes(d.failure) ? { upstream_failure: d.failure } : {}),
+    ...(d && Number.isInteger(d.durationMs) && d.durationMs >= 0 && d.durationMs <= 600_000 ? { upstream_duration_ms: d.durationMs } : {}),
+    ...(d?.requestId && REQUEST_ID.test(d.requestId) ? { upstream_request_id: d.requestId } : {}),
+  };
 }
 
 /** The provider returns more than this; we deliberately keep only what a session needs. */
@@ -152,6 +152,23 @@ export function createGoTrueProvider(
     apikey: config.anonKey,
   };
 
+  function diagnostics(failure: ProviderFailure, start: number, response?: Response): ProviderDiagnostics {
+    const requestId = response?.headers.get("sb-request-id");
+    return { failure, durationMs: Math.max(0, Math.round(performance.now() - start)),
+      ...(requestId && REQUEST_ID.test(requestId) ? { requestId } : {}) };
+  }
+
+  async function post(url: string, body: Record<string, unknown>) {
+    const start = performance.now(), signal = AbortSignal.timeout(timeoutMs);
+    try {
+      const response = await fetchImpl(url, { method: "POST", headers, body: JSON.stringify(body), signal });
+      return { response, start, signal };
+    } catch {
+      throw new ProviderError("unavailable", "the identity provider could not be reached", undefined,
+        diagnostics(signal.aborted ? "timeout" : "network", start));
+    }
+  }
+
   /**
    * One POST that must come back as a session.
    *
@@ -166,30 +183,19 @@ export function createGoTrueProvider(
     body: Record<string, string>,
     onRejection: ProviderRejection,
   ): Promise<SessionTokens> {
-    let response: Response;
-    try {
-      response = await fetchImpl(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-    } catch {
-      // Network failure and timeout land here identically: `AbortSignal.timeout` rejects
-      // the fetch the same way a DNS failure or a connection reset would, and both are
-      // "the provider could not be reached" from a caller's point of view.
-      throw new ProviderError("unavailable", "the identity provider could not be reached");
-    }
+    const { response, start, signal } = await post(url, body);
 
     if (!response.ok) {
       // The provider's body is never surfaced or logged: it distinguishes "no such user"
       // from "wrong password", which is an account-enumeration oracle.
-      throw new ProviderError(mapStatus(response.status, onRejection), "sign-in was refused");
+      void response.body?.cancel().catch(() => undefined);
+      throw new ProviderError(mapStatus(response.status, onRejection), "sign-in was refused", response.status, diagnostics("http", start, response));
     }
 
     const parsed = TokenResponseSchema.safeParse(await response.json().catch(() => null));
     if (!parsed.success) {
-      throw new ProviderError("unavailable", "the identity provider returned an unusable response");
+      throw new ProviderError("unavailable", "the identity provider returned an unusable response", response.status,
+        diagnostics(signal.aborted ? "timeout" : "invalid-response", start, response));
     }
     return {
       accessToken: parsed.data.access_token,
@@ -215,26 +221,14 @@ export function createGoTrueProvider(
       // Not `tokenGrant`: `/signup` is the one provider call whose success may legitimately
       // carry no tokens, so a helper that insists on parsing a token response would turn the
       // confirmation-required deployment into a spurious "unusable response".
-      let response: Response;
-      try {
-        response = await fetchImpl(`${config.apiUrl}/signup`, {
-          method: "POST",
-          headers,
-          // `data` becomes provider user metadata. It is user-supplied and stays that way:
-          // nothing downstream reads it as an authorization input, and the mirrored profile
-          // is written from the verified email rather than from this.
-          body: JSON.stringify({ email, password, data: { display_name: displayName } }),
-          signal: AbortSignal.timeout(timeoutMs),
-        });
-      } catch {
-        throw new ProviderError("unavailable", "the identity provider could not be reached");
-      }
+      const { response, start } = await post(`${config.apiUrl}/signup`, { email, password, data: { display_name: displayName } });
 
       if (!response.ok) {
         // The body is never surfaced. GoTrue distinguishes "already registered" from a
         // rejected password, and passing that through would hand the caller an
         // account-enumeration oracle the route then has to un-leak.
-        throw new ProviderError(mapStatus(response.status, "invalid-credentials"), "sign-up was refused");
+        void response.body?.cancel().catch(() => undefined);
+        throw new ProviderError(mapStatus(response.status, "invalid-credentials"), "sign-up was refused", response.status, diagnostics("http", start, response));
       }
 
       const body: unknown = await response.json().catch(() => null);
@@ -277,29 +271,12 @@ export function createGoTrueProvider(
     async requestMagicLink(email, codeChallenge, redirectTo) {
       // S256 only. Offering `plain` would let anyone who sees the authorization request
       // reconstruct the verifier, which is the whole thing PKCE prevents.
-      let response: Response;
-      try {
-        response = await fetchImpl(
-          `${config.apiUrl}/otp?redirect_to=${encodeURIComponent(redirectTo)}`,
-          {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              email,
-              code_challenge: codeChallenge,
-              code_challenge_method: "S256",
-            }),
-            signal: AbortSignal.timeout(timeoutMs),
-          },
-        );
-      } catch {
-        throw new ProviderError("unavailable", "the identity provider could not be reached");
-      }
+      const { response, start } = await post(`${config.apiUrl}/otp?redirect_to=${encodeURIComponent(redirectTo)}`,
+        { email, code_challenge: codeChallenge, code_challenge_method: "S256" });
       if (!response.ok) {
-        throw new ProviderError(
-          mapStatus(response.status, "invalid-credentials"),
-          "the link could not be sent",
-        );
+        void response.body?.cancel().catch(() => undefined);
+        throw new ProviderError(mapStatus(response.status, "invalid-credentials"), "the link could not be sent",
+          response.status, diagnostics("http", start, response));
       }
     },
 

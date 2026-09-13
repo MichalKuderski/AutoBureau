@@ -1,0 +1,14 @@
+{
+  "evidenceSource": "vercel-native-build",
+  "signatureVerified": true,
+  "iss": "https://oidc.vercel.com/data-analyst-mike",
+  "aud": "https://vercel.com/data-analyst-mike",
+  "sub": "owner:data-analyst-mike:project:autobureau-staging:environment:preview",
+  "owner_id": "team_CNQd2ynmaV1xtRhB6NMMeYBs",
+  "project_id": "prj_qAjK6wDYXoGn02Sl8jjSmrvy4NLR",
+  "environment": "preview",
+  "iat": 1789252539,
+  "exp": 1789256139,
+  "lifetimeSeconds": 3600,
+  "runtimeRoleAssumptionProven": false
+}

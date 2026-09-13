@@ -21,6 +21,8 @@ describe("A4 · the public surface is exactly this and nothing more", () => {
         "/auth/confirm",
         "/auth/refresh",
         "/forgot-password",
+        "/icon.svg",
+        "/manifest.webmanifest",
         "/sign-in",
         "/sign-up",
         "/v1/auth/magic-link",

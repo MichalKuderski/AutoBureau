@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { problem } from "@autobureau/contracts";
 import { authConfigFromEnv, type AuthConfig } from "@/server/auth/config";
 import { readCookie } from "@/server/auth/context";
-import { TokenError, createJwtVerifier, type JwtVerifier } from "@/server/auth/jwt";
+import { TokenError, VerificationUnavailableError, createJwtVerifier, type JwtVerifier } from "@/server/auth/jwt";
 import { NONCE_HEADER, buildCsp, createNonce } from "@/server/http/csp";
 import {
   DEFAULT_DESTINATION,
@@ -44,7 +44,8 @@ export const config = {
 export type MiddlewareDecision =
   | { readonly kind: "allow" }
   | { readonly kind: "redirect"; readonly to: string }
-  | { readonly kind: "unauthorized" };
+  | { readonly kind: "unauthorized" }
+  | { readonly kind: "unavailable" };
 
 export interface MiddlewareDeps {
   readonly config: AuthConfig;
@@ -79,6 +80,7 @@ export async function evaluate(
     await deps.verifier.verify(token);
     return { kind: "allow" };
   } catch (cause) {
+    if (cause instanceof VerificationUnavailableError) return { kind: "unavailable" };
     const refreshable =
       cause instanceof TokenError &&
       cause.reason === "expired" &&
@@ -156,6 +158,25 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
           status: 401,
           headers: { "content-type": "application/problem+json", "cache-control": "no-store" },
         });
+      case "unavailable": {
+        const traceId = crypto.randomUUID();
+        // Edge-safe, fixed fields only: never log cookies, claims or request URLs.
+        console.error(JSON.stringify({ event: "auth.key_service_unavailable", trace_id: traceId, status: 503 }));
+        const headers = {
+          "cache-control": "no-store",
+          "retry-after": "5",
+          "x-request-id": traceId,
+          "referrer-policy": "no-referrer",
+        };
+        if (isApiPath(request.nextUrl.pathname)) {
+          return NextResponse.json(problem("unavailable", { detail: "Session verification is briefly unavailable. Please retry." }), {
+            status: 503, headers: { ...headers, "content-type": "application/problem+json" },
+          });
+        }
+        return new NextResponse(`<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Please try again · Pellum</title><main><h1>We couldn't check your session</h1><p>This is a temporary service problem. Reload this page to try again.</p><p>You haven't been signed out.</p></main></html>`, {
+          status: 503, headers: { ...headers, "content-type": "text/html; charset=utf-8" },
+        });
+      }
     }
   })();
 

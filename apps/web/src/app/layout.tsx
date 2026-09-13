@@ -8,14 +8,16 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "AutoBureau — your household's paperwork, handled",
-    template: "%s · AutoBureau",
+    default: "Pellum — a little less to carry",
+    template: "%s · Pellum",
   },
   description:
-    "AutoBureau keeps track of every renewal, deadline, and document for your household — and tells you exactly what to do, with time to do it.",
-  applicationName: "AutoBureau",
+    "A calmer place for your household’s important records and next steps.",
+  applicationName: "Pellum",
   formatDetection: { telephone: false, address: false, email: false },
-  robots: { index: true, follow: true },
+  robots: { index: false, follow: false },
+  manifest: "/manifest.webmanifest",
+  openGraph: { title: "Pellum — a little less to carry", description: "A calmer place for your household’s important records and next steps.", siteName: "Pellum", type: "website" },
 };
 
 export const viewport: Viewport = {
@@ -23,7 +25,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f8f7" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f6f2" },
     { media: "(prefers-color-scheme: dark)", color: "#0e1413" },
   ],
 };

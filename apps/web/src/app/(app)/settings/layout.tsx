@@ -11,7 +11,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     <>
       <PageHeader
         title="Settings"
-        description="How AutoBureau works for your household."
+        description="How Pellum works for your household."
       />
       <div className="flex flex-col gap-6 lg:flex-row lg:gap-10">
         <SettingsNav />

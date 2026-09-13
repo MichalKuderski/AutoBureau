@@ -123,6 +123,8 @@ beforeAll(async () => {
       // is exactly the mid-request state — no timer, no race.
       observedDuringHandler = await admin.$queryRaw<Array<{ state: string }>>`
         SELECT state::text AS state FROM idempotency_keys
+        WHERE household_id = ${ctx.householdId}::uuid
+          AND key = ${request.headers.get("Idempotency-Key")}
       `;
       throw new Error("failed after observing the claim");
     }

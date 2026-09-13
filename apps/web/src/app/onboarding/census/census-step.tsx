@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 import { Icon } from "@/components/ui/icon";
 import { CENSUS } from "@/lib/domain/census";
 import { StepFooter } from "../onboarding-shell";
@@ -21,7 +22,7 @@ import { useOnboarding } from "../onboarding-provider";
  */
 export function CensusStep() {
   const router = useRouter();
-  const { selections, toggleSelection, censusSubject, seed } = useOnboarding();
+  const { selections, toggleSelection, censusSubject, seed, save, saving, saveError } = useOnboarding();
 
   const subjectName = censusSubject?.displayName.trim();
   const possessive = subjectName ? `${subjectName}'s` : "your household's";
@@ -61,6 +62,7 @@ export function CensusStep() {
                       <input
                         type="checkbox"
                         checked={checked}
+                        disabled={saving}
                         onChange={() => toggleSelection(prompt.id)}
                         className="mt-0.5 size-4 shrink-0 accent-[var(--color-accent)]"
                       />
@@ -75,7 +77,7 @@ export function CensusStep() {
                       {prompt.obligation ? (
                         <span
                           className="ml-auto shrink-0 self-center text-2xs text-ink-tertiary"
-                          title="Saying yes starts a deadline we'll pin down from a document"
+                          title="A source is needed to confirm any deadline"
                         >
                           has deadlines
                         </span>
@@ -89,10 +91,11 @@ export function CensusStep() {
         ))}
       </div>
 
+      {saveError && <Alert className="mt-5" tone="critical" title="Couldn’t save your answers">{saveError}</Alert>}
       <StepFooter
-        note="Nothing here creates a reminder yet. We record it as unverified until a document confirms it — that's the difference between a checklist and a ledger."
+        note="Continue saves unverified records, with no dates or reminders. Unticking an answer later does not remove a saved record."
       >
-        <Button variant="primary" onClick={() => router.push("/onboarding/document")}>
+        <Button variant="primary" loading={saving} loadingLabel="Saving answers" onClick={async () => { if (await save("census")) router.push("/onboarding/document"); }}>
           Continue
         </Button>
         <span className="text-sm text-ink-secondary" aria-live="polite">

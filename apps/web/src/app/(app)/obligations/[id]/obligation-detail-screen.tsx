@@ -19,9 +19,10 @@ import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { Skeleton, SkeletonGroup } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { ReviewPanel } from "@/components/patterns/review-panel";
+import { ObligationForm } from "@/components/patterns/obligation-form";
 import { OutcomeDialog } from "./outcome-dialog";
 import { useDocument, useObligation, useUpdateObligationStatus } from "@/lib/domain/queries";
-import { formatDate, formatDueLabel, formatMoney, formatRecurrence } from "@/lib/format";
+import { formatDate, formatTime, formatDueLabel, formatMoney, formatRecurrence } from "@/lib/format";
 import { useHousehold } from "@/providers/household-provider";
 import type { ObligationView } from "@/lib/domain/types";
 import type { ObligationOutcome } from "@autobureau/contracts";
@@ -96,6 +97,7 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
   const [completing, setCompleting] = useState(false);
   const [dismissing, setDismissing] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const isClosed = obligation.status === "done" || obligation.status === "dismissed";
   const isEntitlement = obligation.direction === "owed_to_household";
@@ -113,7 +115,8 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
     updateStatus.mutate(
       outcome === undefined ? { id: obligation.id, status } : { id: obligation.id, status, outcome },
       {
-        onSuccess: () =>
+        onSuccess: () => {
+          setCompleting(false); setDismissing(false);
           toast({
             tone: status === "done" ? "success" : "info",
             title: TRANSITION_TOAST[status] ?? "Updated",
@@ -122,7 +125,8 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
               label: "Undo",
               onClick: () => updateStatus.mutate({ id: obligation.id, status: previousStatus }),
             },
-          }),
+          });
+        },
         onError: () =>
           toast({
             tone: "critical",
@@ -151,6 +155,7 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
         </div>
 
         <h1 className="text-2xl leading-tight sm:text-3xl">{obligation.title}</h1>
+        {canWrite && <Button className="mt-3" variant="secondary" onClick={() => setEditing(true)}>Edit deadline</Button>}
 
         <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-secondary">
           <span>{obligation.member_name ?? "Whole household"}</span>
@@ -185,6 +190,7 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
                       style: "long",
                     })}
                   </time>
+                  <span className="mt-0.5 block text-sm text-ink-secondary">{formatTime(obligation.due_at, { locale: household.locale, timeZone: household.timezone })} · {household.timezone}</span>
                   <span className="mt-0.5 block text-xs text-ink-tertiary">
                     {formatDueLabel(obligation.due_at, household.timezone)}
                   </span>
@@ -269,7 +275,7 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
                     variant="primary"
                     fullWidth
                     iconLeft={<Icon.Check className="size-4" />}
-                    onClick={() => setCompleting(true)}
+                    onClick={() => { updateStatus.reset(); setCompleting(true); }}
                   >
                     Mark as done
                   </Button>
@@ -283,7 +289,7 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
                       I&apos;m working on it
                     </Button>
                   ) : null}
-                  <Button variant="ghost" fullWidth onClick={() => setDismissing(true)}>
+                  <Button variant="ghost" fullWidth onClick={() => { updateStatus.reset(); setDismissing(true); }}>
                     Dismiss
                   </Button>
                 </>
@@ -295,30 +301,33 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
         </div>
       </div>
 
-      <OutcomeDialog
-        open={completing}
+      {completing && <OutcomeDialog
+        open
+        pending={updateStatus.isPending}
+        error={updateStatus.error?.message}
         obligation={obligation}
         onClose={() => setCompleting(false)}
         onSubmit={(outcome) => {
-          setCompleting(false);
           transition("done", outcome);
         }}
-      />
+      />}
 
       <ConfirmDialog
         open={dismissing}
         onClose={() => setDismissing(false)}
         onConfirm={() => {
-          setDismissing(false);
           transition("dismissed");
         }}
         title="Dismiss this obligation?"
-        description="We'll stop reminding you about it. You can bring it back for the next 30 days."
+        description="Any scheduled reminders will be cancelled. You can bring it back for the next 30 days."
         confirmLabel="Dismiss"
         tone="primary"
         loading={updateStatus.isPending}
       />
 
+      {editing && <ObligationForm obligation={obligation} onClose={() => setEditing(false)} onSaved={() => {
+        setEditing(false); toast({ title: "Deadline updated", tone: "success" });
+      }} />}
       {sourceDocumentId ? (
         <SourceDocumentDrawer
           open={sourceOpen}
@@ -366,7 +375,7 @@ function StatusBanner({
   if (obligation.status === "dismissed") {
     return (
       <Alert tone="info" title="You dismissed this">
-        We&apos;ve stopped reminding you. Reopen it any time in the next 30 days.
+        Scheduled reminders have been cancelled. Reopen it within 30 days of dismissal.
       </Alert>
     );
   }
@@ -404,7 +413,7 @@ function StatusBanner({
 
   return (
     <Alert tone="info" title={formatDueLabel(obligation.due_at, household.timezone)}>
-      You have room. We&apos;ll remind you again as the date gets closer.
+      Check the source and decide what you need to do before this date.
     </Alert>
   );
 }
@@ -440,6 +449,7 @@ function ProvenanceCard({
       <CardContent className="flex flex-col gap-4">
         {provenance ? (
           <div className="rounded-md border border-line bg-surface-sunken/60 p-3.5">
+            {obligation.source === "user" && <p className="mb-2 text-xs text-ink-secondary">Original related document. The current details were confirmed by someone in your household.</p>}
             <p className="flex items-center gap-2 text-sm font-medium text-ink">
               <Icon.Documents className="size-4 shrink-0 text-ink-tertiary" />
               <span className="min-w-0 truncate">{provenance.document_title}</span>
@@ -470,8 +480,7 @@ function ProvenanceCard({
         {obligation.ai_confidence != null ? (
           <p className="flex items-start gap-2 text-xs text-ink-tertiary">
             <Icon.Sparkle className="mt-0.5 size-3.5 shrink-0" />
-            We read this at {Math.round(obligation.ai_confidence * 100)}% confidence. Anything you
-            correct teaches us.
+            This extraction has {Math.round(obligation.ai_confidence * 100)}% recorded confidence. Check the source before relying on it.
           </p>
         ) : null}
       </CardContent>
@@ -482,11 +491,11 @@ function ProvenanceCard({
 function originLine(source: ObligationView["source"]): string {
   switch (source) {
     case "ai":
-      return "AutoBureau found this in a document your household sent us.";
+      return "Pellum found this in a document your household sent us.";
     case "system":
-      return "AutoBureau created this from a cycle it already tracks for you.";
+      return "Pellum created this from a cycle it already tracks for you.";
     case "user":
-      return "Someone in your household added this by hand.";
+      return "Someone in your household entered or confirmed these details.";
   }
 }
 
@@ -501,7 +510,7 @@ function FreshnessNote({ obligation }: { obligation: ObligationView }) {
         locale: household.locale,
         timeZone: household.timezone,
       })}
-      . We re-check facts as new documents arrive.
+      . Check the details again if your circumstances change.
     </p>
   );
 }

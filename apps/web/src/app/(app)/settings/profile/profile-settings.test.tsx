@@ -1,8 +1,38 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderScreen } from "@/test/render";
 import { ProfileSettings } from "./profile-settings";
+const refresh = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+afterEach(() => { vi.unstubAllGlobals(); refresh.mockClear(); });
+
+describe("profile persistence", () => {
+  it("waits for the server before showing Saved and refreshes server context", async () => {
+    let respond!: (value: Response) => void;
+    const fetchMock = vi.fn(() => new Promise<Response>((resolve) => { respond = resolve; }));
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderScreen(<ProfileSettings />);
+    await user.clear(screen.getByRole("textbox", { name: "Name" }));
+    await user.type(screen.getByRole("textbox", { name: "Name" }), "Updated name");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(screen.queryByText("Saved")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save changes/i })).toBeDisabled();
+    expect(fetchMock).toHaveBeenCalledWith("/v1/me", expect.objectContaining({ method: "PATCH", body: expect.stringContaining("Updated name") }));
+    respond(Response.json({ display_name: "Updated name", timezone: "America/Chicago" }));
+    expect(await screen.findByText("Saved")).toBeInTheDocument();
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+  it("keeps the edited value and shows an error after a failed request", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    renderScreen(<ProfileSettings />);
+    await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(await screen.findByText("Couldn’t save your profile")).toBeInTheDocument();
+    expect(screen.queryByText("Saved")).not.toBeInTheDocument();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});
 
 /**
  * Blueprint P0-03.
@@ -69,7 +99,7 @@ describe("Test C · unrelated settings remain intact", () => {
   it("still renders profile identity fields and the save action", () => {
     renderScreen(<ProfileSettings />);
 
-    expect(screen.getByLabelText("Name")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Name" })).toBeInTheDocument();
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save changes/i })).toBeInTheDocument();
   });

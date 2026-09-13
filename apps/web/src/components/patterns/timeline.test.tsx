@@ -63,6 +63,15 @@ describe("Test C · dead source destinations render as content, not links", () =
 });
 
 describe("valid source destinations remain intact", () => {
+  it("groups by the selected timezone without shifting date headings back a day", () => {
+    render(<Timeline timeZone="America/Los_Angeles" entries={[
+      { id: "late", at: "2026-09-13T01:00:00Z", kind: "obligation_completed", title: "Evening completion" },
+      { id: "early", at: "2026-09-12T23:00:00Z", kind: "obligation_created", title: "Afternoon creation" },
+    ]} />);
+    expect(screen.getAllByRole("region")).toHaveLength(1);
+    expect(screen.getByRole("heading", { name: "Sep 12, 2026" })).toBeInTheDocument();
+    expect(screen.getByText("6:00 PM")).toBeInTheDocument();
+  });
   it("still links the obligation-created entry to its real route", () => {
     render(<Timeline entries={ENTRIES} />);
     const link = screen.getByText("Elena's supplemental insurance premium").closest("a");

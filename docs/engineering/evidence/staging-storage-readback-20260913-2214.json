@@ -1,0 +1,73 @@
+{
+  "capturedAt": "2026-09-13T22:14:52.066837+00:00",
+  "account": "792394000571",
+  "region": "us-east-2",
+  "checks": {
+    "queues": {},
+    "objects": {
+      "KeyCount": 0,
+      "IsTruncated": false
+    },
+    "publicAccess": {
+      "PublicAccessBlockConfiguration": {
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true,
+        "BlockPublicPolicy": true,
+        "RestrictPublicBuckets": true
+      }
+    },
+    "ownership": {
+      "OwnershipControls": {
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
+          }
+        ]
+      }
+    },
+    "encryption": {
+      "ServerSideEncryptionConfiguration": {
+        "Rules": [
+          {
+            "ApplyServerSideEncryptionByDefault": {
+              "SSEAlgorithm": "AES256"
+            },
+            "BucketKeyEnabled": false,
+            "BlockedEncryptionTypes": {
+              "EncryptionType": [
+                "SSE-C"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "lifecycle": {
+      "TransitionDefaultMinimumObjectSize": "all_storage_classes_128K",
+      "Rules": [
+        {
+          "Expiration": {
+            "Days": 7
+          },
+          "ID": "bounded-quarantine-retention",
+          "Filter": {
+            "Prefix": "hh/"
+          },
+          "Status": "Enabled",
+          "AbortIncompleteMultipartUpload": {
+            "DaysAfterInitiation": 1
+          }
+        }
+      ]
+    },
+    "bucketPolicySHA256": "866c135aa10fa6f7ada4303a23bcacada4dc5e23b273b780f4901293a2ab14ee",
+    "roles": [
+      "pellum-preview-upload-signer",
+      "pellum-stg-terraform-deploy",
+      "pellum-stg-terraform-state",
+      "pellum-stg-upload-signer"
+    ],
+    "budgets": {}
+  },
+  "productionAccessed": false
+}

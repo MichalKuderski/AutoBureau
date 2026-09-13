@@ -30,6 +30,8 @@
  * earlier would make later sections fail for a reason that has nothing to do with them.
  */
 
+import { probeForeignHousehold } from './acceptance-tenant-probe.mjs';
+
 const BASE = (process.argv[2] ?? process.env.ACCEPTANCE_BASE_URL ?? "").replace(/\/+$/, "");
 const BYPASS = process.env.VERCEL_AUTOMATION_BYPASS_SECRET ?? "";
 const BYPASS_HEADERS = BYPASS === "" ? {} : { "x-vercel-protection-bypass": BYPASS };
@@ -55,6 +57,10 @@ function check(name, ok, detail) {
 function heading(title) {
   section = title;
   console.error(`\n── ${title} ${"─".repeat(Math.max(0, 62 - title.length))}`);
+}
+function blocked(name) {
+  results.push({ section, name, ok: false, blocked: true });
+  console.error(`BLOCKED  ${name}  (a distinct authenticated second household was not established)`);
 }
 
 async function req(path, init) {
@@ -107,13 +113,13 @@ const created = [];
  * is the one case where this suite can hand over something that shortens the next step.
  *
  * `problemResponse` bodies are written to be safe to show — deliberately generic, naming no
- * account and no configuration — and `x-trace-id` is the id the server put on its own log
+ * account and no configuration — and `x-request-id` is the id the server put on its own log
  * record. Printing the pair turns "search the function logs" into "search for this id",
  * which matters because the actual cause (a database error, say) never reaches the caller.
  */
 async function diagnose(label, res) {
   if (res.status < 500) return;
-  const trace = res.headers.get("x-trace-id") ?? "(none)";
+  const trace = res.headers.get("x-request-id") ?? res.headers.get("x-trace-id") ?? "(none)";
   const body = await res.clone().text().catch(() => "");
   let detail = body.slice(0, 200);
   try {
@@ -204,6 +210,11 @@ check("GET /v1/households/current returns the bootstrapped household", currentRe
 check("the caller owns it", household?.role === "owner", { role: household?.role });
 check("it has an id", typeof household?.id === "string" && household.id.length > 0);
 console.error(`      household: ${household?.id} · role=${household?.role} · name=${JSON.stringify(household?.name)}`);
+if (alice.res.status !== 204 || !alice.jar.c.has('ab_session') || !alice.jar.c.has('ab_session_refresh')
+  || currentRes.status !== 200 || household?.role !== 'owner' || typeof household?.id !== 'string') {
+  console.error('STOP: first authenticated household prerequisite failed; dependent acceptance checks were not run.');
+  process.exit(1);
+}
 
 /* ───────────────────────────── 2. routing and dashboard ───────────────────────────── */
 
@@ -238,20 +249,25 @@ heading("authorization · cross-household denial (RLS boundary)");
 
 const bob = await signUp("bob");
 check("a second sign-up also succeeds", bob.res.status === 204, { status: bob.res.status });
-const bobHousehold = await (
-  await req("/v1/households/current", { headers: { cookie: bob.jar.header() } })
-).json().catch(() => null);
+const bobCurrent = bob.res.status === 204 ? await req("/v1/households/current", { headers: { cookie: bob.jar.header() } }) : null;
+const bobHousehold = bobCurrent ? await bobCurrent.json().catch(() => null) : null;
 check(
   "the second caller gets a DIFFERENT household",
   typeof bobHousehold?.id === "string" && bobHousehold.id !== household?.id,
 );
 
-const stolen = await req("/v1/households/current", {
-  headers: { cookie: alice.jar.header(), "x-household-id": bobHousehold?.id ?? "" },
+const stolen = await probeForeignHousehold(req, {
+  cookie: alice.jar.header(), ownId: household.id, foreignId: bobHousehold?.id,
+  foreignReady: bob.res.status === 204 && bobCurrent?.status === 200,
 });
-check("selecting another tenant's household is denied", stolen.status === 403, { status: stolen.status });
-const stolenBody = await stolen.text();
-check("the denial leaks nothing about the other tenant", !stolenBody.includes(bob.email));
+if (stolen) {
+  check("selecting another tenant's household is denied", stolen.status === 403, { status: stolen.status });
+  const stolenBody = await stolen.text();
+  check("the denial leaks nothing about the other tenant", !stolenBody.includes(bob.email));
+} else {
+  blocked("selecting another tenant's household is denied");
+  blocked("the denial leaks nothing about the other tenant");
+}
 
 const nonexistent = await req("/v1/households/current", {
   headers: { cookie: alice.jar.header(), "x-household-id": "00000000-0000-0000-0000-000000000000" },
@@ -421,6 +437,6 @@ console.error(`\n${results.length - failed.length}/${results.length} acceptance 
 console.error(`identities created (staging, synthetic): ${created.join(", ")}`);
 if (failed.length > 0) {
   console.error("\nfailed:");
-  for (const f of failed) console.error(`  [${f.section}] ${f.name}`);
+  for (const f of failed) console.error(`  ${f.blocked ? 'BLOCKED ' : ''}[${f.section}] ${f.name}`);
 }
 process.exit(failed.length === 0 ? 0 : 1);

@@ -1,0 +1,25 @@
+rule private_retained_state {
+  Resources.StateBucket.DeletionPolicy == 'Retain'
+  Resources.StateBucket.UpdateReplacePolicy == 'Retain'
+  Resources.StateBucket.Properties.PublicAccessBlockConfiguration.BlockPublicAcls == true
+  Resources.StateBucket.Properties.PublicAccessBlockConfiguration.BlockPublicPolicy == true
+  Resources.StateBucket.Properties.PublicAccessBlockConfiguration.IgnorePublicAcls == true
+  Resources.StateBucket.Properties.PublicAccessBlockConfiguration.RestrictPublicBuckets == true
+  Resources.StateBucket.Properties.VersioningConfiguration.Status == 'Enabled'
+  Resources.StateBucket.Properties.OwnershipControls.Rules[0].ObjectOwnership == 'BucketOwnerEnforced'
+  Resources.StateBucket.Properties.BucketEncryption.ServerSideEncryptionConfiguration[0].ServerSideEncryptionByDefault.SSEAlgorithm == 'AES256'
+}
+rule protected_locks {
+  Resources.StateLocks.DeletionPolicy == 'Retain'
+  Resources.StateLocks.UpdateReplacePolicy == 'Retain'
+  Resources.StateLocks.Properties.DeletionProtectionEnabled == true
+  Resources.StateLocks.Properties.SSESpecification.SSEEnabled == true
+  Resources.StateLocks.Properties.TimeToLiveSpecification !exists
+}
+rule scoped_temporary_roles {
+  Resources.StateRole.Properties.RoleName == 'pellum-stg-terraform-state'
+  Resources.DeploymentRole.Properties.RoleName == 'pellum-stg-terraform-deploy'
+  Resources.StateRole.Properties.MaxSessionDuration == 3600
+  Resources.DeploymentRole.Properties.MaxSessionDuration == 3600
+  Resources.DeploymentRole.Properties.Policies[0].PolicyName == 'plan-read-only'
+}

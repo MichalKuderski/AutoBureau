@@ -17,7 +17,7 @@ import { Icon } from "@/components/ui/icon";
  * (FOUNDING_PRINCIPLES §11, doc 13 §4).
  *
  * Blueprint P0-10. The identity-number bullet used to say passport and account numbers
- * "are encrypted" and that AutoBureau's own systems "cannot decrypt them" — present
+ * "are encrypted" and that Pellum's own systems "cannot decrypt them" — present
  * tense, on a page whose entire premise is candor. ADR-007 is the real design (KMS
  * envelope encryption, decrypt capability confined to one audited module) but its own
  * status line reads "Accepted; not yet implemented" — nothing in this repository writes

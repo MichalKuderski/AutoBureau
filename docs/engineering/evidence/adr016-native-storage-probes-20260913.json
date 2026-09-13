@@ -1,0 +1,328 @@
+{
+  "capturedAt": "2026-09-13T20:06:10.692Z",
+  "sourceSha": "1e1a2d3eb8ac2679e4e9f4a9d673fd9b57fa9838",
+  "productionApplicationAccessed": false,
+  "scopes": [
+    {
+      "scope": "preview",
+      "before": {
+        "team": "Data Analyst Mike",
+        "teamSlug": "data-analyst-mike",
+        "teamId": "team_CNQd2ynmaV1xtRhB6NMMeYBs",
+        "project": "autobureau-staging",
+        "projectId": "prj_qAjK6wDYXoGn02Sl8jjSmrvy4NLR",
+        "issuerMode": "team",
+        "oidcEnabled": true,
+        "protection": {
+          "sso": "all_except_custom_domains",
+          "passwordEnabled": false,
+          "passwordScope": null,
+          "trustedIpsEnabled": false
+        },
+        "stable": {
+          "alias": "autobureau-staging.vercel.app",
+          "aliasId": "c6bee696e99245a6ccba0c99a95ca606ead3a4fffda686f7265edef33170642605c077f79e18827aed13fe4e627fa1f6420775e5dddee156de2946c4a67ee538",
+          "projectId": "prj_qAjK6wDYXoGn02Sl8jjSmrvy4NLR",
+          "deploymentId": "dpl_G5PaLPvpjwExBKFUpKXh2jf4gnu4",
+          "deploymentUrl": "autobureau-staging-1th6fcfxl-data-analyst-mike.vercel.app",
+          "target": "production",
+          "readyState": "READY"
+        }
+      },
+      "after": {
+        "team": "Data Analyst Mike",
+        "teamSlug": "data-analyst-mike",
+        "teamId": "team_CNQd2ynmaV1xtRhB6NMMeYBs",
+        "project": "autobureau-staging",
+        "projectId": "prj_qAjK6wDYXoGn02Sl8jjSmrvy4NLR",
+        "issuerMode": "team",
+        "oidcEnabled": true,
+        "protection": {
+          "sso": "all_except_custom_domains",
+          "passwordEnabled": false,
+          "passwordScope": null,
+          "trustedIpsEnabled": false
+        },
+        "stable": {
+          "alias": "autobureau-staging.vercel.app",
+          "aliasId": "c6bee696e99245a6ccba0c99a95ca606ead3a4fffda686f7265edef33170642605c077f79e18827aed13fe4e627fa1f6420775e5dddee156de2946c4a67ee538",
+          "projectId": "prj_qAjK6wDYXoGn02Sl8jjSmrvy4NLR",
+          "deploymentId": "dpl_G5PaLPvpjwExBKFUpKXh2jf4gnu4",
+          "deploymentUrl": "autobureau-staging-1th6fcfxl-data-analyst-mike.vercel.app",
+          "target": "production",
+          "readyState": "READY"
+        }
+      },
+      "succeeded": true,
+      "host": "autobureau-staging-f0fdkp17z-data-analyst-mike.vercel.app",
+      "receipt": {
+        "evidenceSource": "vercel-native-build",
+        "scope": "preview",
+        "bucket": "pellum-stg-quarantine-792394000571-us-east-2",
+        "roleArn": "arn:aws:iam::792394000571:role/pellum-preview-upload-signer",
+        "intakeEnabled": false,
+        "realTenantData": false,
+        "productionApplicationAccessed": false,
+        "fixture": {
+          "household": "567eab0f-0861-4c25-b5f1-4bcba200e2da",
+          "upload": "3083f6bb-cad7-4e79-8267-e862be271df1",
+          "incoming": "hh/567eab0f-0861-4c25-b5f1-4bcba200e2da/upload/3083f6bb-cad7-4e79-8267-e862be271df1/incoming",
+          "sealed": [
+            "hh/567eab0f-0861-4c25-b5f1-4bcba200e2da/upload/3083f6bb-cad7-4e79-8267-e862be271df1/sealed/f102179a-65ea-4c4f-90e1-e9de232acc2b",
+            "hh/567eab0f-0861-4c25-b5f1-4bcba200e2da/upload/3083f6bb-cad7-4e79-8267-e862be271df1/sealed/20055f1c-4a5f-4c86-8ce7-121c75223845"
+          ]
+        },
+        "results": [
+          {
+            "name": "native-scope-role-assumption",
+            "status": "PASS"
+          },
+          {
+            "name": "wrong-environment-role-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "capability-max-fifteen-minutes-and-sts-lifetime",
+            "status": "PASS"
+          },
+          {
+            "name": "changed-content-length-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "changed-content-type-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "unsupported-type-refused",
+            "status": "PASS"
+          },
+          {
+            "name": "oversize-refused",
+            "status": "PASS"
+          },
+          {
+            "name": "expired-capability-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "valid-exact-put",
+            "status": "PASS"
+          },
+          {
+            "name": "seal-private-copy",
+            "status": "PASS"
+          },
+          {
+            "name": "reused-incoming-capability-cannot-change-selected-copy",
+            "status": "PASS"
+          },
+          {
+            "name": "conditional-copy-sealing-race-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "anonymous-get-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "anonymous-list-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "runtime-list-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "query-signed-quarantine-download-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "query-signed-sealed-overwrite-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "exact-sealed-fixture-cleanup",
+            "status": "PASS"
+          }
+        ],
+        "incomingCleanup": "requires-exact-operator-cleanup",
+        "sealedCleanup": true
+      },
+      "aliases": [],
+      "publicProbes": [
+        {
+          "host": "autobureau-staging-f0fdkp17z-data-analyst-mike.vercel.app",
+          "status": 302,
+          "externallyReachable": false
+        }
+      ],
+      "removed": false,
+      "deploymentId": "dpl_4tSiJVsuoyL6jxnQTBjaXqAxhS9E"
+    },
+    {
+      "scope": "production",
+      "before": {
+        "team": "Data Analyst Mike",
+        "teamSlug": "data-analyst-mike",
+        "teamId": "team_CNQd2ynmaV1xtRhB6NMMeYBs",
+        "project": "autobureau-staging",
+        "projectId": "prj_qAjK6wDYXoGn02Sl8jjSmrvy4NLR",
+        "issuerMode": "team",
+        "oidcEnabled": true,
+        "protection": {
+          "sso": "all_except_custom_domains",
+          "passwordEnabled": false,
+          "passwordScope": null,
+          "trustedIpsEnabled": false
+        },
+        "stable": {
+          "alias": "autobureau-staging.vercel.app",
+          "aliasId": "c6bee696e99245a6ccba0c99a95ca606ead3a4fffda686f7265edef33170642605c077f79e18827aed13fe4e627fa1f6420775e5dddee156de2946c4a67ee538",
+          "projectId": "prj_qAjK6wDYXoGn02Sl8jjSmrvy4NLR",
+          "deploymentId": "dpl_G5PaLPvpjwExBKFUpKXh2jf4gnu4",
+          "deploymentUrl": "autobureau-staging-1th6fcfxl-data-analyst-mike.vercel.app",
+          "target": "production",
+          "readyState": "READY"
+        }
+      },
+      "after": {
+        "team": "Data Analyst Mike",
+        "teamSlug": "data-analyst-mike",
+        "teamId": "team_CNQd2ynmaV1xtRhB6NMMeYBs",
+        "project": "autobureau-staging",
+        "projectId": "prj_qAjK6wDYXoGn02Sl8jjSmrvy4NLR",
+        "issuerMode": "team",
+        "oidcEnabled": true,
+        "protection": {
+          "sso": "all_except_custom_domains",
+          "passwordEnabled": false,
+          "passwordScope": null,
+          "trustedIpsEnabled": false
+        },
+        "stable": {
+          "alias": "autobureau-staging.vercel.app",
+          "aliasId": "c6bee696e99245a6ccba0c99a95ca606ead3a4fffda686f7265edef33170642605c077f79e18827aed13fe4e627fa1f6420775e5dddee156de2946c4a67ee538",
+          "projectId": "prj_qAjK6wDYXoGn02Sl8jjSmrvy4NLR",
+          "deploymentId": "dpl_G5PaLPvpjwExBKFUpKXh2jf4gnu4",
+          "deploymentUrl": "autobureau-staging-1th6fcfxl-data-analyst-mike.vercel.app",
+          "target": "production",
+          "readyState": "READY"
+        }
+      },
+      "succeeded": true,
+      "host": "autobureau-staging-qp40tc48q-data-analyst-mike.vercel.app",
+      "receipt": {
+        "evidenceSource": "vercel-native-build",
+        "scope": "stg",
+        "bucket": "pellum-stg-quarantine-792394000571-us-east-2",
+        "roleArn": "arn:aws:iam::792394000571:role/pellum-stg-upload-signer",
+        "intakeEnabled": false,
+        "realTenantData": false,
+        "productionApplicationAccessed": false,
+        "fixture": {
+          "household": "43acf1d1-1876-4328-89a3-664a99b45c31",
+          "upload": "7e37a41f-6760-4403-ad15-14a418859ee2",
+          "incoming": "hh/43acf1d1-1876-4328-89a3-664a99b45c31/upload/7e37a41f-6760-4403-ad15-14a418859ee2/incoming",
+          "sealed": [
+            "hh/43acf1d1-1876-4328-89a3-664a99b45c31/upload/7e37a41f-6760-4403-ad15-14a418859ee2/sealed/823a7d66-44ac-4baf-b778-11d8ab1eaa25",
+            "hh/43acf1d1-1876-4328-89a3-664a99b45c31/upload/7e37a41f-6760-4403-ad15-14a418859ee2/sealed/79e894a8-d5f1-4eb8-8b45-c9a4dd6fb1da"
+          ]
+        },
+        "results": [
+          {
+            "name": "native-scope-role-assumption",
+            "status": "PASS"
+          },
+          {
+            "name": "wrong-environment-role-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "capability-max-fifteen-minutes-and-sts-lifetime",
+            "status": "PASS"
+          },
+          {
+            "name": "changed-content-length-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "changed-content-type-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "unsupported-type-refused",
+            "status": "PASS"
+          },
+          {
+            "name": "oversize-refused",
+            "status": "PASS"
+          },
+          {
+            "name": "expired-capability-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "valid-exact-put",
+            "status": "PASS"
+          },
+          {
+            "name": "seal-private-copy",
+            "status": "PASS"
+          },
+          {
+            "name": "reused-incoming-capability-cannot-change-selected-copy",
+            "status": "PASS"
+          },
+          {
+            "name": "conditional-copy-sealing-race-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "anonymous-get-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "anonymous-list-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "runtime-list-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "query-signed-quarantine-download-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "query-signed-sealed-overwrite-denied",
+            "status": "PASS"
+          },
+          {
+            "name": "exact-sealed-fixture-cleanup",
+            "status": "PASS"
+          }
+        ],
+        "incomingCleanup": "requires-exact-operator-cleanup",
+        "sealedCleanup": true
+      },
+      "aliases": [
+        "autobureau-staging-data-analyst-mike.vercel.app"
+      ],
+      "publicProbes": [
+        {
+          "host": "autobureau-staging-qp40tc48q-data-analyst-mike.vercel.app",
+          "status": 302,
+          "externallyReachable": false
+        },
+        {
+          "host": "autobureau-staging-data-analyst-mike.vercel.app",
+          "status": 302,
+          "externallyReachable": false
+        }
+      ],
+      "removed": false,
+      "deploymentId": "dpl_9hyMqS99rpWKPFncwH9rdaNf5h1j"
+    }
+  ]
+}

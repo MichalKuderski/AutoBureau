@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CollectionMore } from "@/components/patterns/collection-more";
 import { PageHeader } from "@/components/patterns/page-header";
 import { Chip, DOC_STATUS_TONE, DOC_STATUS_LABEL } from "@/components/ui/chip";
 import { FilterBar, SearchInput, type FilterOption } from "@/components/ui/filter-bar";
@@ -15,7 +16,7 @@ import { Modal } from "@/components/ui/modal";
 import { ReviewPanel } from "@/components/patterns/review-panel";
 import { UploadDropzone } from "@/components/ui/upload";
 import { useHousehold } from "@/providers/household-provider";
-import { useDocuments } from "@/lib/domain/queries";
+import { useDocuments, useSummary } from "@/lib/domain/queries";
 import { formatBytes, formatDate } from "@/lib/format";
 import type { DocumentView } from "@/lib/domain/types";
 
@@ -29,39 +30,22 @@ type Lens = "all" | "needs_review" | "processed" | "processing";
  * done its job (it produced items and obligations); the pile itself is not the value,
  * which is why this screen leads with the review queue rather than a file browser.
  */
-export function DocumentsScreen() {
+export function DocumentsScreen({ initialStatus = "all" }: { initialStatus?: Lens } = {}) {
   const { household } = useHousehold();
-  const [lens, setLens] = useState<Lens>("all");
+  const [lens, setLens] = useState<Lens>(initialStatus);
   const [search, setSearch] = useState("");
   const [reviewing, setReviewing] = useState<DocumentView | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
 
-  const query = useDocuments(household.id, { search });
+  const query = useDocuments(household.id, { search, status: lens === "all" ? null : lens === "processing" ? ["processing", "scanning"] : lens });
+  const summary = useSummary(household.id);
+  const reviewCount = summary.data?.needs_review ?? 0;
   const all = useMemo(() => query.data ?? [], [query.data]);
 
-  const counts = useMemo(
-    () => ({
-      all: all.length,
-      needs_review: all.filter((d) => d.status === "needs_review").length,
-      processed: all.filter((d) => d.status === "processed").length,
-      processing: all.filter((d) => d.status === "processing" || d.status === "scanning").length,
-    }),
-    [all],
-  );
-
-  const rows = useMemo(() => {
-    if (lens === "all") return all;
-    if (lens === "processing") {
-      return all.filter((d) => d.status === "processing" || d.status === "scanning");
-    }
-    return all.filter((d) => d.status === lens);
-  }, [all, lens]);
-
+  const rows = all;
   const options: FilterOption<Lens>[] = [
-    { value: "all", label: "All", count: counts.all },
-    { value: "needs_review", label: "Needs review", count: counts.needs_review },
-    { value: "processing", label: "Working", count: counts.processing },
-    { value: "processed", label: "Filed", count: counts.processed },
+    { value: "all", label: "All" }, { value: "needs_review", label: "Needs review" },
+    { value: "processing", label: "Working" }, { value: "processed", label: "Filed" },
   ];
 
   const columns: Column<DocumentView>[] = [
@@ -121,7 +105,7 @@ export function DocumentsScreen() {
     <>
       <PageHeader
         title="Documents"
-        description="Forward anything and we'll read it, file it, and watch the dates."
+        description="Your household’s documents and their processing status."
         actions={
           <Button variant="primary" size="sm" onClick={() => setUploadOpen(true)}>
             <Icon.Upload className="size-4" />
@@ -130,13 +114,13 @@ export function DocumentsScreen() {
         }
       />
 
-      {counts.needs_review > 0 ? (
+      {reviewCount > 0 ? (
         <Alert
           tone="warning"
-          title={`${counts.needs_review} ${counts.needs_review === 1 ? "document needs" : "documents need"} a quick check`}
+          title={`${reviewCount} ${reviewCount === 1 ? "document needs" : "documents need"} a quick check`}
           className="mb-5"
           action={
-            <Button size="sm" variant="secondary" onClick={() => setLens("needs_review")}>
+            <Button size="sm" variant="secondary" onClick={() => { setSearch(""); setLens("needs_review"); }}>
               Review
             </Button>
           }
@@ -162,16 +146,12 @@ export function DocumentsScreen() {
           tone="reassuring"
           icon={<Icon.Documents className="size-5" />}
           title={
-            lens === "needs_review"
-              ? "Nothing needs your attention"
-              : search
-                ? "Nothing matches that"
-                : "No documents yet"
+            search ? "Nothing matches that" : lens === "needs_review" ? "Nothing needs your attention" : lens === "all" ? "No documents yet" : "No documents in this view"
           }
           description={
-            lens === "needs_review"
-              ? "Everything we've received has been filed with confidence."
-              : "Forward a bill or renewal notice and we'll take it from there. Uploading isn't available yet."
+            search ? "Try a different word or clear the search."
+              : lens === "needs_review" ? "No saved documents currently need your review."
+              : "No saved documents match this view. Uploading and forwarding are not available in this preview yet."
           }
           action={
             lens === "needs_review"
@@ -189,6 +169,7 @@ export function DocumentsScreen() {
         />
       )}
 
+      <CollectionMore query={query} />
       <Modal
         variant="drawer"
         open={reviewing !== null}

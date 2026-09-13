@@ -40,7 +40,9 @@ const PUBLIC_AUTH_ENDPOINTS = [
   "/auth/confirm",
 ] as const;
 
-export const PUBLIC_PATHS: readonly string[] = [...PUBLIC_PAGES, ...PUBLIC_AUTH_ENDPOINTS];
+// Exact static brand assets contain no household data. No asset-directory wildcard.
+const PUBLIC_ASSETS = ["/icon.svg", "/manifest.webmanifest"] as const;
+export const PUBLIC_PATHS: readonly string[] = [...PUBLIC_PAGES, ...PUBLIC_AUTH_ENDPOINTS, ...PUBLIC_ASSETS];
 
 /** The path `/auth/refresh` redirects to when it cannot repair the session. */
 export const SIGN_IN_PATH = "/sign-in";

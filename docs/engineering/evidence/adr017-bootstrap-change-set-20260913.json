@@ -1,0 +1,69 @@
+{
+  "capturedAt": "2026-09-13T21:41:24.266949+00:00",
+  "templateSHA256": "179432a54a84215086a0b8cb5f20fa1692384dcb7365ce3859605071b1f5c78f",
+  "changeSet": "arn:aws:cloudformation:us-east-2:792394000571:changeSet/adr017-bootstrap-20260913T2145Z/c98ba2fa-6d6a-4e95-aa8c-b7eb0d1da4aa",
+  "changes": [
+    {
+      "Action": "Add",
+      "LogicalResourceId": "DeploymentBoundary",
+      "ResourceType": "AWS::IAM::ManagedPolicy",
+      "Scope": [],
+      "Details": []
+    },
+    {
+      "Action": "Add",
+      "LogicalResourceId": "DeploymentRole",
+      "ResourceType": "AWS::IAM::Role",
+      "Scope": [],
+      "Details": []
+    },
+    {
+      "Action": "Add",
+      "LogicalResourceId": "PreviewRuntimeBoundary",
+      "ResourceType": "AWS::IAM::ManagedPolicy",
+      "Scope": [],
+      "Details": []
+    },
+    {
+      "Action": "Add",
+      "LogicalResourceId": "StableRuntimeBoundary",
+      "ResourceType": "AWS::IAM::ManagedPolicy",
+      "Scope": [],
+      "Details": []
+    },
+    {
+      "Action": "Add",
+      "LogicalResourceId": "StateBucketPolicy",
+      "ResourceType": "AWS::S3::BucketPolicy",
+      "Scope": [],
+      "Details": []
+    },
+    {
+      "Action": "Add",
+      "LogicalResourceId": "StateBucket",
+      "ResourceType": "AWS::S3::Bucket",
+      "Scope": [],
+      "Details": []
+    },
+    {
+      "Action": "Add",
+      "LogicalResourceId": "StateLocks",
+      "ResourceType": "AWS::DynamoDB::Table",
+      "Scope": [],
+      "Details": []
+    },
+    {
+      "Action": "Add",
+      "LogicalResourceId": "StateRole",
+      "ResourceType": "AWS::IAM::Role",
+      "Scope": [],
+      "Details": []
+    }
+  ],
+  "status": "REVIEWED_NOT_EXECUTED",
+  "additions": 8,
+  "deletions": 0,
+  "replacements": 0,
+  "queueResources": 0,
+  "productionResources": 0
+}

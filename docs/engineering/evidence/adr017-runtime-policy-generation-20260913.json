@@ -1,0 +1,223 @@
+{
+  "generator": "IAM Policy Autopilot",
+  "input": [
+    "apps/web/src/server/jobs/sqs.ts",
+    "apps/web/src/server/jobs/metrics.ts"
+  ],
+  "account": "792394000571",
+  "region": "us-east-2",
+  "generatedActions": [
+    "sqs:ChangeMessageVisibility",
+    "sqs:DeleteMessage",
+    "sqs:ReceiveMessage",
+    "sqs:SendMessage",
+    "cloudwatch:PutMetricData"
+  ],
+  "refinement": "Exact queue ARNs; SendMessage only for dispatcher, receive/delete/change-visibility only for one-queue worker. Omitted tool-inferred KMS Decrypt/GenerateDataKey because explicit SSE-SQS uses no customer KMS key. No upload/apply performed. PutMetricData requires Resource *, constrained to the exact fixed scope/queue namespace; no arbitrary dimensions.",
+  "runtimeRoles": {
+    "pellum-stg-job-dispatcher": {
+      "scope": "stg",
+      "runtime": "dispatcher",
+      "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "sqs:SendMessage"
+            ],
+            "Resource": [
+              "arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline",
+              "arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications"
+            ]
+          },
+          {
+            "Effect": "Allow",
+            "Action": [
+              "cloudwatch:PutMetricData"
+            ],
+            "Resource": "*",
+            "Condition": {
+              "StringEquals": {
+                "cloudwatch:namespace": [
+                  "Pellum/StagingJobs/stg/pipeline",
+                  "Pellum/StagingJobs/stg/notifications"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "pellum-stg-job-pipeline-worker": {
+      "scope": "stg",
+      "runtime": "pipeline-worker",
+      "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "sqs:ChangeMessageVisibility",
+              "sqs:DeleteMessage",
+              "sqs:ReceiveMessage"
+            ],
+            "Resource": [
+              "arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline"
+            ]
+          },
+          {
+            "Effect": "Allow",
+            "Action": [
+              "cloudwatch:PutMetricData"
+            ],
+            "Resource": "*",
+            "Condition": {
+              "StringEquals": {
+                "cloudwatch:namespace": [
+                  "Pellum/StagingJobs/stg/pipeline"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "pellum-stg-job-notifications-worker": {
+      "scope": "stg",
+      "runtime": "notifications-worker",
+      "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "sqs:ChangeMessageVisibility",
+              "sqs:DeleteMessage",
+              "sqs:ReceiveMessage"
+            ],
+            "Resource": [
+              "arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications"
+            ]
+          },
+          {
+            "Effect": "Allow",
+            "Action": [
+              "cloudwatch:PutMetricData"
+            ],
+            "Resource": "*",
+            "Condition": {
+              "StringEquals": {
+                "cloudwatch:namespace": [
+                  "Pellum/StagingJobs/stg/notifications"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "pellum-preview-job-dispatcher": {
+      "scope": "preview",
+      "runtime": "dispatcher",
+      "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "sqs:SendMessage"
+            ],
+            "Resource": [
+              "arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline",
+              "arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications"
+            ]
+          },
+          {
+            "Effect": "Allow",
+            "Action": [
+              "cloudwatch:PutMetricData"
+            ],
+            "Resource": "*",
+            "Condition": {
+              "StringEquals": {
+                "cloudwatch:namespace": [
+                  "Pellum/StagingJobs/preview/pipeline",
+                  "Pellum/StagingJobs/preview/notifications"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "pellum-preview-job-pipeline-worker": {
+      "scope": "preview",
+      "runtime": "pipeline-worker",
+      "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "sqs:ChangeMessageVisibility",
+              "sqs:DeleteMessage",
+              "sqs:ReceiveMessage"
+            ],
+            "Resource": [
+              "arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline"
+            ]
+          },
+          {
+            "Effect": "Allow",
+            "Action": [
+              "cloudwatch:PutMetricData"
+            ],
+            "Resource": "*",
+            "Condition": {
+              "StringEquals": {
+                "cloudwatch:namespace": [
+                  "Pellum/StagingJobs/preview/pipeline"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "pellum-preview-job-notifications-worker": {
+      "scope": "preview",
+      "runtime": "notifications-worker",
+      "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "sqs:ChangeMessageVisibility",
+              "sqs:DeleteMessage",
+              "sqs:ReceiveMessage"
+            ],
+            "Resource": [
+              "arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications"
+            ]
+          },
+          {
+            "Effect": "Allow",
+            "Action": [
+              "cloudwatch:PutMetricData"
+            ],
+            "Resource": "*",
+            "Condition": {
+              "StringEquals": {
+                "cloudwatch:namespace": [
+                  "Pellum/StagingJobs/preview/notifications"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -151,7 +151,7 @@ export function SignUpForm() {
           label="Email"
           type="email"
           autoComplete="email"
-          description="We'll send a link to confirm it before anything starts flowing in."
+          description="Use an address you can access for sign-in and account emails."
           value={email}
           error={errors.email}
           onChange={(e) => {

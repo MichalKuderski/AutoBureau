@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CollectionMore } from "@/components/patterns/collection-more";
 import { PageHeader } from "@/components/patterns/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState, describeError } from "@/components/ui/error-state";
@@ -11,6 +12,7 @@ import { Modal } from "@/components/ui/modal";
 import { ObligationCard } from "@/components/patterns/obligation-card";
 import { useHousehold } from "@/providers/household-provider";
 import { useObligations } from "@/lib/domain/queries";
+import { dayKeyInZone } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { ObligationView } from "@/lib/domain/types";
 
@@ -50,28 +52,33 @@ function isoDay(d: Date): string {
 
 export function CalendarScreen() {
   const { household } = useHousehold();
-  const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
+  const [todayKey] = useState(() => dayKeyInZone(new Date(), household.timezone));
+  const [cursor, setCursor] = useState(() => startOfMonth(new Date(`${todayKey}T12:00:00`)));
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  const query = useObligations(household.id, {});
+  const query = useObligations(household.id, {
+    dueAfter: new Date(Date.UTC(cursor.getFullYear(), cursor.getMonth(), 0)).toISOString(),
+    dueBefore: new Date(Date.UTC(cursor.getFullYear(), cursor.getMonth() + 1, 2)).toISOString(),
+    status: ["upcoming", "action_needed", "in_progress", "waiting", "missed"],
+  });
   const obligations = useMemo(() => query.data ?? [], [query.data]);
 
   const byDay = useMemo(() => {
     const map = new Map<string, ObligationView[]>();
     for (const o of obligations) {
       if (o.status === "done" || o.status === "dismissed") continue;
-      const key = o.due_at.slice(0, 10);
+      const key = dayKeyInZone(o.due_at, household.timezone);
+      if (!key.startsWith(isoDay(cursor).slice(0, 7))) continue;
       const bucket = map.get(key);
       if (bucket) bucket.push(o);
       else map.set(key, [o]);
     }
     return map;
-  }, [obligations]);
+  }, [obligations, household.timezone, cursor]);
 
   const monthLabel = cursor.toLocaleDateString("en-US", { month: "long", year: "numeric" });
   const blanks = leadingBlanks(cursor);
   const total = daysInMonth(cursor);
-  const todayKey = isoDay(new Date());
   const selected = selectedDay ? (byDay.get(selectedDay) ?? []) : [];
 
   if (query.isError) {
@@ -116,13 +123,12 @@ export function CalendarScreen() {
       ) : (
         <div className="overflow-hidden rounded-lg border border-line bg-surface">
           <div
-            role="row"
+            aria-hidden="true"
             className="grid grid-cols-7 border-b border-line bg-surface-sunken"
           >
             {WEEKDAYS.map((d) => (
               <div
                 key={d}
-                role="columnheader"
                 className="px-2 py-2 text-center text-2xs font-medium tracking-wide text-ink-tertiary uppercase"
               >
                 {d}
@@ -153,8 +159,9 @@ export function CalendarScreen() {
                   type="button"
                   onClick={() => due.length > 0 && setSelectedDay(key)}
                   aria-label={`${dayNum} ${monthLabel}${
-                    due.length ? `, ${due.length} due` : ", nothing due"
+                    due.length ? `, ${due.length} loaded ${due.length === 1 ? "deadline" : "deadlines"}` : query.hasNextPage ? ", no loaded deadlines yet" : ", nothing due"
                   }`}
+                  aria-current={isToday ? "date" : undefined}
                   disabled={due.length === 0}
                   className={cn(
                     "min-h-24 border-r border-b border-line p-1.5 text-left transition-colors last:border-r-0",
@@ -202,7 +209,7 @@ export function CalendarScreen() {
         </div>
       )}
 
-      {!query.isPending && byDay.size === 0 ? (
+      {!query.isPending && !query.hasNextPage && byDay.size === 0 ? (
         <EmptyState
           className="mt-6"
           tone="reassuring"
@@ -212,6 +219,8 @@ export function CalendarScreen() {
         />
       ) : null}
 
+      {query.hasNextPage && <p className="mt-4 text-sm text-ink-secondary">More deadlines are available for this month. Load them to complete the calendar.</p>}
+      <CollectionMore query={query} />
       <Modal
         variant="drawer"
         open={selectedDay !== null}

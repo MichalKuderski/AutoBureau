@@ -87,8 +87,8 @@ function linkFailedResponse(): Response {
 <body>
 <main>
 <h1>This link didn't work</h1>
-<p>Confirmation links can only be used once, and they expire. Sign in to continue — if your
-address still needs confirming, we'll send a new link.</p>
+<p>Confirmation links can only be used once, and they expire. If you already confirmed your
+email, sign in to continue.</p>
 <p><a href="${SIGN_IN_PATH}">Go to sign in</a></p>
 </main>
 </body>

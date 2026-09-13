@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 /*
- * AutoBureau design system.
+ * Pellum design system.
  *
  * The product's register is "calm authority" (PRD §15): the competent person in the
- * room. That drives every decision below — a deep institutional teal rather than a
+ * room. That drives every decision below — a deep evergreen rather than a
  * startup blue, a serif for headings so the interface reads like a well-set letter
  * rather than a dashboard, generous line-height, and semantic colors that stay
  * legible without shouting. Urgency is never expressed through color alone.
@@ -52,7 +52,7 @@
 :root {
   color-scheme: light;
 
-  --color-canvas: #f7f8f7;
+  --color-canvas: #f7f6f2;
   --color-surface: #ffffff;
   --color-surface-raised: #ffffff;
   --color-surface-sunken: #f1f3f2;
@@ -60,16 +60,16 @@
 
   --color-ink: #16201f;
   --color-ink-secondary: #4a5a58;
-  --color-ink-tertiary: #6b7b79;
-  --color-ink-inverse: #f7f8f7;
+  --color-ink-tertiary: #596d65;
+  --color-ink-inverse: #f7f6f2;
 
   --color-line: #dfe5e2;
   --color-line-strong: #c3cdc9;
 
-  --color-accent: #0f6b5c;
-  --color-accent-hover: #0c574b;
-  --color-accent-active: #094239;
-  --color-accent-soft: #e3efeb;
+  --color-accent: #275c48;
+  --color-accent-hover: #1e4938;
+  --color-accent-active: #183b2e;
+  --color-accent-soft: #e9efe7;
   --color-accent-ink: #ffffff;
 
   /* Semantic — deliberately separate from the accent so status never reads as brand */
@@ -82,7 +82,7 @@
   --color-info: #2f5d8a;
   --color-info-soft: #e8effa;
 
-  --color-focus: #0f6b5c;
+  --color-focus: #275c48;
 
   --shadow-sm: 0 1px 2px rgb(16 24 26 / 0.05);
   --shadow-md: 0 2px 8px -1px rgb(16 24 26 / 0.08), 0 1px 3px -1px rgb(16 24 26 / 0.06);

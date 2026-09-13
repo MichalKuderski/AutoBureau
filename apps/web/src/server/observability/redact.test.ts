@@ -19,6 +19,21 @@ const JWT =
   "eyJhbGciOiJSUzI1NiIsImtpZCI6ImsxIn0.eyJzdWIiOiIwMTkyZjVhMS0wMDAwLTcwMDAtODAwMCJ9.c2lnbmF0dXJlLXZhbHVlLXRoYXQtaXMtbG9uZw";
 const REFRESH = "v1.MTo4YWZmZGE2Zi1mNzhiLTQ5ZGUtOTk4Yi1kZjc3NmU5NGRlZGM";
 
+describe("quarantine bearer capabilities", () => {
+  it("removes the whole signed URL from unknown metadata, error text and stacks", () => {
+    const url = "https://s3.us-east-2.amazonaws.com/private-quarantine/hh/private-object?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=synthetic&X-Amz-Signature=synthetic-signature";
+    expect(scrubString(`Provider refused ${url} during PUT`)).toBe(`Provider refused ${REDACTED} during PUT`);
+    const error = new Error(`Request failed ${url}`);
+    error.stack = `Error: Request failed ${url}\n    at adapter (adapter.ts:1:1)`;
+    const output = JSON.stringify({ meta: redactMeta({ detail: url, signed_url: url, uploadUrl: url }), error: describeError(error, { stack: true }) });
+    expect(output).not.toContain("private-object");
+    expect(output).not.toContain("amazonaws.com");
+    expect(output).not.toContain("synthetic-signature");
+    expect(output).toContain(REDACTED);
+    expect(scrubString("Read https://example.com/documentation for help")).toContain("https://example.com/documentation");
+  });
+});
+
 function serialised(value: unknown): string {
   return JSON.stringify(redactValue(value));
 }
@@ -269,4 +284,15 @@ describe("redactMeta always yields an object", () => {
   it("returns {} when handed something that is not a bag", () => {
     expect(redactMeta([1, 2, 3] as unknown as Record<string, unknown>)).toEqual({});
   });
+});
+
+describe("Plaid capabilities in arbitrary text", () => {
+  for (const kind of ["access", "public", "link"]) for (const environment of ["sandbox", "development", "production"]) {
+    it(`removes ${kind}/${environment} under an innocent key and in errors`, () => {
+      const value = `${kind}-${environment}-synthetic_token-123`;
+      expect(scrubString(`provider said ${value}`)).toBe(`provider said ${REDACTED}`);
+      expect(redactValue({ detail: value })).toEqual({ detail: REDACTED });
+      expect(JSON.stringify(describeError(new Error(value)))).not.toContain(value);
+    });
+  }
 });

@@ -1,0 +1,42 @@
+name: Stable staging OIDC and alias safety proof
+on:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+concurrency:
+  group: adr016-stable-staging-proof
+  cancel-in-progress: false
+jobs:
+  prove:
+    if: >-
+      github.repository == 'MichalKuderski/AutoBureau'
+      && github.event.pull_request.number == 5
+      && github.event.label.name == 'adr016-stable-oidc-proof'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.head_ref == 'codex/launch-foundations'
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --global vercel@59.16.0
+      - name: Prove only autobureau-staging production hosting scope without promotion
+        run: node scripts/staging-stable-oidc-proof.mjs
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+          VERCEL_STAGING_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+          VERCEL_TELEMETRY_DISABLED: '1'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-stable-oidc-proof
+          path: |
+            staging-proof-before.json
+            staging-stable-oidc-proof.json
+          retention-days: 7

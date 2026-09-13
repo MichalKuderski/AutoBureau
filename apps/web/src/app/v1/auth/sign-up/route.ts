@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { authConfigFromEnv } from "@/server/auth/config";
-import { createJwtVerifier, TokenError } from "@/server/auth/jwt";
-import { createGoTrueProvider, ProviderError } from "@/server/auth/provider";
+import { createJwtVerifier, TokenError, VerificationUnavailableError } from "@/server/auth/jwt";
+import { createGoTrueProvider, ProviderError, providerFailureMeta } from "@/server/auth/provider";
 import { appendCookies, sessionCookies } from "@/server/auth/session";
 import { getDatabase } from "@/server/db";
 import { ensureHousehold } from "@/server/identity/bootstrap";
@@ -142,7 +142,9 @@ export async function POST(request: Request): Promise<Response> {
         return problemResponse("rate-limited", { detail: "Too many attempts — try again shortly." });
       }
       if (cause.reason === "unavailable") {
-        return problemResponse("unavailable", { detail: "Sign-up is briefly unavailable." });
+        log({ event: "auth.sign_up_provider_unavailable", level: "error", traceId, route, method: request.method, status: 503, error: cause,
+          meta: providerFailureMeta(cause) });
+        return withTraceHeader(problemResponse("unavailable", { detail: "Sign-up is briefly unavailable.", headers: { "retry-after": "15" } }), traceId);
       }
       // Everything else the provider refused is a fact about the account rather than the
       // request — an address already registered, above all. Answering as though the signup
@@ -151,7 +153,7 @@ export async function POST(request: Request): Promise<Response> {
       // mail, and the person guessing gets nothing to learn from.
       return pending();
     }
-    if (cause instanceof TokenError || cause instanceof MirrorError) {
+    if (cause instanceof TokenError || cause instanceof VerificationUnavailableError || cause instanceof MirrorError) {
       // The account now exists at the provider but this deployment could not complete the
       // identity behind it. Reported as a deployment fault, and deliberately not as a
       // success: issuing no cookies leaves the person able to sign in once it is fixed,

@@ -1,0 +1,324 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Staging-only encrypted operational alerts; no queues, workers or Production changes.",
+  "Parameters": {
+    "AlertEmail": {
+      "Type": "String",
+      "NoEcho": true,
+      "AllowedPattern": "[^\\s@]+@[^\\s@]+\\.[^\\s@]+",
+      "Description": "Explicitly approved alert recipient; not exposed in outputs."
+    }
+  },
+  "Resources": {
+    "AlertKey": {
+      "Type": "AWS::KMS::Key",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "Description": "Pellum staging CloudWatch notification encryption only",
+        "EnableKeyRotation": true,
+        "KeySpec": "SYMMETRIC_DEFAULT",
+        "KeyUsage": "ENCRYPT_DECRYPT",
+        "MultiRegion": false,
+        "PendingWindowInDays": 30,
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "ExactAccountKeyAdministration",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "arn:aws:iam::792394000571:root"
+              },
+              "Action": "kms:*",
+              "Resource": "*"
+            },
+            {
+              "Sid": "OnlyReviewedCloudWatchAlarms",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "cloudwatch.amazonaws.com"
+              },
+              "Action": [
+                "kms:GenerateDataKey*",
+                "kms:Decrypt"
+              ],
+              "Resource": "*",
+              "Condition": {
+                "StringEquals": {
+                  "aws:SourceAccount": "792394000571"
+                },
+                "ArnEquals": {
+                  "aws:SourceArn": [
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-dlq-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-dlq-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-dlq-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-dlq-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-dlq-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-dlq-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-dlq-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-dlq-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-send_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-processing_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-retry",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-exhausted",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-delivery_lag_ms",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-reconciliation_mismatch",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-send_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-processing_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-retry",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-exhausted",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-delivery_lag_ms",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-reconciliation_mismatch",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-send_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-processing_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-retry",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-exhausted",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-delivery_lag_ms",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-reconciliation_mismatch",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-send_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-processing_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-retry",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-exhausted",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-delivery_lag_ms",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-reconciliation_mismatch",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-alert-delivery-probe"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Pellum"
+          },
+          {
+            "Key": "Environment",
+            "Value": "staging"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "ADR-017-operational-alerts"
+          }
+        ]
+      }
+    },
+    "AlertKeyAlias": {
+      "Type": "AWS::KMS::Alias",
+      "Properties": {
+        "AliasName": "alias/pellum-stg-operational-alerts",
+        "TargetKeyId": {
+          "Ref": "AlertKey"
+        }
+      }
+    },
+    "AlertTopic": {
+      "Type": "AWS::SNS::Topic",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "TopicName": "pellum-stg-operational-alerts",
+        "DisplayName": "Pellum staging alerts",
+        "KmsMasterKeyId": {
+          "Fn::GetAtt": [
+            "AlertKey",
+            "Arn"
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Pellum"
+          },
+          {
+            "Key": "Environment",
+            "Value": "staging"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "ADR-017-operational-alerts"
+          }
+        ]
+      }
+    },
+    "AlertTopicPolicy": {
+      "Type": "AWS::SNS::TopicPolicy",
+      "Properties": {
+        "Topics": [
+          {
+            "Ref": "AlertTopic"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "TLSRequired",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": [
+                "sns:AddPermission",
+                "sns:DeleteTopic",
+                "sns:GetDataProtectionPolicy",
+                "sns:GetTopicAttributes",
+                "sns:ListSubscriptionsByTopic",
+                "sns:ListTagsForResource",
+                "sns:Publish",
+                "sns:PutDataProtectionPolicy",
+                "sns:RemovePermission",
+                "sns:SetTopicAttributes",
+                "sns:Subscribe"
+              ],
+              "Resource": "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts",
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            },
+            {
+              "Sid": "OnlyReviewedCloudWatchAlarms",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "cloudwatch.amazonaws.com"
+              },
+              "Action": "sns:Publish",
+              "Resource": "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts",
+              "Condition": {
+                "StringEquals": {
+                  "aws:SourceAccount": "792394000571"
+                },
+                "ArnEquals": {
+                  "aws:SourceArn": [
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-dlq-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-dlq-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-dlq-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-dlq-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-dlq-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-dlq-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-dlq-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-dlq-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-send_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-processing_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-retry",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-exhausted",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-delivery_lag_ms",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-reconciliation_mismatch",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-send_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-processing_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-retry",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-exhausted",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-delivery_lag_ms",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-reconciliation_mismatch",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-send_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-processing_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-retry",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-exhausted",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-delivery_lag_ms",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-reconciliation_mismatch",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-send_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-processing_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-retry",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-exhausted",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-delivery_lag_ms",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-reconciliation_mismatch",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-alert-delivery-probe"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "AlertSubscription": {
+      "Type": "AWS::SNS::Subscription",
+      "DependsOn": "AlertTopicPolicy",
+      "Properties": {
+        "TopicArn": {
+          "Ref": "AlertTopic"
+        },
+        "Protocol": "email",
+        "Endpoint": {
+          "Ref": "AlertEmail"
+        }
+      }
+    },
+    "DeliveryProbe": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "DependsOn": "AlertTopicPolicy",
+      "Properties": {
+        "AlarmName": "pellum-stg-alert-delivery-probe",
+        "AlarmDescription": "Synthetic notification delivery probe only. No worker or document processing.",
+        "Namespace": "Pellum/StagingAlertProbe",
+        "MetricName": "Connectivity",
+        "Statistic": "Maximum",
+        "Period": 60,
+        "EvaluationPeriods": 1,
+        "Threshold": 0,
+        "ComparisonOperator": "GreaterThanThreshold",
+        "TreatMissingData": "notBreaching",
+        "ActionsEnabled": true,
+        "AlarmActions": [
+          {
+            "Ref": "AlertTopic"
+          }
+        ],
+        "OKActions": [],
+        "InsufficientDataActions": [],
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Pellum"
+          },
+          {
+            "Key": "Environment",
+            "Value": "staging"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "ADR-017-operational-alerts"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "TopicArn": {
+      "Value": {
+        "Ref": "AlertTopic"
+      }
+    },
+    "KeyArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "AlertKey",
+          "Arn"
+        ]
+      }
+    },
+    "DeliveryProbe": {
+      "Value": {
+        "Ref": "DeliveryProbe"
+      }
+    }
+  }
+}

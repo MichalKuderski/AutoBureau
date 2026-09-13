@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderScreen } from "@/test/render";
-import { OnboardingProvider } from "../onboarding-provider";
+import { EMPTY_ONBOARDING } from "@/test/onboarding-fixture";
+import { OnboardingDraftProvider } from "../onboarding-provider";
 import { DocumentStep } from "./document-step";
 
 /**
@@ -21,9 +22,9 @@ vi.mock("next/navigation", () => ({
 
 function renderStep() {
   return renderScreen(
-    <OnboardingProvider>
+    <OnboardingDraftProvider initial={EMPTY_ONBOARDING}>
       <DocumentStep />
-    </OnboardingProvider>,
+    </OnboardingDraftProvider>,
   );
 }
 

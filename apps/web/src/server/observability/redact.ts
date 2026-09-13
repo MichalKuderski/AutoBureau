@@ -69,6 +69,8 @@ const SENSITIVE_KEY_FRAGMENTS = [
   "sessionid",
   "connectionstring",
   "databaseurl",
+  "signedurl",
+  "uploadurl",
   "email",
 ] as const;
 
@@ -93,17 +95,19 @@ export function isSensitiveKey(key: string): boolean {
  * the URL — including the host — in the log.
  */
 const SCRUBBERS: ReadonlyArray<readonly [RegExp, string]> = [
+  // A presigned URL is the entire bearer capability, including its object path.
+  // Remove it before individual token/signature scrubbers can partially rewrite it.
+  [/https?:\/\/[^\s"'<>]*[?&](?:X-Amz-(?:Algorithm|Credential|Signature|Security-Token)|AWSAccessKeyId|Signature)=[^\s"'<>]*/gi, REDACTED],
   // A JWT, which is what every access and refresh token in this system looks like.
   [/\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}/g, REDACTED],
   // A three-segment opaque token that is not obviously a JWT. Segment length is set high
   // enough that ordinary dotted identifiers and version strings are not eaten.
   [/\b[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\b/g, REDACTED],
   [/\bBearer\s+[^\s"',;]+/gi, `Bearer ${REDACTED}`],
-  // Known credential prefixes. Cheap, and the ones this product has already committed to
-  // meeting (Stripe post-launch per doc 13 §7; Plaid only behind ADR-011).
+  // Known credential prefixes, including all Plaid capability types (PRD §21.1).
   [/\b(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]+/g, REDACTED],
   [/\bwhsec_[A-Za-z0-9]+/g, REDACTED],
-  [/\baccess-(?:sandbox|development|production)-[A-Za-z0-9-]+/g, REDACTED],
+  [/\b(?:access|public|link)-(?:sandbox|development|production)-[A-Za-z0-9_-]+/gi, REDACTED],
   // `name=value` where the name itself says the value is a secret.
   [
     /\b([A-Za-z0-9_-]*(?:authorization|cookie|token|secret|password|apikey|csrf|verifier|challenge|signature)[A-Za-z0-9_-]*)\s*=\s*([^\s;,&"']+)/gi,

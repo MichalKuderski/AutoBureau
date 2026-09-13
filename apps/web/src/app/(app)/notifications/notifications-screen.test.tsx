@@ -1,8 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderScreen } from "@/test/render";
 import { matchesKnownRoute } from "@/test/route-manifest";
+import { installDomainHttpFixtures } from "@/test/domain-http-fixtures";
 import { NotificationsScreen } from "./notifications-screen";
+
+installDomainHttpFixtures();
 
 /**
  * Blueprint P0-14.
@@ -72,5 +75,36 @@ describe("Test D · every remaining generated notification href matches a real r
       const href = a.getAttribute("href");
       if (href) expect(matchesKnownRoute(href)).toBe(true);
     }
+  });
+});
+
+describe("saved read state", () => {
+  it("marks all loaded notices through the API and keeps that state after remount", async () => {
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup(); const first = renderScreen(<NotificationsScreen />);
+    await user.click(await screen.findByRole("button", { name: "Mark all read" }));
+    const { waitFor } = await import("@testing-library/react");
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Mark all read" })).not.toBeInTheDocument());
+    first.unmount(); renderScreen(<NotificationsScreen />);
+    await screen.findByText("A document needs your review");
+    expect(screen.queryByLabelText("Unread", { exact: true })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Unread" }));
+    await screen.findByText("You're all caught up");
+  });
+});
+
+
+describe("read mutation failure", () => {
+  it("keeps notices unread when the server refuses a read-state save", async () => {
+    const base = globalThis.fetch;
+    vi.stubGlobal("fetch", vi.fn((input, init) => String(input).includes("/notifications/read")
+      ? Promise.resolve(new Response(JSON.stringify({ type: "https://autobureau.com/problems/unavailable", title: "Unavailable", status: 503 }), { status: 503, headers: { "content-type": "application/json" } }))
+      : base(input, init)));
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup(); renderScreen(<NotificationsScreen />);
+    await user.click(await screen.findByRole("button", { name: "Mark all read" }));
+    await screen.findByText("Couldn’t save read state");
+    expect(screen.getAllByLabelText("Unread", { exact: true }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Mark all read" })).toBeEnabled();
   });
 });

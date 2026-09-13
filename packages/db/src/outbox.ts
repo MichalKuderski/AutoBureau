@@ -49,6 +49,7 @@ export function outbox(tx: ScopedClient) {
 
       await tx.outboxEvent.create({
         data: {
+          transportScope: stagingOutboxScope(),
           eventType: parsed.event_type,
           aggregateType: parsed.aggregate_type,
           aggregateId: parsed.aggregate_id,
@@ -59,4 +60,10 @@ export function outbox(tx: ScopedClient) {
       });
     },
   };
+}
+
+/** Source environment is stamped when the intent commits, before any dispatcher sees it. */
+export function stagingOutboxScope(env: NodeJS.ProcessEnv = process.env): "stg" | "preview" | null {
+  if (env["AUTH_ISSUER"] !== "https://kdqnfruwgocfqwpbpuxo.supabase.co/auth/v1") return null;
+  return env["VERCEL_ENV"] === "production" ? "stg" : env["VERCEL_ENV"] === "preview" ? "preview" : null;
 }

@@ -1,0 +1,32 @@
+{
+  "capturedAt": "2026-09-13T23:27:23.311390+00:00",
+  "account": "792394000571",
+  "region": "us-east-2",
+  "stackId": "arn:aws:cloudformation:us-east-2:792394000571:stack/pellum-stg-operational-alerts/fc9b4ec0-afc9-11f1-a1d8-0a6f6c89a621",
+  "stackStatus": "UPDATE_COMPLETE",
+  "resourceCount": 6,
+  "templateSHA256": "4aa6348831de4b47f522a2fcf8eeef365b6555ca5aa5b6d01ffc71f4151f2c2e",
+  "keyId": "dbfad496-8474-42d1-9eb0-be5b2f20b912",
+  "topicArn": "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts",
+  "effectiveKeyPolicyMatches": true,
+  "effectiveTopicPolicyMatches": true,
+  "keyRotation": true,
+  "exactApprovedRecipient": true,
+  "subscriptionStatus": "pending-confirmation",
+  "deliveryProven": false,
+  "queueCount": 0,
+  "jobsBootstrapStatus": "REVIEW_IN_PROGRESS",
+  "recovery": {
+    "firstAttempt": "SNS rejected wildcard resource-policy action; stack rolled back",
+    "retainedKeyAndTopic": true,
+    "importedSamePhysicalResources": true,
+    "completionChanges": {
+      "add": 4,
+      "modify": 0,
+      "remove": 0,
+      "replace": 0
+    }
+  },
+  "productionAccessed": false,
+  "budgetReceipt": "pellum-staging-budget-readback-20260913.json"
+}

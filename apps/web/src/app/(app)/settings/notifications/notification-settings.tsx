@@ -1,183 +1,77 @@
 "use client";
-
 import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { NotificationSettingsSaveSchema, type NotificationSettingsSave, type NotificationSettingsView } from "@autobureau/contracts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Toggle, Select } from "@/components/ui/field";
+import { Toggle, Select, TextInput } from "@/components/ui/field";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { SkeletonList } from "@/components/ui/skeleton";
+import { ErrorState, describeError } from "@/components/ui/error-state";
 import { useToast } from "@/components/ui/toast";
-
-/**
- * Notification preferences — the kind × channel matrix (doc 08 §3).
- *
- * Two rules are encoded here rather than left to policy: security notices cannot be
- * switched off (they are how a user learns their account was accessed), and quiet
- * hours defer non-urgent messages rather than dropping them, so nothing is silently
- * lost to a sleeping phone.
- */
-
-type Channel = "email" | "push" | "inapp";
+import { useHousehold } from "@/providers/household-provider";
+import { apiFetch } from "@/lib/api-client";
 
 const KINDS = [
-  {
-    id: "obligation.due_soon",
-    label: "Deadline reminders",
-    description: "Ahead of anything with a date — the reason this product exists.",
-    locked: false,
-  },
-  {
-    id: "document.needs_review",
-    label: "Documents needing a look",
-    description: "When we read something but weren't confident enough to file it.",
-    locked: false,
-  },
-  {
-    id: "digest.weekly",
-    label: "Weekly digest",
-    description: "Sunday summary of what's handled and what's coming.",
-    locked: false,
-  },
-  {
-    id: "value.found",
-    label: "Money we've found",
-    description: "Refundable deposits, unused warranties, forgotten subscriptions.",
-    locked: false,
-  },
-  {
-    id: "security",
-    label: "Security notices",
-    description: "Sign-ins from new devices and changes to your account. Always on.",
-    locked: true,
-  },
+  { id: "obligation.due_soon", label: "Deadline reminders", description: "Reminders for confirmed dates." },
+  { id: "document.needs_review", label: "Documents needing a look", description: "Documents waiting for your review." },
+  { id: "digest.weekly", label: "Weekly digest", description: "A summary of your household's saved deadlines." },
+  { id: "value.found", label: "Value updates", description: "Updates about potential savings and money owed to you." },
+  { id: "security", label: "Security notices", description: "Important account changes. Always enabled." },
 ] as const;
-
-const QUIET_START = [
-  { value: "20:00", label: "8:00 PM" },
-  { value: "21:00", label: "9:00 PM" },
-  { value: "22:00", label: "10:00 PM" },
-];
-const QUIET_END = [
-  { value: "06:00", label: "6:00 AM" },
-  { value: "07:00", label: "7:00 AM" },
-  { value: "08:00", label: "8:00 AM" },
-];
-
+const channels = ["email", "push", "inapp"] as const;
+const channelName = { email: "Email", push: "Push", inapp: "In app" };
+const key = (h: string) => ["notification-settings", h] as const;
 export function NotificationSettings() {
+  const { household } = useHousehold();
+  const query = useQuery({ queryKey: key(household.id), queryFn: ({ signal }) => apiFetch<NotificationSettingsView>("/me/notification-settings", { householdId: household.id, signal }) });
+  if (query.isPending) return <SkeletonList count={3} />;
+  if (query.isError) return <ErrorState {...describeError(query.error)} onRetry={() => void query.refetch()} />;
+  return <SettingsForm key={household.id} initial={query.data} />;
+}
+function SettingsForm({ initial }: { initial: NotificationSettingsView }) {
+  const { household, can } = useHousehold();
+  const qc = useQueryClient();
   const { toast } = useToast();
-  const [prefs, setPrefs] = useState<Record<string, Record<Channel, boolean>>>(() => {
-    const initial: Record<string, Record<Channel, boolean>> = {};
-    for (const k of KINDS) {
-      initial[k.id] = {
-        email: true,
-        push: k.id === "obligation.due_soon" || k.id === "security",
-        inapp: true,
-      };
-    }
-    return initial;
-  });
-  const [urgentOverride, setUrgentOverride] = useState(true);
-
-  const set = (kind: string, channel: Channel, value: boolean) =>
-    setPrefs((prev) => ({ ...prev, [kind]: { ...prev[kind]!, [channel]: value } }));
-
-  return (
-    <div className="flex flex-col gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>What we tell you, and how</CardTitle>
-          <CardDescription>
-            We aim to be the reason nothing slips — not another app that buzzes.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-lg border-collapse text-sm">
-              <caption className="sr-only">Notification preferences by type and channel</caption>
-              <thead>
-                <tr className="border-b border-line">
-                  <th scope="col" className="py-2 text-left text-xs text-ink-tertiary uppercase">
-                    Type
-                  </th>
-                  {(["email", "push", "inapp"] as const).map((c) => (
-                    <th
-                      key={c}
-                      scope="col"
-                      className="w-20 py-2 text-center text-xs text-ink-tertiary uppercase"
-                    >
-                      {c === "inapp" ? "In app" : c}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {KINDS.map((k) => (
-                  <tr key={k.id} className="border-b border-line last:border-0">
-                    <th scope="row" className="py-3 pr-4 text-left font-normal">
-                      <span className="block text-sm text-ink">{k.label}</span>
-                      <span className="block text-xs text-ink-tertiary text-pretty">
-                        {k.description}
-                      </span>
-                    </th>
-                    {(["email", "push", "inapp"] as const).map((c) => (
-                      <td key={c} className="py-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={k.locked ? true : prefs[k.id]?.[c]}
-                          disabled={k.locked}
-                          onChange={(e) => set(k.id, c, e.target.checked)}
-                          aria-label={`${k.label} via ${c}`}
-                          className="size-4 accent-[var(--color-accent)] disabled:opacity-50"
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Quiet hours</CardTitle>
-          <CardDescription>
-            Nothing is dropped — non-urgent messages simply wait until morning.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Select label="From" options={QUIET_START} defaultValue="21:00" />
-            <Select label="Until" options={QUIET_END} defaultValue="07:00" />
-          </div>
-          <Toggle
-            label="Let urgent deadlines through"
-            description="Only for things due within 24 hours that you haven't acted on."
-            checked={urgentOverride}
-            onChange={setUrgentOverride}
-          />
-        </CardContent>
-      </Card>
-
-      <Alert tone="info" title="Unsubscribing is per-type">
-        Every email we send carries a one-click unsubscribe for that kind of message. Turning off
-        reminders never turns off security notices.
-      </Alert>
-
-      <div>
-        <Button
-          variant="primary"
-          onClick={() =>
-            toast({
-              tone: "success",
-              title: "Preferences saved",
-              description: "Changes apply to the next message we send.",
-            })
-          }
-        >
-          Save preferences
-        </Button>
-      </div>
-    </div>
-  );
+  const [draft, setDraft] = useState<NotificationSettingsSave>({ preferences: initial.preferences, schedule: initial.schedule });
+  const [validation, setValidation] = useState<string | null>(null);
+  const save = useMutation({ mutationFn: (body: NotificationSettingsSave) => apiFetch<NotificationSettingsView>("/me/notification-settings", { method: "PATCH", householdId: household.id, body }),
+    onSuccess: (saved) => { setDraft({ preferences: saved.preferences, schedule: saved.schedule }); qc.setQueryData(key(household.id), saved); toast({ tone: "success", title: "Preferences saved" }); } });
+  const disabled = save.isPending || !can("manage");
+  const schedule = <K extends keyof NotificationSettingsSave["schedule"]>(name: K, value: NotificationSettingsSave["schedule"][K]) => setDraft((prev) => ({ ...prev, schedule: { ...prev.schedule, [name]: value } }));
+  return <form className="flex flex-col gap-6" onSubmit={(event) => {
+    event.preventDefault(); if (disabled) return;
+    const parsed = NotificationSettingsSaveSchema.safeParse(draft);
+    setValidation(parsed.success ? null : parsed.error.issues[0]?.message ?? "Check your preferences.");
+    if (parsed.success) save.mutate(parsed.data);
+  }}>
+    <Alert tone="info" title="Delivery is being set up">Save your choices below. Email and push delivery are not active yet; enabling a channel does not register this device for push.</Alert>
+    {!can("manage") && <Alert tone="info" title="Owner access required">Only a household owner can change notification settings.</Alert>}
+    <Card><CardHeader><CardTitle>What you hear from us</CardTitle><CardDescription>Choose each channel separately. Security notices stay enabled.</CardDescription></CardHeader>
+      <CardContent><div className="flex flex-col divide-y divide-line">
+        {KINDS.map((kind) => <fieldset key={kind.id} disabled={disabled} className="py-4 first:pt-0 last:pb-0">
+          <legend className="sr-only">{kind.label}</legend><p className="text-sm font-medium text-ink">{kind.label}</p><p className="mt-1 text-xs text-ink-tertiary">{kind.description}</p>
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-3">{channels.map((channel) => <label key={channel} className="flex min-h-8 items-center gap-2 text-sm text-ink-secondary">
+            <input type="checkbox" checked={draft.preferences.find((row) => row.kind === kind.id && row.channel === channel)?.enabled ?? false}
+              disabled={disabled || kind.id === "security"} aria-label={`${kind.label} via ${channelName[channel]}`}
+              onChange={(event) => setDraft((prev) => ({ ...prev, preferences: prev.preferences.map((row) => row.kind === kind.id && row.channel === channel ? { ...row, enabled: event.target.checked } : row) }))}
+              className="size-4 accent-[var(--color-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:opacity-50" />{channelName[channel]}
+          </label>)}</div>
+        </fieldset>)}
+      </div></CardContent></Card>
+    <Card><CardHeader><CardTitle>Quiet hours</CardTitle><CardDescription>Local times in {initial.timezone}. Non-urgent delivery waits until quiet hours end.</CardDescription></CardHeader>
+      <CardContent className="flex flex-col gap-4"><div className="grid gap-4 sm:grid-cols-2">
+        <TextInput type="time" label="From" value={draft.schedule.quiet_start} onChange={(event) => schedule("quiet_start", event.target.value)} required disabled={disabled} />
+        <TextInput type="time" label="Until" value={draft.schedule.quiet_end} onChange={(event) => schedule("quiet_end", event.target.value)} required disabled={disabled} />
+      </div><Toggle label="Let urgent deadlines through" description="Opt in to critical reminders during quiet hours when a deadline is within 24 hours." checked={draft.schedule.urgent_override} onChange={(value) => schedule("urgent_override", value)} disabled={disabled} /></CardContent>
+    </Card>
+    <Card><CardHeader><CardTitle>Weekly digest schedule</CardTitle><CardDescription>The saved schedule uses your profile timezone.</CardDescription></CardHeader><CardContent className="grid gap-4 sm:grid-cols-2">
+      <Select label="Day" value={String(draft.schedule.digest_day)} onChange={(event) => schedule("digest_day", Number(event.target.value))} disabled={disabled}
+        options={["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((label, i) => ({ value: String(i), label }))} />
+      <TextInput type="time" label="Time" value={draft.schedule.digest_time} onChange={(event) => schedule("digest_time", event.target.value)} required disabled={disabled} />
+    </CardContent></Card>
+    {validation && <Alert tone="critical" title="Check your preferences">{validation}</Alert>}
+    {save.isError && <Alert tone="critical" title="Couldn’t save preferences">{save.error.message} Your changes are still in this form.</Alert>}
+    <div><Button type="submit" variant="primary" disabled={!can("manage")} loading={save.isPending} loadingLabel="Saving preferences">Save preferences</Button></div>
+  </form>;
 }

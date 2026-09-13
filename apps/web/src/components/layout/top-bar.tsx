@@ -34,6 +34,7 @@ export function TopBar({ onOpenNav }: { onOpenNav: () => void }) {
         <div className="ml-auto flex items-center gap-1">
           <Link
             href="/documents/upload"
+            aria-label="Add document"
             className="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent px-3 text-sm font-medium text-accent-ink shadow-sm transition-colors hover:bg-accent-hover"
           >
             <Icon.Plus className="size-4" />
@@ -77,7 +78,7 @@ function SearchTrigger() {
       )}
     >
       <Icon.Search className="size-4 shrink-0" />
-      <span className="truncate">Search documents, obligations, people…</span>
+      <span className="truncate">Search obligations or pages…</span>
       <kbd className="ml-auto hidden shrink-0 rounded border border-line bg-surface-sunken px-1.5 py-0.5 font-mono text-2xs text-ink-tertiary sm:inline-block">
         {shortcut}
       </kbd>

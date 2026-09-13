@@ -41,7 +41,7 @@ let admin: PrismaClient;
 let provider: Server;
 let providerCalls: Array<{ path: string; apikey: string | undefined; auth: string | undefined }> = [];
 /** Flipped by tests to make the provider refuse. */
-let providerMode: "ok" | "reject" | "down" | "throttled" = "ok";
+let providerMode: "ok" | "reject" | "down" | "gateway-timeout" | "throttled" = "ok";
 /**
  * Flipped by tests to make revocation fail specifically.
  *
@@ -94,6 +94,11 @@ beforeAll(async () => {
     // P1-07: the two shapes that mean "the provider, not the token". A 5xx maps to
     // `unavailable` and a 429 to `rate-limited`; both are transient, and neither is
     // evidence that a refresh token was revoked.
+    if (providerMode === "gateway-timeout") {
+      res.writeHead(504, { "content-type": "text/html", "sb-request-id": "11111111-1111-4111-8111-111111111111" });
+      res.end("PRIVATE_UPSTREAM_CANARY");
+      return;
+    }
     if (providerMode === "down") {
       res.writeHead(500, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: "server_error" }));
@@ -740,5 +745,53 @@ describe("A3 · no auth token in the client bundle", () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+});
+
+
+describe("gateway 504 does not establish or destroy an application session", () => {
+  it.each(["sign-in", "sign-up"])("%s preserves coarse availability, cookies and exactly-once bootstrap after explicit retry", async (kind) => {
+    await admin.household.deleteMany({ where: { createdBy: SUBJECT } });
+    await admin.user.deleteMany({ where: { id: SUBJECT } });
+    const auditBefore = await admin.auditLog.count();
+    const { POST } = kind === "sign-in" ? await import("@/app/v1/auth/sign-in/route") : await import("@/app/v1/auth/sign-up/route");
+    const request = () => new Request(`${ORIGIN}/v1/auth/${kind}`, { method: "POST",
+      headers: { "content-type": "application/json", [CSRF_HEADER]: "1", cookie: `ab_session=${ACCESS}; ab_session_refresh=${REFRESH}` },
+      body: JSON.stringify({ email: `gateway-${kind}@example.test`, password: "Bright Moon River 41!", name: "Synthetic" }) });
+    const { setLogSink, resetLogSink } = await import("@/server/observability/logger");
+    const records: Array<{ event: string; meta?: Record<string, unknown> }> = [];
+    setLogSink(record => records.push(record)); providerMode = "gateway-timeout"; providerCalls = [];
+    try {
+      const failed = await POST(request());
+      expect(failed.status).toBe(503); expect(failed.headers.get("retry-after")).toBe("15");
+      expect(failed.headers.get("cache-control")).toBe("no-store"); expect(failed.headers.get("location")).toBeNull();
+      expect(failed.headers.getSetCookie()).toEqual([]); expect(failed.headers.get("x-request-id")).toBeTruthy();
+      const body = await failed.text(); expect(body).not.toContain("504"); expect(body).not.toContain("PRIVATE_UPSTREAM_CANARY");
+      expect(providerCalls.filter(c => !c.path.includes("jwks"))).toHaveLength(1);
+      expect(await admin.user.count({ where: { id: SUBJECT } })).toBe(0);
+      expect(await admin.household.count({ where: { createdBy: SUBJECT } })).toBe(0);
+      expect(await admin.auditLog.count()).toBe(auditBefore);
+      expect(records.find(r => r.event.endsWith("provider_unavailable"))?.meta).toMatchObject({ upstream_status: 504, upstream_failure: "http", upstream_request_id: "11111111-1111-4111-8111-111111111111" });
+      expect(JSON.stringify(records)).not.toContain("PRIVATE_UPSTREAM_CANARY");
+      providerMode = "ok";
+      expect((await POST(request())).status).toBe(204);
+      expect((await POST(request())).status).toBe(204);
+      expect(await admin.user.count({ where: { id: SUBJECT } })).toBe(1);
+      expect(await admin.userProfile.count({ where: { userId: SUBJECT } })).toBe(1);
+      const household = await admin.household.findMany({ where: { createdBy: SUBJECT } }); expect(household).toHaveLength(1);
+      expect(await admin.householdUser.count({ where: { userId: SUBJECT, role: "owner" } })).toBe(1);
+      expect(await admin.entitlement.count({ where: { householdId: household[0]!.id } })).toBe(1);
+      expect(await admin.auditLog.count()).toBe(auditBefore + 5);
+    } finally { providerMode = "ok"; resetLogSink(); }
+  });
+  it("a refresh 504 retains both existing credentials and terminates the redirect loop", async () => {
+    const { GET } = await import("@/app/auth/refresh/route"); providerMode = "gateway-timeout"; providerCalls = [];
+    try {
+      const response = await GET(new Request(`${ORIGIN}/auth/refresh?next=%2Fdashboard`, { headers: { cookie: `ab_session=${ACCESS}; ab_session_refresh=${REFRESH}` } }));
+      expect(response.status).toBe(503); expect(response.headers.get("location")).toBeNull();
+      expect(response.headers.get("retry-after")).toBe("15");
+      expect(cookieNamed(response, "ab_session")).toBeUndefined(); expect(cookieNamed(response, "ab_session_refresh")).toBeUndefined();
+      expect(providerCalls.filter(c => c.path.includes("grant_type=refresh_token"))).toHaveLength(1);
+    } finally { providerMode = "ok"; }
   });
 });

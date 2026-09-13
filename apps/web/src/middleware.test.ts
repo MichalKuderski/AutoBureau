@@ -2,7 +2,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
 import { SignJWT, exportJWK, generateKeyPair, type JSONWebKeySet } from "jose";
-import { createJwtVerifier } from "@/server/auth/jwt";
+import { createJwtVerifier, VerificationUnavailableError } from "@/server/auth/jwt";
 import { PUBLIC_PATHS } from "@/server/http/public-routes";
 import type { AuthConfig } from "@/server/auth/config";
 import { config as matcherConfig, evaluate, type MiddlewareDeps } from "./middleware";
@@ -236,5 +236,12 @@ describe("an unconfigured deployment denies rather than opens", () => {
     for (const path of PUBLIC_PATHS) {
       expect(await evaluate(request(path), null)).toEqual({ kind: "allow" });
     }
+  });
+});
+
+describe("signing-key outage", () => {
+  it.each(["/dashboard", "/v1/households/current"])("blocks %s without treating the session as invalid", async (path) => {
+    const unavailable = { ...deps, verifier: { verify: async () => { throw new VerificationUnavailableError(); } } };
+    expect(await evaluate(request(path, { ab_session: await token(), ab_session_refresh: "refresh" }), unavailable)).toEqual({ kind: "unavailable" });
   });
 });

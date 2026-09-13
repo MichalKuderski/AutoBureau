@@ -28,6 +28,14 @@ import { z } from "zod";
  */
 
 export const AUDIT_ACTIONS = [
+  /** Owner-only household configuration (doc 06 §3). */
+  "household.settings_changed",
+  "notification.preferences_changed",
+  "document.upload_completed",
+  "household.member_added",
+  "household.member_changed",
+  "household.member_archived",
+  "household.member_restored",
   /** doc 12 §5.3 / PRD §13, F8: revealing an identifier-grade value is always audited. */
   "secret.revealed",
   /** doc 02 §9's own worked example, and the reason the verb layer exists at all. */
@@ -36,6 +44,8 @@ export const AUDIT_ACTIONS = [
   "obligation.completed",
   /** PRD F9: dismissed obligations are recoverable for 30 days — the inverse transition. */
   "obligation.reopened",
+  "obligation.status_changed",
+  "obligation.details_changed",
 ] as const;
 
 export const AuditActionSchema = z.enum(AUDIT_ACTIONS);

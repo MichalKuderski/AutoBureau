@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { PageHeader } from "@/components/patterns/page-header";
+import { CollectionMore } from "@/components/patterns/collection-more";
 import { Timeline } from "@/components/patterns/timeline";
 import { FilterBar, type FilterOption } from "@/components/ui/filter-bar";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -10,17 +11,13 @@ import { Icon } from "@/components/ui/icon";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { useHousehold } from "@/providers/household-provider";
 import { useTimeline } from "@/lib/domain/queries";
-import type { TimelineEntry } from "@/lib/domain/types";
+import type { TimelineLens } from "@/lib/domain/types";
 
-const LENSES: Array<{ value: string; label: string; kinds: TimelineEntry["kind"][] | null }> = [
-  { value: "all", label: "Everything", kinds: null },
-  {
-    value: "obligations",
-    label: "Deadlines",
-    kinds: ["obligation_created", "obligation_completed", "item_expiring", "reminder_sent"],
-  },
-  { value: "documents", label: "Documents", kinds: ["document_added", "item_added"] },
-  { value: "value", label: "Money found", kinds: ["value_found"] },
+const LENSES: Array<{ value: TimelineLens; label: string }> = [
+  { value: "all", label: "Everything" },
+  { value: "obligations", label: "Deadlines" },
+  { value: "documents", label: "Documents" },
+  { value: "items", label: "Records" },
 ];
 
 /**
@@ -33,15 +30,9 @@ const LENSES: Array<{ value: string; label: string; kinds: TimelineEntry["kind"]
  */
 export function TimelineScreen() {
   const { household } = useHousehold();
-  const [lens, setLens] = useState("all");
-  const query = useTimeline(household.id);
-
-  const entries = useMemo(() => {
-    const all = query.data ?? [];
-    const selected = LENSES.find((l) => l.value === lens);
-    if (!selected?.kinds) return all;
-    return all.filter((e) => selected.kinds!.includes(e.kind));
-  }, [query.data, lens]);
+  const [lens, setLens] = useState<TimelineLens>("all");
+  const query = useTimeline(household.id, lens);
+  const entries = query.data;
 
   const options: FilterOption[] = LENSES.map((l) => ({ value: l.value, label: l.label }));
 
@@ -58,14 +49,14 @@ export function TimelineScreen() {
     <>
       <PageHeader
         title="Timeline"
-        description="Every document, deadline, and result — in the order it happened."
+        description="Saved documents, records, and deadline changes, newest first."
       />
 
       <FilterBar
         label="Filter timeline"
         options={options}
         value={lens}
-        onChange={setLens}
+        onChange={(value) => setLens(value as TimelineLens)}
         className="mb-6"
       />
 
@@ -76,11 +67,12 @@ export function TimelineScreen() {
           tone="reassuring"
           icon={<Icon.Timeline className="size-5" />}
           title="Nothing here yet"
-          description="As documents arrive and deadlines pass, your household's history builds itself here — so you never have to reconstruct it from memory."
+          description="Saved changes will appear here. Try another filter to see other activity."
         />
       ) : (
         <Timeline entries={entries} timeZone={household.timezone} />
       )}
+      <CollectionMore query={query} />
     </>
   );
 }

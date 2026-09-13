@@ -1,0 +1,349 @@
+{
+  "receipt": {
+    "status": "PASS",
+    "capturedAt": "2026-09-13T19:59:19.523471+00:00",
+    "account": "792394000571",
+    "region": "us-east-2",
+    "bucket": "pellum-stg-quarantine-792394000571-us-east-2",
+    "exactEffectivePolicyAndRoleMatch": true,
+    "private": true,
+    "tlsRequired": true,
+    "encryption": "AES256",
+    "ownership": "BucketOwnerEnforced",
+    "lifecycleDays": 7,
+    "multipartDays": 1,
+    "queryDownloadDenied": true,
+    "querySealedOverwriteDenied": true,
+    "objects": 0,
+    "liveRuntimeAssumptionProbes": "pending",
+    "productionApplicationAccessed": false
+  },
+  "readback": {
+    "location": {
+      "LocationConstraint": "us-east-2"
+    },
+    "public": {
+      "PublicAccessBlockConfiguration": {
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true,
+        "BlockPublicPolicy": true,
+        "RestrictPublicBuckets": true
+      }
+    },
+    "ownership": {
+      "OwnershipControls": {
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
+          }
+        ]
+      }
+    },
+    "encryption": {
+      "ServerSideEncryptionConfiguration": {
+        "Rules": [
+          {
+            "ApplyServerSideEncryptionByDefault": {
+              "SSEAlgorithm": "AES256"
+            },
+            "BucketKeyEnabled": false,
+            "BlockedEncryptionTypes": {
+              "EncryptionType": [
+                "SSE-C"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "policy": {
+      "Policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"RequireTLS\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Action\":\"s3:*\",\"Resource\":[\"arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2\",\"arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/*\"],\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}}},{\"Sid\":\"ExpireQuerySignaturesAfterFifteenMinutes\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Action\":\"s3:*\",\"Resource\":\"arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/*\",\"Condition\":{\"StringEquals\":{\"s3:authType\":\"REST-QUERY-STRING\"},\"NumericGreaterThan\":{\"s3:signatureAge\":\"900000\"}}},{\"Sid\":\"NoQuarantineDownloadCapabilities\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Action\":\"s3:GetObject\",\"Resource\":\"arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/*\",\"Condition\":{\"StringEquals\":{\"s3:authType\":\"REST-QUERY-STRING\"}}},{\"Sid\":\"NoBrowserWriteToSealedCopies\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Action\":\"s3:PutObject\",\"Resource\":\"arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/sealed/*\",\"Condition\":{\"StringEquals\":{\"s3:authType\":\"REST-QUERY-STRING\"}}}]}"
+    },
+    "lifecycle": {
+      "TransitionDefaultMinimumObjectSize": "all_storage_classes_128K",
+      "Rules": [
+        {
+          "Expiration": {
+            "Days": 7
+          },
+          "ID": "bounded-quarantine-retention",
+          "Filter": {
+            "Prefix": "hh/"
+          },
+          "Status": "Enabled",
+          "AbortIncompleteMultipartUpload": {
+            "DaysAfterInitiation": 1
+          }
+        }
+      ]
+    },
+    "cors": {
+      "CORSRules": [
+        {
+          "AllowedHeaders": [
+            "content-length",
+            "content-type"
+          ],
+          "AllowedMethods": [
+            "PUT"
+          ],
+          "AllowedOrigins": [
+            "https://autobureau-staging-*-data-analyst-mike.vercel.app",
+            "https://autobureau-staging.vercel.app"
+          ],
+          "ExposeHeaders": [
+            "ETag"
+          ],
+          "MaxAgeSeconds": 300
+        }
+      ]
+    },
+    "acl": {
+      "Owner": {
+        "ID": "70504c10c78464cbb962f60fa767733cf2592ee4d25be24c15bea3313d8b4ccb"
+      },
+      "Grants": [
+        {
+          "Grantee": {
+            "ID": "70504c10c78464cbb962f60fa767733cf2592ee4d25be24c15bea3313d8b4ccb",
+            "Type": "CanonicalUser"
+          },
+          "Permission": "FULL_CONTROL"
+        }
+      ]
+    },
+    "objects": {
+      "IsTruncated": false,
+      "Name": "pellum-stg-quarantine-792394000571-us-east-2",
+      "Prefix": "",
+      "MaxKeys": 10,
+      "EncodingType": "url",
+      "KeyCount": 0
+    },
+    "oidc": {
+      "Url": "oidc.vercel.com/data-analyst-mike",
+      "ClientIDList": [
+        "https://vercel.com/data-analyst-mike"
+      ],
+      "ThumbprintList": [
+        "ab9d0263244dd0326eb67015705a667e79cfe998"
+      ],
+      "CreateDate": "2026-09-13T19:56:22.859000+00:00",
+      "Tags": [
+        {
+          "Key": "Environment",
+          "Value": "staging"
+        },
+        {
+          "Key": "Purpose",
+          "Value": "document-quarantine"
+        },
+        {
+          "Key": "ManagedBy",
+          "Value": "Terraform"
+        },
+        {
+          "Key": "Application",
+          "Value": "Pellum"
+        }
+      ]
+    },
+    "stgRole": {
+      "Role": {
+        "Path": "/",
+        "RoleName": "pellum-stg-upload-signer",
+        "RoleId": "AROA3Q7S45C5YCPIJKXES",
+        "Arn": "arn:aws:iam::792394000571:role/pellum-stg-upload-signer",
+        "CreateDate": "2026-09-13T19:56:22+00:00",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "oidc.vercel.com/data-analyst-mike:aud": "https://vercel.com/data-analyst-mike",
+                  "oidc.vercel.com/data-analyst-mike:sub": "owner:data-analyst-mike:project:autobureau-staging:environment:production"
+                }
+              }
+            }
+          ]
+        },
+        "Description": "Temporary Vercel credentials for the staging quarantine bucket only.",
+        "MaxSessionDuration": 3600,
+        "PermissionsBoundary": {
+          "PermissionsBoundaryType": "Policy",
+          "PermissionsBoundaryArn": "arn:aws:iam::792394000571:policy/pellum-stg-upload-boundary"
+        },
+        "Tags": [
+          {
+            "Key": "Application",
+            "Value": "Pellum"
+          },
+          {
+            "Key": "Environment",
+            "Value": "staging"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "Terraform"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "document-quarantine"
+          }
+        ],
+        "RoleLastUsed": {}
+      }
+    },
+    "stgPolicy": {
+      "RoleName": "pellum-stg-upload-signer",
+      "PolicyName": "quarantine-objects-only",
+      "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Action": [
+              "s3:PutObject",
+              "s3:GetObject"
+            ],
+            "Effect": "Allow",
+            "Resource": [
+              "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/incoming",
+              "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/sealed/*"
+            ],
+            "Sid": "CreateUploadAndPrivateCopy"
+          },
+          {
+            "Action": "s3:DeleteObject",
+            "Effect": "Allow",
+            "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/sealed/*",
+            "Sid": "DiscardUnselectedCopy"
+          }
+        ]
+      }
+    },
+    "stgPolicyNames": {
+      "PolicyNames": [
+        "quarantine-objects-only"
+      ]
+    },
+    "stgAttachments": {
+      "AttachedPolicies": []
+    },
+    "previewRole": {
+      "Role": {
+        "Path": "/",
+        "RoleName": "pellum-preview-upload-signer",
+        "RoleId": "AROA3Q7S45C5TFLOBFI5B",
+        "Arn": "arn:aws:iam::792394000571:role/pellum-preview-upload-signer",
+        "CreateDate": "2026-09-13T19:56:23+00:00",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "oidc.vercel.com/data-analyst-mike:sub": "owner:data-analyst-mike:project:autobureau-staging:environment:preview",
+                  "oidc.vercel.com/data-analyst-mike:aud": "https://vercel.com/data-analyst-mike"
+                }
+              }
+            }
+          ]
+        },
+        "Description": "Temporary Vercel credentials for the staging quarantine bucket only.",
+        "MaxSessionDuration": 3600,
+        "PermissionsBoundary": {
+          "PermissionsBoundaryType": "Policy",
+          "PermissionsBoundaryArn": "arn:aws:iam::792394000571:policy/pellum-stg-upload-boundary"
+        },
+        "Tags": [
+          {
+            "Key": "Application",
+            "Value": "Pellum"
+          },
+          {
+            "Key": "Environment",
+            "Value": "staging"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "Terraform"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "document-quarantine"
+          }
+        ],
+        "RoleLastUsed": {}
+      }
+    },
+    "previewPolicy": {
+      "RoleName": "pellum-preview-upload-signer",
+      "PolicyName": "quarantine-objects-only",
+      "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Action": [
+              "s3:PutObject",
+              "s3:GetObject"
+            ],
+            "Effect": "Allow",
+            "Resource": [
+              "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/incoming",
+              "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/sealed/*"
+            ],
+            "Sid": "CreateUploadAndPrivateCopy"
+          },
+          {
+            "Action": "s3:DeleteObject",
+            "Effect": "Allow",
+            "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/sealed/*",
+            "Sid": "DiscardUnselectedCopy"
+          }
+        ]
+      }
+    },
+    "previewPolicyNames": {
+      "PolicyNames": [
+        "quarantine-objects-only"
+      ]
+    },
+    "previewAttachments": {
+      "AttachedPolicies": []
+    },
+    "boundary": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": [
+            "s3:GetObject",
+            "s3:PutObject"
+          ],
+          "Resource": [
+            "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/incoming",
+            "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/sealed/*"
+          ],
+          "Effect": "Allow",
+          "Sid": "ReadAndWriteUploadObjects"
+        },
+        {
+          "Action": "s3:DeleteObject",
+          "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/sealed/*",
+          "Effect": "Allow",
+          "Sid": "DiscardSealedAttempts"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,787 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "ADR-017 staging-only isolated encrypted job Terraform state, read-only planning role and immutable deployment/runtime ceilings; no queues or worker compute.",
+  "Metadata": {
+    "AWSToolsMetrics": {
+      "AWSAgentToolkit": "aws-cloudformation@2"
+    },
+    "com.aws.cloudformation.Context": {
+      "ref": [
+        {
+          "at": "docs/architecture/adr/ADR-017-staging-encrypted-job-transport.md",
+          "has": "Founder-approved conditional staging job transport"
+        }
+      ],
+      "must": [
+        "No Production trust or resources.",
+        "No persistent access keys or continuous workers.",
+        "Separate ADR-017 state and reviewed additions-only plan."
+      ]
+    }
+  },
+  "Conditions": {
+    "StagingAccountAndRegion": {
+      "Fn::And": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AWS::AccountId"
+            },
+            "792394000571"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AWS::Region"
+            },
+            "us-east-2"
+          ]
+        }
+      ]
+    }
+  },
+  "Resources": {
+    "StateBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Preserve reviewed infrastructure state independently of resources it manages. Fixed name enables exact IAM scope.",
+          "must": [
+            "Private encrypted versioned state only; no application documents.",
+            "Never delete or replace without separate approval."
+          ]
+        }
+      },
+      "Properties": {
+        "BucketName": "pellum-stg-jobs-tfstate-792394000571-us-east-2",
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        },
+        "Tags": [
+          {
+            "Key": "Application",
+            "Value": "Pellum"
+          },
+          {
+            "Key": "Environment",
+            "Value": "staging"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "terraform-state"
+          }
+        ]
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "StateBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Separate state access from application deployment and runtime access.",
+          "must": [
+            "Only the state role accesses objects; retain state versions.",
+            "TLS denial applies to all principals."
+          ]
+        }
+      },
+      "Properties": {
+        "Bucket": {
+          "Ref": "StateBucket"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "RequireTLS",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                "arn:aws:s3:::pellum-stg-jobs-tfstate-792394000571-us-east-2",
+                "arn:aws:s3:::pellum-stg-jobs-tfstate-792394000571-us-east-2/*"
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            },
+            {
+              "Sid": "OnlyStateRoleMayAccessStateObjects",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": [
+                "s3:GetObject",
+                "s3:GetObjectVersion",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:DeleteObjectVersion"
+              ],
+              "Resource": "arn:aws:s3:::pellum-stg-jobs-tfstate-792394000571-us-east-2/*",
+              "Condition": {
+                "ArnNotEquals": {
+                  "aws:PrincipalArn": "arn:aws:iam::792394000571:role/pellum-stg-jobs-terraform-state"
+                }
+              }
+            },
+            {
+              "Sid": "NeverDeleteStateVersions",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": [
+                "s3:DeleteObject",
+                "s3:DeleteObjectVersion"
+              ],
+              "Resource": "arn:aws:s3:::pellum-stg-jobs-tfstate-792394000571-us-east-2/adr017/jobs.tfstate"
+            }
+          ]
+        }
+      }
+    },
+    "StateLocks": {
+      "Type": "AWS::DynamoDB::Table",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Preserve the doc-09 lock mechanism alongside native S3 locking during migration from deprecated DynamoDB locking.",
+          "must": [
+            "Only infrastructure lock/checksum records.",
+            "No time-to-live that could expire a held lock."
+          ]
+        }
+      },
+      "Properties": {
+        "TableName": "pellum-stg-jobs-tfstate-locks",
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "LockID",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "LockID",
+            "KeyType": "HASH"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "DeletionProtectionEnabled": true,
+        "Tags": [
+          {
+            "Key": "Application",
+            "Value": "Pellum"
+          },
+          {
+            "Key": "Environment",
+            "Value": "staging"
+          }
+        ]
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "DeploymentBoundary": {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Cap ADR-017 grants independently from storage.",
+          "must": [
+            "No state access, persistent keys, boundary edits, compute or queue purge.",
+            "A separate reviewed saved plan is required before a temporary apply grant."
+          ]
+        }
+      },
+      "Properties": {
+        "ManagedPolicyName": "pellum-stg-jobs-terraform-deploy-boundary",
+        "Description": "Immutable additions-only eight-queue/six-role/monitoring ceiling; no deletes, role trust edits, object access, compute or state access.",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "sqs:CreateQueue",
+                "sqs:GetQueueAttributes",
+                "sqs:GetQueueUrl",
+                "sqs:ListQueueTags",
+                "sqs:SetQueueAttributes",
+                "sqs:TagQueue"
+              ],
+              "Resource": [
+                "arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline",
+                "arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline-dlq",
+                "arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications",
+                "arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications-dlq",
+                "arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline",
+                "arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline-dlq",
+                "arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications",
+                "arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications-dlq"
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "iam:GetRole",
+                "iam:GetRolePolicy",
+                "iam:ListAttachedRolePolicies",
+                "iam:ListInstanceProfilesForRole",
+                "iam:ListRolePolicies",
+                "iam:ListRoleTags",
+                "iam:PutRolePolicy",
+                "iam:TagRole"
+              ],
+              "Resource": [
+                "arn:aws:iam::792394000571:role/pellum-stg-job-dispatcher",
+                "arn:aws:iam::792394000571:role/pellum-stg-job-pipeline-worker",
+                "arn:aws:iam::792394000571:role/pellum-stg-job-notifications-worker",
+                "arn:aws:iam::792394000571:role/pellum-preview-job-dispatcher",
+                "arn:aws:iam::792394000571:role/pellum-preview-job-pipeline-worker",
+                "arn:aws:iam::792394000571:role/pellum-preview-job-notifications-worker"
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "cloudwatch:DescribeAlarms",
+                "cloudwatch:ListTagsForResource",
+                "cloudwatch:PutMetricAlarm",
+                "cloudwatch:TagResource"
+              ],
+              "Resource": [
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-visible",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-oldest",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-dlq-visible",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-dlq-oldest",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-visible",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-oldest",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-dlq-visible",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-dlq-oldest",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-visible",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-oldest",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-dlq-visible",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-dlq-oldest",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-visible",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-oldest",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-dlq-visible",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-dlq-oldest",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-send_failure",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-processing_failure",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-retry",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-exhausted",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-delivery_lag_ms",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-reconciliation_mismatch",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-send_failure",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-processing_failure",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-retry",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-exhausted",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-delivery_lag_ms",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-reconciliation_mismatch",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-send_failure",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-processing_failure",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-retry",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-exhausted",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-delivery_lag_ms",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-reconciliation_mismatch",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-send_failure",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-processing_failure",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-retry",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-exhausted",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-delivery_lag_ms",
+                "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-reconciliation_mismatch"
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "cloudwatch:GetDashboard",
+                "cloudwatch:PutDashboard"
+              ],
+              "Resource": "arn:aws:cloudwatch::792394000571:dashboard/pellum-staging-jobs"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "iam:GetOpenIDConnectProvider"
+              ],
+              "Resource": "arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "iam:CreateRole"
+              ],
+              "Resource": [
+                "arn:aws:iam::792394000571:role/pellum-stg-job-dispatcher",
+                "arn:aws:iam::792394000571:role/pellum-stg-job-pipeline-worker",
+                "arn:aws:iam::792394000571:role/pellum-stg-job-notifications-worker"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "iam:PermissionsBoundary": "arn:aws:iam::792394000571:policy/pellum-stg-job-runtime-boundary"
+                }
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "iam:CreateRole"
+              ],
+              "Resource": [
+                "arn:aws:iam::792394000571:role/pellum-preview-job-dispatcher",
+                "arn:aws:iam::792394000571:role/pellum-preview-job-pipeline-worker",
+                "arn:aws:iam::792394000571:role/pellum-preview-job-notifications-worker"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "iam:PermissionsBoundary": "arn:aws:iam::792394000571:policy/pellum-preview-job-runtime-boundary"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "StateRole": {
+      "Type": "AWS::IAM::Role",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "State authority is distinct from resource deployment authority.",
+          "must": [
+            "Exact repository and protected staging environment OIDC subject.",
+            "No deletion of state, non-default workspace, application data, or infrastructure changes."
+          ]
+        }
+      },
+      "Properties": {
+        "RoleName": "pellum-stg-jobs-terraform-state",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "arn:aws:iam::792394000571:oidc-provider/token.actions.githubusercontent.com"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                  "token.actions.githubusercontent.com:sub": "repo:MichalKuderski@177895094/AutoBureau@1336298759:environment:staging",
+                  "token.actions.githubusercontent.com:repository_id": "1336298759",
+                  "token.actions.githubusercontent.com:repository_owner_id": "177895094",
+                  "token.actions.githubusercontent.com:environment": "staging",
+                  "token.actions.githubusercontent.com:ref": [
+                    "refs/pull/5/merge"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "one-state-and-lock",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "ListDedicatedStateBucket",
+                  "Effect": "Allow",
+                  "Action": "s3:ListBucket",
+                  "Resource": "arn:aws:s3:::pellum-stg-jobs-tfstate-792394000571-us-east-2"
+                },
+                {
+                  "Sid": "ReadAndWriteState",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject",
+                    "s3:PutObject"
+                  ],
+                  "Resource": "arn:aws:s3:::pellum-stg-jobs-tfstate-792394000571-us-east-2/adr017/jobs.tfstate"
+                },
+                {
+                  "Sid": "NativeLock",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject",
+                    "s3:PutObject",
+                    "s3:DeleteObject"
+                  ],
+                  "Resource": "arn:aws:s3:::pellum-stg-jobs-tfstate-792394000571-us-east-2/adr017/jobs.tfstate.tflock"
+                },
+                {
+                  "Sid": "DescribeLockTable",
+                  "Effect": "Allow",
+                  "Action": "dynamodb:DescribeTable",
+                  "Resource": "arn:aws:dynamodb:us-east-2:792394000571:table/pellum-stg-jobs-tfstate-locks"
+                },
+                {
+                  "Sid": "ExactLockRecords",
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:DeleteItem"
+                  ],
+                  "Resource": "arn:aws:dynamodb:us-east-2:792394000571:table/pellum-stg-jobs-tfstate-locks",
+                  "Condition": {
+                    "ForAllValues:StringEquals": {
+                      "dynamodb:LeadingKeys": [
+                        "pellum-stg-jobs-tfstate-792394000571-us-east-2/adr017/jobs.tfstate",
+                        "pellum-stg-jobs-tfstate-792394000571-us-east-2/adr017/jobs.tfstate-md5"
+                      ]
+                    },
+                    "Null": {
+                      "dynamodb:LeadingKeys": "false"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "DeploymentRole": {
+      "Type": "AWS::IAM::Role",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Initially read-only. Add a separate plan-derived policy only after exact saved-plan review; no bootstrap-wide grant.",
+          "must": [
+            "Exact repository and protected staging environment OIDC subject.",
+            "Cannot edit bootstrap/state roles or managed boundaries.",
+            "No mutations authorized by this initial inline policy."
+          ]
+        }
+      },
+      "Properties": {
+        "RoleName": "pellum-stg-jobs-terraform-deploy",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "arn:aws:iam::792394000571:oidc-provider/token.actions.githubusercontent.com"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                  "token.actions.githubusercontent.com:sub": "repo:MichalKuderski@177895094/AutoBureau@1336298759:environment:staging",
+                  "token.actions.githubusercontent.com:repository_id": "1336298759",
+                  "token.actions.githubusercontent.com:repository_owner_id": "177895094",
+                  "token.actions.githubusercontent.com:environment": "staging",
+                  "token.actions.githubusercontent.com:ref": [
+                    "refs/pull/5/merge"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "PermissionsBoundary": {
+          "Ref": "DeploymentBoundary"
+        },
+        "Policies": [
+          {
+            "PolicyName": "plan-read-only",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "ReadEightQueues",
+                  "Effect": "Allow",
+                  "Action": [
+                    "sqs:GetQueueAttributes",
+                    "sqs:GetQueueUrl",
+                    "sqs:ListQueueTags"
+                  ],
+                  "Resource": [
+                    "arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline",
+                    "arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline-dlq",
+                    "arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications",
+                    "arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications-dlq",
+                    "arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline",
+                    "arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline-dlq",
+                    "arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications",
+                    "arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications-dlq"
+                  ]
+                },
+                {
+                  "Sid": "ReadSixRuntimeRoles",
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:GetRole",
+                    "iam:GetRolePolicy",
+                    "iam:ListRolePolicies",
+                    "iam:ListAttachedRolePolicies",
+                    "iam:ListInstanceProfilesForRole",
+                    "iam:ListRoleTags"
+                  ],
+                  "Resource": [
+                    "arn:aws:iam::792394000571:role/pellum-stg-job-dispatcher",
+                    "arn:aws:iam::792394000571:role/pellum-stg-job-pipeline-worker",
+                    "arn:aws:iam::792394000571:role/pellum-stg-job-notifications-worker",
+                    "arn:aws:iam::792394000571:role/pellum-preview-job-dispatcher",
+                    "arn:aws:iam::792394000571:role/pellum-preview-job-pipeline-worker",
+                    "arn:aws:iam::792394000571:role/pellum-preview-job-notifications-worker"
+                  ]
+                },
+                {
+                  "Sid": "ReadExactAlarms",
+                  "Effect": "Allow",
+                  "Action": [
+                    "cloudwatch:DescribeAlarms",
+                    "cloudwatch:ListTagsForResource"
+                  ],
+                  "Resource": [
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-dlq-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-dlq-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-dlq-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-dlq-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-dlq-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-dlq-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-dlq-visible",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-dlq-oldest",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-send_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-processing_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-retry",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-exhausted",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-delivery_lag_ms",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-pipeline-reconciliation_mismatch",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-send_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-processing_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-retry",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-exhausted",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-delivery_lag_ms",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-stg-notifications-reconciliation_mismatch",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-send_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-processing_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-retry",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-exhausted",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-delivery_lag_ms",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-pipeline-reconciliation_mismatch",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-send_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-processing_failure",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-retry",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-exhausted",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-delivery_lag_ms",
+                    "arn:aws:cloudwatch:us-east-2:792394000571:alarm:pellum-preview-notifications-reconciliation_mismatch"
+                  ]
+                },
+                {
+                  "Sid": "ReadExactDashboard",
+                  "Effect": "Allow",
+                  "Action": [
+                    "cloudwatch:GetDashboard"
+                  ],
+                  "Resource": "arn:aws:cloudwatch::792394000571:dashboard/pellum-staging-jobs"
+                },
+                {
+                  "Sid": "ReadVerifiedVercelProvider",
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:GetOpenIDConnectProvider"
+                  ],
+                  "Resource": "arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "StableRuntimeBoundary": {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Condition": "StagingAccountAndRegion",
+      "Properties": {
+        "ManagedPolicyName": "pellum-stg-job-runtime-boundary",
+        "Description": "Immutable stg messaging and bounded telemetry ceiling; no queue/IAM administration.",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "sqs:ChangeMessageVisibility",
+                "sqs:DeleteMessage",
+                "sqs:ReceiveMessage",
+                "sqs:SendMessage"
+              ],
+              "Resource": [
+                "arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline",
+                "arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications"
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "cloudwatch:PutMetricData"
+              ],
+              "Resource": "*",
+              "Condition": {
+                "StringEquals": {
+                  "cloudwatch:namespace": [
+                    "Pellum/StagingJobs/stg/pipeline",
+                    "Pellum/StagingJobs/stg/notifications"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Prevent a future runtime policy from escaping its environment queue namespace or bounded telemetry namespaces.",
+          "must": [
+            "No IAM, queue administration, purge, DLQ replay, other-environment queue access or persistent credentials.",
+            "Deployment role cannot edit or remove this boundary."
+          ]
+        }
+      }
+    },
+    "PreviewRuntimeBoundary": {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Condition": "StagingAccountAndRegion",
+      "Properties": {
+        "ManagedPolicyName": "pellum-preview-job-runtime-boundary",
+        "Description": "Immutable preview messaging and bounded telemetry ceiling; no queue/IAM administration.",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "sqs:ChangeMessageVisibility",
+                "sqs:DeleteMessage",
+                "sqs:ReceiveMessage",
+                "sqs:SendMessage"
+              ],
+              "Resource": [
+                "arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline",
+                "arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications"
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "cloudwatch:PutMetricData"
+              ],
+              "Resource": "*",
+              "Condition": {
+                "StringEquals": {
+                  "cloudwatch:namespace": [
+                    "Pellum/StagingJobs/preview/pipeline",
+                    "Pellum/StagingJobs/preview/notifications"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Prevent a future runtime policy from escaping its environment queue namespace or bounded telemetry namespaces.",
+          "must": [
+            "No IAM, queue administration, purge, DLQ replay, other-environment queue access or persistent credentials.",
+            "Deployment role cannot edit or remove this boundary."
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "StateBucket": {
+      "Value": {
+        "Ref": "StateBucket"
+      },
+      "Description": "Dedicated encrypted Terraform state bucket",
+      "Condition": "StagingAccountAndRegion"
+    },
+    "LockTable": {
+      "Value": {
+        "Ref": "StateLocks"
+      },
+      "Description": "DynamoDB lock compatibility table",
+      "Condition": "StagingAccountAndRegion"
+    },
+    "StateRoleArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "StateRole",
+          "Arn"
+        ]
+      },
+      "Description": "Role for the S3 backend only",
+      "Condition": "StagingAccountAndRegion"
+    },
+    "DeploymentRoleArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "DeploymentRole",
+          "Arn"
+        ]
+      },
+      "Description": "Initially read-only plan role with immutable deployment ceiling",
+      "Condition": "StagingAccountAndRegion"
+    },
+    "StableRuntimeBoundary": {
+      "Condition": "StagingAccountAndRegion",
+      "Value": {
+        "Ref": "StableRuntimeBoundary"
+      }
+    },
+    "PreviewRuntimeBoundary": {
+      "Condition": "StagingAccountAndRegion",
+      "Value": {
+        "Ref": "PreviewRuntimeBoundary"
+      }
+    }
+  }
+}
