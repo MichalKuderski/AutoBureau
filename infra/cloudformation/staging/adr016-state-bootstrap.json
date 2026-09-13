@@ -431,7 +431,7 @@
               "Condition": {
                 "StringEquals": {
                   "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                  "token.actions.githubusercontent.com:sub": "repo:MichalKuderski/AutoBureau:environment:staging",
+                  "token.actions.githubusercontent.com:sub": "repo:MichalKuderski@177895094/AutoBureau@1336298759:environment:staging",
                   "token.actions.githubusercontent.com:repository_id": "1336298759",
                   "token.actions.githubusercontent.com:repository_owner_id": "177895094",
                   "token.actions.githubusercontent.com:environment": "staging",
@@ -539,7 +539,7 @@
               "Condition": {
                 "StringEquals": {
                   "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                  "token.actions.githubusercontent.com:sub": "repo:MichalKuderski/AutoBureau:environment:staging",
+                  "token.actions.githubusercontent.com:sub": "repo:MichalKuderski@177895094/AutoBureau@1336298759:environment:staging",
                   "token.actions.githubusercontent.com:repository_id": "1336298759",
                   "token.actions.githubusercontent.com:repository_owner_id": "177895094",
                   "token.actions.githubusercontent.com:environment": "staging",

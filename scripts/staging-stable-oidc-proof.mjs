@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url';
 export const PROJECT = 'prj_qAjK6wDYXoGn02Sl8jjSmrvy4NLR';
 export const TEAM = 'team_CNQd2ynmaV1xtRhB6NMMeYBs';
 export const STABLE = 'autobureau-staging.vercel.app';
-const generatedHost = /^autobureau-staging-[a-z0-9-]+-data-analyst-mike\.vercel\.app$/;
+const generatedHost = /^autobureau-staging-(?:[a-z0-9-]+-)?data-analyst-mike\.vercel\.app$/;
 
 export function stagingApi(env, request = fetch) {
   if (env.VERCEL_PROJECT_ID !== PROJECT || env.VERCEL_STAGING_PROJECT_ID !== PROJECT || env.VERCEL_ORG_ID !== TEAM || !env.VERCEL_TOKEN) throw new Error('STOP: staging deployment identity mismatch');
@@ -122,13 +122,16 @@ export async function run(env = process.env) {
   const assigned = await api(`/v2/deployments/${deployment.id}/aliases`);
   if (!Array.isArray(assigned?.aliases)) throw new Error('Deployment aliases unverified');
   const aliases = assigned.aliases.map(value => value.alias);
+  // Preserve the native signed evidence and alias inventory even if a later safety
+  // check refuses cleanup. Never force another deployment just to recover evidence.
+  const evidence = { capturedAt: new Date().toISOString(), before, after, claims: built.claims,
+    deploymentId: deployment.id, deploymentUrl: deployment.url, aliases, probes: [],
+    stableUnchanged: true, productionApplicationAccessed: false, removedProofDeployment: false };
+  await writeFile('staging-stable-oidc-proof.json', JSON.stringify(evidence, null, 2));
   const safeToRemove = canRemoveProof(deployment, before, after, aliases);
   if (!safeToRemove) throw new Error('STOP: proof has an unexpected alias; no deletion performed');
-  const probes = [];
+  const probes = evidence.probes;
   for (const host of new Set([deployment.url, ...aliases])) probes.push(await publicProbe(host));
-  const evidence = { capturedAt: new Date().toISOString(), before, after, claims: built.claims,
-    deploymentId: deployment.id, deploymentUrl: deployment.url, aliases, probes,
-    stableUnchanged: true, productionApplicationAccessed: false, removedProofDeployment: false };
   await writeFile('staging-stable-oidc-proof.json', JSON.stringify(evidence, null, 2));
   if (probes.some(probe => probe.externallyReachable)) {
     // The user explicitly permits removing only this disposable proof deployment.

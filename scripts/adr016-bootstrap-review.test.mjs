@@ -15,6 +15,7 @@ const corruptions = {
   'a wildcard repository': t => { t.Resources.DeploymentRole.Properties.AssumeRolePolicyDocument.Statement[0].Condition.StringEquals['token.actions.githubusercontent.com:sub'] = 'repo:*:environment:staging'; },
   'an unrelated branch': t => { t.Resources.DeploymentRole.Properties.AssumeRolePolicyDocument.Statement[0].Condition.StringEquals['token.actions.githubusercontent.com:ref'].push('refs/heads/unrelated'); },
   'repository-name takeover': t => { delete t.Resources.StateRole.Properties.AssumeRolePolicyDocument.Statement[0].Condition.StringEquals['token.actions.githubusercontent.com:repository_id']; },
+  'an unverified legacy subject': t => { t.Resources.StateRole.Properties.AssumeRolePolicyDocument.Statement[0].Condition.StringEquals['token.actions.githubusercontent.com:sub'] = 'repo:MichalKuderski/AutoBureau:environment:staging'; },
   'Production environment trust': t => { t.Resources.StateRole.Properties.AssumeRolePolicyDocument.Statement[0].Condition.StringEquals['token.actions.githubusercontent.com:sub'] = 'repo:MichalKuderski/AutoBureau:environment:production'; },
   'persistent credentials': t => { t.Resources.Credentials = { Type: 'AWS::IAM::AccessKey' }; },
   'premature deployment authority': t => { t.Resources.DeploymentRole.Properties.Policies[0].PolicyDocument.Statement[0].Action.push('s3:PutBucketPolicy'); },

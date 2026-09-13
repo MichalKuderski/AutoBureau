@@ -1,0 +1,15 @@
+{
+  "signatureVerified": true,
+  "evidenceSource": "github-protected-staging-job",
+  "iss": "https://token.actions.githubusercontent.com",
+  "aud": "sts.amazonaws.com",
+  "sub": "repo:MichalKuderski@177895094/AutoBureau@1336298759:environment:staging",
+  "repository": "MichalKuderski/AutoBureau",
+  "repository_id": "1336298759",
+  "repository_owner_id": "177895094",
+  "environment": "staging",
+  "ref": "refs/pull/5/merge",
+  "workflow_ref": "MichalKuderski/AutoBureau/.github/workflows/staging-proof-inspection.yml@refs/pull/5/merge",
+  "iat": 1789312295,
+  "exp": 1789312595
+}

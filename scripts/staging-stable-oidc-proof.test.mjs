@@ -31,6 +31,9 @@ test('cleanup cannot delete stable, unrelated, reassigned or custom-domain deplo
   const before = await snapshot(api);
   assert.equal(canRemoveProof(proof, before, before, []), true);
   assert.equal(canRemoveProof(proof, before, before, [proof.url]), true);
+  assert.equal(canRemoveProof(proof, before, before, ['autobureau-staging-data-analyst-mike.vercel.app']), true);
+  assert.equal(canRemoveProof(proof, before, before, ['autobureau-production-data-analyst-mike.vercel.app']), false);
+  assert.equal(canRemoveProof(proof, before, before, ['autobureau-staging-another-team.vercel.app']), false);
   assert.equal(canRemoveProof(proof, before, before, [STABLE]), false);
   assert.equal(canRemoveProof(proof, before, before, ['customer.example.com']), false);
   assert.throws(() => assertProofDeployment(stable, before));
