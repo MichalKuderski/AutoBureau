@@ -1,0 +1,96 @@
+{
+  "capturedAt": "2026-09-13T21:30:39.368229+00:00",
+  "account": "792394000571",
+  "region": "us-east-2",
+  "priceSource": "AWS Price List API, Ohio",
+  "monthlyHours": 744,
+  "lines": [
+    {
+      "name": "Existing migration t3.micro",
+      "basis": "744 hours x $0.0104",
+      "usd": "7.7376"
+    },
+    {
+      "name": "Existing public IPv4",
+      "basis": "744 hours x $0.005",
+      "usd": "3.720"
+    },
+    {
+      "name": "Existing 8 GiB gp3",
+      "basis": "8 GiB x $0.08",
+      "usd": "0.64"
+    },
+    {
+      "name": "SQS requests including retries/empty polls",
+      "basis": "100,000 requests x $0.40/million; free tier ignored",
+      "usd": "0.0400000"
+    },
+    {
+      "name": "CloudWatch standard alarms",
+      "basis": "40 alarms x $0.10",
+      "usd": "4.00"
+    },
+    {
+      "name": "Custom metrics",
+      "basis": "40 bounded series x $0.30; full-month upper allowance",
+      "usd": "12.00"
+    },
+    {
+      "name": "Dashboard",
+      "basis": "One dashboard; conservative allowance",
+      "usd": "3"
+    },
+    {
+      "name": "Storage, state locks and requests",
+      "basis": "Bounded synthetic and state usage allowance",
+      "usd": "3"
+    },
+    {
+      "name": "Logs/metric API calls",
+      "basis": "Allowance; no unbounded payload logs",
+      "usd": "2"
+    },
+    {
+      "name": "Network",
+      "basis": "Synthetic transfer allowance; no NAT or new IPv4",
+      "usd": "2"
+    },
+    {
+      "name": "Worker/model compute",
+      "basis": "No continuous compute or model calls authorized",
+      "usd": "0"
+    },
+    {
+      "name": "Existing Upstash",
+      "basis": "Free, empty, unused",
+      "usd": "0"
+    },
+    {
+      "name": "Other providers",
+      "basis": "Unallocated reserve; no paid upgrade authorized",
+      "usd": "25"
+    }
+  ],
+  "awsEnvelopeUSD": "38.1376000",
+  "allProviderPlanningEnvelopeUSD": "63.1376000",
+  "ceilingUSD": "100",
+  "headroomUSD": "36.8624000",
+  "credits": {
+    "amount": 94.68,
+    "unit": "USD"
+  },
+  "costExplorer": "AccessDeniedException: actual invoice not verified",
+  "sharedSqsUsage": {
+    "service": "Amazon Simple Queue Service",
+    "operation": "",
+    "usageType": "Requests",
+    "region": "global",
+    "actualUsageAmount": 2.0,
+    "forecastedUsageAmount": 4.615384615384616,
+    "limit": 1000000.0,
+    "unit": "Requests",
+    "description": "1000000.0 Requests are always free per month as part of AWS Free Usage Tier (Global-Requests)",
+    "freeTierType": "Always Free"
+  },
+  "alerts": "No AWS Budget or notification recipient configured; console alarm plan only; alert delivery remains open."
+}

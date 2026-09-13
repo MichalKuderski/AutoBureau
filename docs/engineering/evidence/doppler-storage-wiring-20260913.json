@@ -1,0 +1,31 @@
+{
+  "capturedAt": "2026-09-13T20:49:13.411689+00:00",
+  "project": "autobureau",
+  "configs": {
+    "stg": {
+      "additions": {
+        "STORAGE_PROVIDER": "aws-oidc",
+        "STORAGE_S3_REGION": "us-east-2",
+        "STORAGE_QUARANTINE_BUCKET": "pellum-stg-quarantine-792394000571-us-east-2",
+        "STORAGE_AWS_ROLE_ARN": "arn:aws:iam::792394000571:role/pellum-stg-upload-signer",
+        "DOCUMENT_INTAKE_ENABLED": "false"
+      },
+      "allLegacyValuesUnchanged": true,
+      "exactReadback": true,
+      "intakeEnabled": false
+    },
+    "preview": {
+      "additions": {
+        "STORAGE_PROVIDER": "aws-oidc",
+        "STORAGE_S3_REGION": "us-east-2",
+        "STORAGE_QUARANTINE_BUCKET": "pellum-stg-quarantine-792394000571-us-east-2",
+        "STORAGE_AWS_ROLE_ARN": "arn:aws:iam::792394000571:role/pellum-preview-upload-signer",
+        "DOCUMENT_INTAKE_ENABLED": "false"
+      },
+      "allLegacyValuesUnchanged": true,
+      "exactReadback": true,
+      "intakeEnabled": false
+    }
+  },
+  "productionApplicationAccessed": false
+}
