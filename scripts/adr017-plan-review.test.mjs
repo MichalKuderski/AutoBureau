@@ -27,6 +27,7 @@ const bad = {
   alarm_tenant_dimension: p=>find(p,'aws_cloudwatch_metric_alarm','application').dimensions={HouseholdId:'opaque-but-unbounded'},
   alarm_wrong_window: p=>find(p,'aws_cloudwatch_metric_alarm').evaluation_periods=100,
   alarm_unapproved_destination: p=>find(p,'aws_cloudwatch_metric_alarm').alarm_actions=['arn:aws:sns:us-east-2:792394000571:unreviewed'],
+  alarm_no_destination: p=>find(p,'aws_cloudwatch_metric_alarm').alarm_actions=[],
   dashboard_missing_receive: p=>editPolicy(find(p,'aws_cloudwatch_dashboard'),'dashboard_body',v=>v.widgets[0].properties.metrics[2][1]='Other'),
   dashboard_duplicate: p=>editPolicy(find(p,'aws_cloudwatch_dashboard'),'dashboard_body',v=>v.widgets[0]=v.widgets[1]),
 };

@@ -68,7 +68,7 @@ export function reviewJobsPlan(plan) {
       const application = change.name === 'application'; const scope = a.alarm_name.includes('-preview-') ? 'preview' : 'stg'; const kind = a.alarm_name.includes('-pipeline-') ? 'pipeline' : 'notifications';
       assert.equal(a.namespace,application ? `Pellum/StagingJobs/${scope}/${kind}` : 'AWS/SQS');
       assert.equal(a.period,60); assert.equal(a.comparison_operator,'GreaterThanThreshold'); assert.equal(a.treat_missing_data,'notBreaching');
-      assert.equal((a.alarm_actions ?? []).length,0); assert.equal((a.ok_actions ?? []).length,0); assert.equal((a.insufficient_data_actions ?? []).length,0);
+      assert.deepEqual(a.alarm_actions,['arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts']); assert.equal((a.ok_actions ?? []).length,0); assert.equal((a.insufficient_data_actions ?? []).length,0);
       assert.equal((a.metric_query ?? []).length,0);
       if (application) {
         assert(metrics.includes(a.metric_name)); assert.equal(a.alarm_name,`pellum-${scope}-${kind}-${a.metric_name}`);
@@ -97,7 +97,7 @@ export function reviewJobsPlan(plan) {
     }
   }
   return {status:'PASS', additions:changes.length, replacements:0, deletions:0, queues:8, runtimeRoles:6, alarms:40, dashboards:1, productionResources:0, persistentCredentials:0,
-    notificationDelivery:'No alarm recipient configured; console alarms only. Alert delivery is not proven.'};
+    notificationDelivery:'Exact approved encrypted SNS destination configured; confirmed subscription and delivery remain separate live gates.'};
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try { console.log(JSON.stringify(reviewJobsPlan(JSON.parse(fs.readFileSync(process.argv[2],'utf8'))),null,2)); }

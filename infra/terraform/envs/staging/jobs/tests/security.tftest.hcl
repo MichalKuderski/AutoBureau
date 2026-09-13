@@ -30,4 +30,8 @@ run "isolated_encrypted_queues" {
     condition     = length(aws_cloudwatch_metric_alarm.visible) == 8 && length(aws_cloudwatch_metric_alarm.oldest) == 8 && length(aws_cloudwatch_metric_alarm.application) == 24
     error_message = "Queue depth/age and fixed application failure metrics must be monitored."
   }
+  assert {
+    condition     = alltrue([for a in concat(values(aws_cloudwatch_metric_alarm.visible), values(aws_cloudwatch_metric_alarm.oldest), values(aws_cloudwatch_metric_alarm.application)) : a.alarm_actions == toset(["arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"])])
+    error_message = "Every alarm must route only to the approved staging alert topic."
+  }
 }

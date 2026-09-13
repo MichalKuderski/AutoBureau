@@ -1,0 +1,39 @@
+{
+  "capturedAt": "2026-09-13T23:05:48.843105+00:00",
+  "account": "792394000571",
+  "budgetName": "pellum-staging-monthly",
+  "monthlyLimitUSD": "100.0",
+  "thresholds": [
+    {
+      "type": "ACTUAL",
+      "percentage": 100.0
+    },
+    {
+      "type": "ACTUAL",
+      "percentage": 50.0
+    },
+    {
+      "type": "ACTUAL",
+      "percentage": 80.0
+    },
+    {
+      "type": "FORECASTED",
+      "percentage": 100.0
+    }
+  ],
+  "recipientMatchesApproval": true,
+  "creditAndRefundExcluded": true,
+  "health": {
+    "Status": "HEALTHY",
+    "LastUpdatedTime": "2026-09-13T18:05:44.041000-05:00"
+  },
+  "calculatedSpend": {
+    "ActualSpend": {
+      "Amount": "0.0",
+      "Unit": "USD"
+    }
+  },
+  "notificationDeliveryProven": false,
+  "automaticResourceActions": false,
+  "productionAccessed": false
+}

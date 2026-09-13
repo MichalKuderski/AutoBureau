@@ -69,12 +69,17 @@
       "name": "Other providers",
       "basis": "Unallocated reserve; no paid upgrade authorized",
       "usd": "25"
+    },
+    {
+      "name": "Encrypted operational alerts",
+      "basis": "KMS/rotation reserve, one probe alarm, bounded SNS/KMS calls",
+      "usd": "4.00"
     }
   ],
-  "awsEnvelopeUSD": "38.1376000",
-  "allProviderPlanningEnvelopeUSD": "63.1376000",
+  "awsEnvelopeUSD": "42.1376000",
+  "allProviderPlanningEnvelopeUSD": "67.1376000",
   "ceilingUSD": "100",
-  "headroomUSD": "36.8624000",
+  "headroomUSD": "32.8624000",
   "credits": {
     "amount": 94.68,
     "unit": "USD"
@@ -92,5 +97,6 @@
     "description": "1000000.0 Requests are always free per month as part of AWS Free Usage Tier (Global-Requests)",
     "freeTierType": "Always Free"
   },
-  "alerts": "No AWS Budget or notification recipient configured; console alarm plan only; alert delivery remains open."
+  "alerts": "Monthly $100 budget with actual 50/80/100 and forecast 100 thresholds configured; encrypted SNS delivery pending. No budget actions.",
+  "alertUpdate": "2026-09-13: user-approved recipient, budget read back HEALTHY; delivery pending"
 }

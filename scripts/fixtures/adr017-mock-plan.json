@@ -45,7 +45,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job delivery_lag_ms; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-preview-notifications-delivery_lag_ms",
           "comparison_operator": "GreaterThanThreshold",
@@ -102,7 +104,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job exhausted; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-preview-notifications-exhausted",
           "comparison_operator": "GreaterThanThreshold",
@@ -159,7 +163,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job processing_failure; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-preview-notifications-processing_failure",
           "comparison_operator": "GreaterThanThreshold",
@@ -216,7 +222,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job reconciliation_mismatch; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-preview-notifications-reconciliation_mismatch",
           "comparison_operator": "GreaterThanThreshold",
@@ -273,7 +281,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job retry; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-preview-notifications-retry",
           "comparison_operator": "GreaterThanThreshold",
@@ -330,7 +340,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job send_failure; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-preview-notifications-send_failure",
           "comparison_operator": "GreaterThanThreshold",
@@ -387,7 +399,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job delivery_lag_ms; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-preview-pipeline-delivery_lag_ms",
           "comparison_operator": "GreaterThanThreshold",
@@ -444,7 +458,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job exhausted; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-preview-pipeline-exhausted",
           "comparison_operator": "GreaterThanThreshold",
@@ -501,7 +517,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job processing_failure; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-preview-pipeline-processing_failure",
           "comparison_operator": "GreaterThanThreshold",
@@ -558,7 +576,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job reconciliation_mismatch; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-preview-pipeline-reconciliation_mismatch",
           "comparison_operator": "GreaterThanThreshold",
@@ -615,7 +635,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job retry; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-preview-pipeline-retry",
           "comparison_operator": "GreaterThanThreshold",
@@ -672,7 +694,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job send_failure; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-preview-pipeline-send_failure",
           "comparison_operator": "GreaterThanThreshold",
@@ -729,7 +753,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job delivery_lag_ms; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-stg-notifications-delivery_lag_ms",
           "comparison_operator": "GreaterThanThreshold",
@@ -786,7 +812,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job exhausted; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-stg-notifications-exhausted",
           "comparison_operator": "GreaterThanThreshold",
@@ -843,7 +871,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job processing_failure; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-stg-notifications-processing_failure",
           "comparison_operator": "GreaterThanThreshold",
@@ -900,7 +930,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job reconciliation_mismatch; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-stg-notifications-reconciliation_mismatch",
           "comparison_operator": "GreaterThanThreshold",
@@ -957,7 +989,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job retry; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-stg-notifications-retry",
           "comparison_operator": "GreaterThanThreshold",
@@ -1014,7 +1048,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job send_failure; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-stg-notifications-send_failure",
           "comparison_operator": "GreaterThanThreshold",
@@ -1071,7 +1107,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job delivery_lag_ms; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-stg-pipeline-delivery_lag_ms",
           "comparison_operator": "GreaterThanThreshold",
@@ -1128,7 +1166,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job exhausted; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-stg-pipeline-exhausted",
           "comparison_operator": "GreaterThanThreshold",
@@ -1185,7 +1225,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job processing_failure; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-stg-pipeline-processing_failure",
           "comparison_operator": "GreaterThanThreshold",
@@ -1242,7 +1284,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job reconciliation_mismatch; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-stg-pipeline-reconciliation_mismatch",
           "comparison_operator": "GreaterThanThreshold",
@@ -1299,7 +1343,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job retry; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-stg-pipeline-retry",
           "comparison_operator": "GreaterThanThreshold",
@@ -1356,7 +1402,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job send_failure; reconcile against Postgres authority. No automatic redrive.",
           "alarm_name": "pellum-stg-pipeline-send_failure",
           "comparison_operator": "GreaterThanThreshold",
@@ -1413,7 +1461,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
           "alarm_name": "pellum-preview-notifications-oldest",
           "comparison_operator": "GreaterThanThreshold",
@@ -1474,7 +1524,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
           "alarm_name": "pellum-preview-notifications-dlq-oldest",
           "comparison_operator": "GreaterThanThreshold",
@@ -1535,7 +1587,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
           "alarm_name": "pellum-preview-pipeline-oldest",
           "comparison_operator": "GreaterThanThreshold",
@@ -1596,7 +1650,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
           "alarm_name": "pellum-preview-pipeline-dlq-oldest",
           "comparison_operator": "GreaterThanThreshold",
@@ -1657,7 +1713,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
           "alarm_name": "pellum-stg-notifications-oldest",
           "comparison_operator": "GreaterThanThreshold",
@@ -1718,7 +1776,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
           "alarm_name": "pellum-stg-notifications-dlq-oldest",
           "comparison_operator": "GreaterThanThreshold",
@@ -1779,7 +1839,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
           "alarm_name": "pellum-stg-pipeline-oldest",
           "comparison_operator": "GreaterThanThreshold",
@@ -1840,7 +1902,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
           "alarm_name": "pellum-stg-pipeline-dlq-oldest",
           "comparison_operator": "GreaterThanThreshold",
@@ -1901,7 +1965,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job backlog exceeds the synthetic operating envelope.",
           "alarm_name": "pellum-preview-notifications-visible",
           "comparison_operator": "GreaterThanThreshold",
@@ -1962,7 +2028,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Synthetic job dead-letter queue is nonempty; inspect, never replay automatically.",
           "alarm_name": "pellum-preview-notifications-dlq-visible",
           "comparison_operator": "GreaterThanThreshold",
@@ -2023,7 +2091,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job backlog exceeds the synthetic operating envelope.",
           "alarm_name": "pellum-preview-pipeline-visible",
           "comparison_operator": "GreaterThanThreshold",
@@ -2084,7 +2154,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Synthetic job dead-letter queue is nonempty; inspect, never replay automatically.",
           "alarm_name": "pellum-preview-pipeline-dlq-visible",
           "comparison_operator": "GreaterThanThreshold",
@@ -2145,7 +2217,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job backlog exceeds the synthetic operating envelope.",
           "alarm_name": "pellum-stg-notifications-visible",
           "comparison_operator": "GreaterThanThreshold",
@@ -2206,7 +2280,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Synthetic job dead-letter queue is nonempty; inspect, never replay automatically.",
           "alarm_name": "pellum-stg-notifications-dlq-visible",
           "comparison_operator": "GreaterThanThreshold",
@@ -2267,7 +2343,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Staging job backlog exceeds the synthetic operating envelope.",
           "alarm_name": "pellum-stg-pipeline-visible",
           "comparison_operator": "GreaterThanThreshold",
@@ -2328,7 +2406,9 @@
         "before": null,
         "after": {
           "actions_enabled": null,
-          "alarm_actions": null,
+          "alarm_actions": [
+            "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
+          ],
           "alarm_description": "Synthetic job dead-letter queue is nonempty; inspect, never replay automatically.",
           "alarm_name": "pellum-stg-pipeline-dlq-visible",
           "comparison_operator": "GreaterThanThreshold",

@@ -1,5 +1,6 @@
 locals {
-  all_queues = merge(local.queues, { for k, v in local.queues : "${k}-dlq" => v })
+  all_queues  = merge(local.queues, { for k, v in local.queues : "${k}-dlq" => v })
+  alert_topic = "arn:aws:sns:us-east-2:792394000571:pellum-stg-operational-alerts"
 }
 resource "aws_cloudwatch_metric_alarm" "visible" {
   for_each            = local.all_queues
@@ -14,6 +15,7 @@ resource "aws_cloudwatch_metric_alarm" "visible" {
   comparison_operator = "GreaterThanThreshold"
   threshold           = endswith(each.key, "-dlq") ? 0 : 100
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [local.alert_topic]
 }
 resource "aws_cloudwatch_metric_alarm" "oldest" {
   for_each            = local.all_queues
@@ -28,6 +30,7 @@ resource "aws_cloudwatch_metric_alarm" "oldest" {
   comparison_operator = "GreaterThanThreshold"
   threshold           = 300
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [local.alert_topic]
 }
 resource "aws_cloudwatch_dashboard" "jobs" {
   dashboard_name = "pellum-staging-jobs"
@@ -64,4 +67,5 @@ resource "aws_cloudwatch_metric_alarm" "application" {
   comparison_operator = "GreaterThanThreshold"
   threshold           = each.value.metric == "delivery_lag_ms" ? 300000 : each.value.metric == "retry" ? 3 : 0
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [local.alert_topic]
 }
