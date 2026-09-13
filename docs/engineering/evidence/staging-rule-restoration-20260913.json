@@ -1,0 +1,32 @@
+{
+  "before": {
+    "total_count": 2,
+    "branch_policies": [
+      {
+        "id": 58428124,
+        "node_id": "MDE2OkdhdGVCcmFuY2hQb2xpY3k1ODQyODEyNA==",
+        "name": "main",
+        "type": "branch"
+      },
+      {
+        "id": 59871528,
+        "node_id": "MDE2OkdhdGVCcmFuY2hQb2xpY3k1OTg3MTUyOA==",
+        "name": "refs/pull/5/merge",
+        "type": "branch"
+      }
+    ]
+  },
+  "after": {
+    "total_count": 1,
+    "branch_policies": [
+      {
+        "id": 58428124,
+        "node_id": "MDE2OkdhdGVCcmFuY2hQb2xpY3k1ODQyODEyNA==",
+        "name": "main",
+        "type": "branch"
+      }
+    ]
+  },
+  "removedRuleId": 59871528,
+  "productionEnvironmentAccessed": false
+}

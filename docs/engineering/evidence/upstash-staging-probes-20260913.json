@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-13",
+  "evidenceSource": "authenticated Upstash dashboard and built-in CLI",
+  "databaseId": "c838bf01-1845-43a2-9b5e-0f05a63bc692",
+  "name": "pellum-staging-events",
+  "region": "us-east-2",
+  "plan": "Free",
+  "monthlyBaseUSD": 0,
+  "tlsEnabled": true,
+  "evictionSelectedAtCreation": false,
+  "credentialsDistributed": false,
+  "previewConfigured": false,
+  "workersEnabled": false,
+  "syntheticNamespace": "pellum:staging:probe:20260913:",
+  "probes": {
+    "PING": "PONG",
+    "SET_NX_EX_first": "OK",
+    "SET_NX_EX_repeat": "nil",
+    "TTL_seconds_observed": 54,
+    "XGROUP_CREATE": "OK",
+    "XADD": "1789312955836-0",
+    "XREADGROUP": "one matching synthetic event",
+    "XAUTOCLAIM": "same event recovered by second consumer",
+    "XPENDING": {
+      "count": 1,
+      "consumer": "second"
+    },
+    "XACK_count": 1,
+    "XTRIM_MINID_count": 1,
+    "DEL_exact_keys_count": 1,
+    "EXISTS_exact_keys_after": 0,
+    "DBSIZE_after": 0
+  },
+  "limits": [
+    "No application dispatcher/consumer or retry lifecycle deployed",
+    "No application ACL credential configured",
+    "No paid upgrade",
+    "No production resource or data accessed"
+  ]
+}
