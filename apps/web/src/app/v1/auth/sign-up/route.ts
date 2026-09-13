@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { authConfigFromEnv } from "@/server/auth/config";
 import { createJwtVerifier, TokenError, VerificationUnavailableError } from "@/server/auth/jwt";
-import { createGoTrueProvider, ProviderError } from "@/server/auth/provider";
+import { createGoTrueProvider, ProviderError, providerFailureMeta } from "@/server/auth/provider";
 import { appendCookies, sessionCookies } from "@/server/auth/session";
 import { getDatabase } from "@/server/db";
 import { ensureHousehold } from "@/server/identity/bootstrap";
@@ -143,8 +143,8 @@ export async function POST(request: Request): Promise<Response> {
       }
       if (cause.reason === "unavailable") {
         log({ event: "auth.sign_up_provider_unavailable", level: "error", traceId, route, method: request.method, status: 503, error: cause,
-          ...(cause.httpStatus === undefined ? {} : { meta: { upstream_status: cause.httpStatus } }) });
-        return withTraceHeader(problemResponse("unavailable", { detail: "Sign-up is briefly unavailable." }), traceId);
+          meta: providerFailureMeta(cause) });
+        return withTraceHeader(problemResponse("unavailable", { detail: "Sign-up is briefly unavailable.", headers: { "retry-after": "15" } }), traceId);
       }
       // Everything else the provider refused is a fact about the account rather than the
       // request — an address already registered, above all. Answering as though the signup

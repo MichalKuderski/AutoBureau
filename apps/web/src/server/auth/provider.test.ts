@@ -233,3 +233,38 @@ describe("timer/controller cleanup", () => {
     expect(true).toBe(true);
   });
 });
+
+describe("observed gateway failures and ambiguous credential requests", () => {
+  it.each(["signup", "password", "refresh", "confirmation", "magic"])("makes one %s request on a 504 and retains only safe diagnostics", async (flow) => {
+    const fetchImpl = vi.fn(async () => new Response("PRIVATE_CANARY", { status: 504,
+      headers: { "sb-request-id": "11111111-1111-4111-8111-111111111111", "set-cookie": "PRIVATE_CANARY" } }));
+    const p = createGoTrueProvider(config, fetchImpl);
+    const request = flow === "signup" ? () => p.signUp("PRIVATE_CANARY@example.test", "PRIVATE_CANARY", "PRIVATE_CANARY")
+      : flow === "password" ? () => p.signInWithPassword("PRIVATE_CANARY@example.test", "PRIVATE_CANARY")
+        : flow === "refresh" ? () => p.refresh("PRIVATE_CANARY")
+          : flow === "confirmation" ? () => p.verifyEmailToken("PRIVATE_CANARY", "signup")
+            : () => p.requestMagicLink("PRIVATE_CANARY@example.test", "PRIVATE_CANARY", "https://app.autobureau.test/auth/callback");
+    const error = await request().catch((e: unknown) => e);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(error).toMatchObject({ reason: "unavailable", httpStatus: 504, diagnostics: { failure: "http", requestId: "11111111-1111-4111-8111-111111111111" } });
+    expect(JSON.stringify(error)).not.toContain("PRIVATE_CANARY");
+    expect(error).not.toHaveProperty("cause");
+  });
+  it("distinguishes a local deadline from a network failure without retaining either error", async () => {
+    for (const [fetchImpl, failure] of [[hangingFetch(), "timeout"], [vi.fn(async () => { throw new Error("PRIVATE_CANARY"); }), "network"]] as const) {
+      const error = await createGoTrueProvider(config, fetchImpl, TEST_TIMEOUT_MS).signInWithPassword("ada@example.test", "PRIVATE_CANARY").catch((e: unknown) => e);
+      expect(error).toMatchObject({ reason: "unavailable", diagnostics: { failure } });
+      expect(error).not.toHaveProperty("httpStatus", 504);
+      expect(JSON.stringify(error)).not.toContain("PRIVATE_CANARY");
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    }
+  });
+  it("accepts a later explicit password retry after a 504 without retrying the failed call", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(new Response(null, { status: 504 })).mockResolvedValueOnce(tokenResponse());
+    const provider = createGoTrueProvider(config, fetchImpl);
+    await expect(provider.signInWithPassword("ada@example.test", "PRIVATE_CANARY")).rejects.toMatchObject({ reason: "unavailable" });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    await expect(provider.signInWithPassword("ada@example.test", "PRIVATE_CANARY")).resolves.toMatchObject({ accessToken: "at" });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+});

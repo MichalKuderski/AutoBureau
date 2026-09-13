@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { authConfigFromEnv } from "@/server/auth/config";
 import { createJwtVerifier, TokenError, VerificationUnavailableError } from "@/server/auth/jwt";
-import { createGoTrueProvider, ProviderError } from "@/server/auth/provider";
+import { createGoTrueProvider, ProviderError, providerFailureMeta } from "@/server/auth/provider";
 import { getDatabase } from "@/server/db";
 import { MirrorError, mirrorIdentity } from "@/server/identity/mirror";
 import { ensureHousehold } from "@/server/identity/bootstrap";
@@ -170,8 +170,8 @@ export async function POST(request: Request): Promise<Response> {
         return problemResponse("rate-limited", { detail: "Too many attempts — try again shortly." });
       }
       if (cause.reason === "unavailable") {
-        log({ event: "auth.sign_in_provider_unavailable", level: "error", traceId, route, method: request.method, status: 503, error: cause });
-        return withTraceHeader(problemResponse("unavailable", { detail: "Sign-in is briefly unavailable." }), traceId);
+        log({ event: "auth.sign_in_provider_unavailable", level: "error", traceId, route, method: request.method, status: 503, error: cause, meta: providerFailureMeta(cause) });
+        return withTraceHeader(problemResponse("unavailable", { detail: "Sign-in is briefly unavailable.", headers: { "retry-after": "15" } }), traceId);
       }
       // One message for wrong password and unknown address alike: distinguishing them
       // tells an attacker which addresses have accounts.

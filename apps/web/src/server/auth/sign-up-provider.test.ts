@@ -167,7 +167,7 @@ describe("signUp — no account-enumeration oracle", () => {
   it("still treats a genuine provider outage as a deployment fault", async () => {
     // The counterpart. 5xx must stay `unavailable` — widening the account-fact class to
     // swallow real outages would trade one wrong answer for another.
-    for (const status of [500, 502, 503]) {
+    for (const status of [500, 502, 503, 504]) {
       const provider = createGoTrueProvider(config, fetchReturning(jsonResponse({}, status)));
       const error = await provider
         .signUp("someone@example.test", "correct horse battery", "Ada")

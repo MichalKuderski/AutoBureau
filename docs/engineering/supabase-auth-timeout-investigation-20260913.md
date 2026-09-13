@@ -20,3 +20,11 @@ The signup failure produced 54/57 acceptance. The old harness then sent an empty
 Closure requires provider-side diagnosis using these request windows, a verified mitigation where needed, regression tests for any application change, and repeated controlled end-to-end evidence under realistic staging load. A green retry alone does not resolve the issue. Do not add automatic password sign-in after ambiguous signup, expose account-existence/provider details, or change 503 into 202 merely to make a test green.
 
 References: [signup failure workflow](https://github.com/MichalKuderski/AutoBureau/actions/runs/34765409926), [sign-in failure workflow](https://github.com/MichalKuderski/AutoBureau/actions/runs/34766162197), [current upstream signup implementation](https://github.com/supabase/auth/blob/master/internal/api/signup.go), [Supabase logs documentation](https://supabase.com/docs/guides/platform/logs).
+
+## Application resilience verification, September 13, 20:20 UTC
+
+All five provider operations remain single-attempt with a ten-second deadline. Allow-listed diagnostics now distinguish an upstream HTTP response, a local deadline, a transport failure and an unusable response. Only numeric status/duration, a fixed failure category and a validated provider request UUID are retained. Bodies, credentials, arbitrary headers and URLs are excluded. Preview diagnostics now inspect both signup and sign-in failures.
+
+Signup/sign-in temporary failures return the existing coarse 503 with `Retry-After: 15`, no redirect and no cookie overwrite. The application does not silently repeat an ambiguous credential mutation. Real local HTTP-provider and PostgreSQL tests prove a 504 creates no application bootstrap/audit rows; an explicit successful retry and its repeat produce one user/profile/household/owner/entitlement and five bootstrap audits. Refresh 504 retains cookies, terminates its redirect cycle and makes one provider request. Enumeration-safe responses are unchanged.
+
+Validation: 38 affected provider/diagnostic unit checks, 40 auth-session integration checks through app_user on disposable PostgreSQL 18, typecheck and affected lint pass. CI retains PostgreSQL 16. These are resilience regressions, not provider root-cause closure or stable-staging end-to-end evidence. Provider-side causal investigation and final candidate acceptance remain open.
