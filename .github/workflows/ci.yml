@@ -104,7 +104,7 @@ jobs:
       - name: OIDC proof negative controls
         run: node --test scripts/staging-oidc-settings.test.mjs scripts/staging-cloud-oidc-proof.test.mjs scripts/staging-stable-oidc-proof.test.mjs scripts/staging-proof-inspection.test.mjs scripts/staging-github-oidc-proof.test.mjs scripts/staging-storage-probe-runner.test.mjs
       - name: Acceptance tenant-fixture negative controls
-        run: node --test scripts/acceptance-tenant-probe.test.mjs
+        run: node --test scripts/acceptance-tenant-probe.test.mjs scripts/smoke-auth-evidence.test.mjs scripts/staging-auth-diagnostics.test.mjs
       - name: Infrastructure deployment identity negative controls
         run: node --test scripts/staging-infra-oidc.test.mjs scripts/staging-jobs-oidc.test.mjs
 

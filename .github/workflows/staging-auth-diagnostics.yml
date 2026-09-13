@@ -1,0 +1,40 @@
+name: Read-only stable-staging auth diagnostics
+on:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: >-
+      github.repository == 'MichalKuderski/AutoBureau'
+      && github.event.pull_request.number == 5
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.head_ref == 'codex/launch-foundations'
+      && github.event.label.name == 'staging-auth-diagnostics'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Existing read-only provider credential path, as in staging-storage-preflight.
+    # This performs no environment pull, deploy, domain assignment or configuration write.
+    environment: preview
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --global vercel@59.16.0
+      - run: node --test scripts/staging-auth-diagnostics.test.mjs scripts/smoke-auth-evidence.test.mjs
+      - name: Read exact stable-staging auth logs and verify unchanged assignment
+        run: node scripts/staging-auth-diagnostics.mjs
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+          VERCEL_STAGING_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-auth-diagnostics
+          path: staging-auth-diagnostics.json
+          if-no-files-found: error
+          retention-days: 7

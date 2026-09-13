@@ -2,6 +2,8 @@
 
 Updated September 13, 2026. Scope: `codex/launch-foundations`, draft PR #5. This is a working register, not a release approval.
 
+Latest verified application head `66b4a6acdded0bba60ca812e265e081fbf45c0ea` passes CI 34785684640: **1,120 units**, **443 integration tests** (70 database + 373 web), build, lint, typecheck and guardrails. Preview 34785684576 passes **17/17 smoke and 57/57 acceptance**, including 204/202/202/429/429 signup semantics. This is Preview evidence. Stable staging separately failed **16/17 smoke at 22:06 UTC** because synthetic sign-in returned 503; a later correct 401 does not close the failure. Provider causality remains open. A fresh schema snapshot is **164 households / 164 entitlements**, exactly three more than the pre-Preview migration snapshot; the latest acceptance run contains those three successful synthetic bootstraps. Thirteen migrations, 21 forced-RLS tables, 27 policies and no ensure trigger remain intact. The controlled confirmed account retains one session. AWS read-back at 22:14 UTC confirms zero queues and zero quarantine objects, intact bucket controls, and no job runtime roles. Budget/alert and OAuth-containment actions remain pending.
+
 | Risk | State | Evidence / required closure |
 | --- | --- | --- |
 | Confirmation-email regression | PASS, regression gate retained | PR #4 merged separately as `3695e6c`. Real confirmation and consumed-link replay evidence retained in the release artifacts. |
