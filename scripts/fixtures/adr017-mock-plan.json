@@ -1,0 +1,3335 @@
+{
+  "_evidence": "Mock Terraform plan only; not live AWS proof or apply authority.",
+  "errored": false,
+  "variables": {
+    "preapply_verified": {
+      "value": true
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "aws_cloudwatch_dashboard.jobs",
+      "mode": "managed",
+      "type": "aws_cloudwatch_dashboard",
+      "name": "jobs",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "dashboard_body": "{\"widgets\":[{\"height\":6,\"properties\":{\"metrics\":[[\"AWS/SQS\",\"ApproximateNumberOfMessagesVisible\",\"QueueName\",\"pellum-preview-notifications\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"ApproximateAgeOfOldestMessage\",\"QueueName\",\"pellum-preview-notifications\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"NumberOfMessagesReceived\",\"QueueName\",\"pellum-preview-notifications\"],[\"AWS/SQS\",\"NumberOfMessagesSent\",\"QueueName\",\"pellum-preview-notifications\"],[\"AWS/SQS\",\"NumberOfMessagesDeleted\",\"QueueName\",\"pellum-preview-notifications\"]],\"period\":60,\"region\":\"us-east-2\",\"stat\":\"Sum\",\"title\":\"pellum-preview-notifications\"},\"type\":\"metric\",\"width\":12,\"x\":0,\"y\":0},{\"height\":6,\"properties\":{\"metrics\":[[\"AWS/SQS\",\"ApproximateNumberOfMessagesVisible\",\"QueueName\",\"pellum-preview-notifications-dlq\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"ApproximateAgeOfOldestMessage\",\"QueueName\",\"pellum-preview-notifications-dlq\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"NumberOfMessagesReceived\",\"QueueName\",\"pellum-preview-notifications-dlq\"],[\"AWS/SQS\",\"NumberOfMessagesSent\",\"QueueName\",\"pellum-preview-notifications-dlq\"],[\"AWS/SQS\",\"NumberOfMessagesDeleted\",\"QueueName\",\"pellum-preview-notifications-dlq\"]],\"period\":60,\"region\":\"us-east-2\",\"stat\":\"Sum\",\"title\":\"pellum-preview-notifications-dlq\"},\"type\":\"metric\",\"width\":12,\"x\":12,\"y\":0},{\"height\":6,\"properties\":{\"metrics\":[[\"AWS/SQS\",\"ApproximateNumberOfMessagesVisible\",\"QueueName\",\"pellum-preview-pipeline\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"ApproximateAgeOfOldestMessage\",\"QueueName\",\"pellum-preview-pipeline\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"NumberOfMessagesReceived\",\"QueueName\",\"pellum-preview-pipeline\"],[\"AWS/SQS\",\"NumberOfMessagesSent\",\"QueueName\",\"pellum-preview-pipeline\"],[\"AWS/SQS\",\"NumberOfMessagesDeleted\",\"QueueName\",\"pellum-preview-pipeline\"]],\"period\":60,\"region\":\"us-east-2\",\"stat\":\"Sum\",\"title\":\"pellum-preview-pipeline\"},\"type\":\"metric\",\"width\":12,\"x\":0,\"y\":6},{\"height\":6,\"properties\":{\"metrics\":[[\"AWS/SQS\",\"ApproximateNumberOfMessagesVisible\",\"QueueName\",\"pellum-preview-pipeline-dlq\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"ApproximateAgeOfOldestMessage\",\"QueueName\",\"pellum-preview-pipeline-dlq\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"NumberOfMessagesReceived\",\"QueueName\",\"pellum-preview-pipeline-dlq\"],[\"AWS/SQS\",\"NumberOfMessagesSent\",\"QueueName\",\"pellum-preview-pipeline-dlq\"],[\"AWS/SQS\",\"NumberOfMessagesDeleted\",\"QueueName\",\"pellum-preview-pipeline-dlq\"]],\"period\":60,\"region\":\"us-east-2\",\"stat\":\"Sum\",\"title\":\"pellum-preview-pipeline-dlq\"},\"type\":\"metric\",\"width\":12,\"x\":12,\"y\":6},{\"height\":6,\"properties\":{\"metrics\":[[\"AWS/SQS\",\"ApproximateNumberOfMessagesVisible\",\"QueueName\",\"pellum-stg-notifications\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"ApproximateAgeOfOldestMessage\",\"QueueName\",\"pellum-stg-notifications\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"NumberOfMessagesReceived\",\"QueueName\",\"pellum-stg-notifications\"],[\"AWS/SQS\",\"NumberOfMessagesSent\",\"QueueName\",\"pellum-stg-notifications\"],[\"AWS/SQS\",\"NumberOfMessagesDeleted\",\"QueueName\",\"pellum-stg-notifications\"]],\"period\":60,\"region\":\"us-east-2\",\"stat\":\"Sum\",\"title\":\"pellum-stg-notifications\"},\"type\":\"metric\",\"width\":12,\"x\":0,\"y\":12},{\"height\":6,\"properties\":{\"metrics\":[[\"AWS/SQS\",\"ApproximateNumberOfMessagesVisible\",\"QueueName\",\"pellum-stg-notifications-dlq\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"ApproximateAgeOfOldestMessage\",\"QueueName\",\"pellum-stg-notifications-dlq\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"NumberOfMessagesReceived\",\"QueueName\",\"pellum-stg-notifications-dlq\"],[\"AWS/SQS\",\"NumberOfMessagesSent\",\"QueueName\",\"pellum-stg-notifications-dlq\"],[\"AWS/SQS\",\"NumberOfMessagesDeleted\",\"QueueName\",\"pellum-stg-notifications-dlq\"]],\"period\":60,\"region\":\"us-east-2\",\"stat\":\"Sum\",\"title\":\"pellum-stg-notifications-dlq\"},\"type\":\"metric\",\"width\":12,\"x\":12,\"y\":12},{\"height\":6,\"properties\":{\"metrics\":[[\"AWS/SQS\",\"ApproximateNumberOfMessagesVisible\",\"QueueName\",\"pellum-stg-pipeline\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"ApproximateAgeOfOldestMessage\",\"QueueName\",\"pellum-stg-pipeline\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"NumberOfMessagesReceived\",\"QueueName\",\"pellum-stg-pipeline\"],[\"AWS/SQS\",\"NumberOfMessagesSent\",\"QueueName\",\"pellum-stg-pipeline\"],[\"AWS/SQS\",\"NumberOfMessagesDeleted\",\"QueueName\",\"pellum-stg-pipeline\"]],\"period\":60,\"region\":\"us-east-2\",\"stat\":\"Sum\",\"title\":\"pellum-stg-pipeline\"},\"type\":\"metric\",\"width\":12,\"x\":0,\"y\":18},{\"height\":6,\"properties\":{\"metrics\":[[\"AWS/SQS\",\"ApproximateNumberOfMessagesVisible\",\"QueueName\",\"pellum-stg-pipeline-dlq\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"ApproximateAgeOfOldestMessage\",\"QueueName\",\"pellum-stg-pipeline-dlq\",{\"stat\":\"Maximum\"}],[\"AWS/SQS\",\"NumberOfMessagesReceived\",\"QueueName\",\"pellum-stg-pipeline-dlq\"],[\"AWS/SQS\",\"NumberOfMessagesSent\",\"QueueName\",\"pellum-stg-pipeline-dlq\"],[\"AWS/SQS\",\"NumberOfMessagesDeleted\",\"QueueName\",\"pellum-stg-pipeline-dlq\"]],\"period\":60,\"region\":\"us-east-2\",\"stat\":\"Sum\",\"title\":\"pellum-stg-pipeline-dlq\"},\"type\":\"metric\",\"width\":12,\"x\":12,\"y\":18}]}",
+          "dashboard_name": "pellum-staging-jobs"
+        },
+        "after_unknown": {
+          "dashboard_arn": true,
+          "id": true,
+          "region": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-preview-notifications-delivery_lag_ms\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-preview-notifications-delivery_lag_ms",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job delivery_lag_ms; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-preview-notifications-delivery_lag_ms",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 3,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "delivery_lag_ms",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/preview/notifications",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 300000,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-preview-notifications-exhausted\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-preview-notifications-exhausted",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job exhausted; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-preview-notifications-exhausted",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "exhausted",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/preview/notifications",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-preview-notifications-processing_failure\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-preview-notifications-processing_failure",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job processing_failure; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-preview-notifications-processing_failure",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "processing_failure",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/preview/notifications",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-preview-notifications-reconciliation_mismatch\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-preview-notifications-reconciliation_mismatch",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job reconciliation_mismatch; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-preview-notifications-reconciliation_mismatch",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "reconciliation_mismatch",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/preview/notifications",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-preview-notifications-retry\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-preview-notifications-retry",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job retry; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-preview-notifications-retry",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "retry",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/preview/notifications",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 3,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-preview-notifications-send_failure\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-preview-notifications-send_failure",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job send_failure; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-preview-notifications-send_failure",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "send_failure",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/preview/notifications",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-preview-pipeline-delivery_lag_ms\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-preview-pipeline-delivery_lag_ms",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job delivery_lag_ms; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-preview-pipeline-delivery_lag_ms",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 3,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "delivery_lag_ms",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/preview/pipeline",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 300000,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-preview-pipeline-exhausted\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-preview-pipeline-exhausted",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job exhausted; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-preview-pipeline-exhausted",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "exhausted",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/preview/pipeline",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-preview-pipeline-processing_failure\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-preview-pipeline-processing_failure",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job processing_failure; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-preview-pipeline-processing_failure",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "processing_failure",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/preview/pipeline",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-preview-pipeline-reconciliation_mismatch\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-preview-pipeline-reconciliation_mismatch",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job reconciliation_mismatch; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-preview-pipeline-reconciliation_mismatch",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "reconciliation_mismatch",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/preview/pipeline",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-preview-pipeline-retry\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-preview-pipeline-retry",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job retry; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-preview-pipeline-retry",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "retry",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/preview/pipeline",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 3,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-preview-pipeline-send_failure\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-preview-pipeline-send_failure",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job send_failure; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-preview-pipeline-send_failure",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "send_failure",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/preview/pipeline",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-stg-notifications-delivery_lag_ms\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-stg-notifications-delivery_lag_ms",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job delivery_lag_ms; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-stg-notifications-delivery_lag_ms",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 3,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "delivery_lag_ms",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/stg/notifications",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 300000,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-stg-notifications-exhausted\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-stg-notifications-exhausted",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job exhausted; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-stg-notifications-exhausted",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "exhausted",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/stg/notifications",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-stg-notifications-processing_failure\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-stg-notifications-processing_failure",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job processing_failure; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-stg-notifications-processing_failure",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "processing_failure",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/stg/notifications",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-stg-notifications-reconciliation_mismatch\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-stg-notifications-reconciliation_mismatch",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job reconciliation_mismatch; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-stg-notifications-reconciliation_mismatch",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "reconciliation_mismatch",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/stg/notifications",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-stg-notifications-retry\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-stg-notifications-retry",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job retry; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-stg-notifications-retry",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "retry",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/stg/notifications",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 3,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-stg-notifications-send_failure\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-stg-notifications-send_failure",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job send_failure; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-stg-notifications-send_failure",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "send_failure",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/stg/notifications",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-stg-pipeline-delivery_lag_ms\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-stg-pipeline-delivery_lag_ms",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job delivery_lag_ms; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-stg-pipeline-delivery_lag_ms",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 3,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "delivery_lag_ms",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/stg/pipeline",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 300000,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-stg-pipeline-exhausted\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-stg-pipeline-exhausted",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job exhausted; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-stg-pipeline-exhausted",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "exhausted",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/stg/pipeline",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-stg-pipeline-processing_failure\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-stg-pipeline-processing_failure",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job processing_failure; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-stg-pipeline-processing_failure",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "processing_failure",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/stg/pipeline",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-stg-pipeline-reconciliation_mismatch\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-stg-pipeline-reconciliation_mismatch",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job reconciliation_mismatch; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-stg-pipeline-reconciliation_mismatch",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "reconciliation_mismatch",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/stg/pipeline",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-stg-pipeline-retry\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-stg-pipeline-retry",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job retry; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-stg-pipeline-retry",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "retry",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/stg/pipeline",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 3,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.application[\"pellum-stg-pipeline-send_failure\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "application",
+      "index": "pellum-stg-pipeline-send_failure",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job send_failure; reconcile against Postgres authority. No automatic redrive.",
+          "alarm_name": "pellum-stg-pipeline-send_failure",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": null,
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 1,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "send_failure",
+          "metric_query": [],
+          "namespace": "Pellum/StagingJobs/stg/pipeline",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Sum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.oldest[\"pellum-preview-notifications\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "oldest",
+      "index": "pellum-preview-notifications",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
+          "alarm_name": "pellum-preview-notifications-oldest",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-preview-notifications"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 3,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateAgeOfOldestMessage",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 300,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.oldest[\"pellum-preview-notifications-dlq\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "oldest",
+      "index": "pellum-preview-notifications-dlq",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
+          "alarm_name": "pellum-preview-notifications-dlq-oldest",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-preview-notifications-dlq"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 3,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateAgeOfOldestMessage",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 300,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.oldest[\"pellum-preview-pipeline\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "oldest",
+      "index": "pellum-preview-pipeline",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
+          "alarm_name": "pellum-preview-pipeline-oldest",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-preview-pipeline"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 3,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateAgeOfOldestMessage",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 300,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.oldest[\"pellum-preview-pipeline-dlq\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "oldest",
+      "index": "pellum-preview-pipeline-dlq",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
+          "alarm_name": "pellum-preview-pipeline-dlq-oldest",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-preview-pipeline-dlq"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 3,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateAgeOfOldestMessage",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 300,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.oldest[\"pellum-stg-notifications\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "oldest",
+      "index": "pellum-stg-notifications",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
+          "alarm_name": "pellum-stg-notifications-oldest",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-stg-notifications"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 3,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateAgeOfOldestMessage",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 300,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.oldest[\"pellum-stg-notifications-dlq\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "oldest",
+      "index": "pellum-stg-notifications-dlq",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
+          "alarm_name": "pellum-stg-notifications-dlq-oldest",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-stg-notifications-dlq"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 3,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateAgeOfOldestMessage",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 300,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.oldest[\"pellum-stg-pipeline\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "oldest",
+      "index": "pellum-stg-pipeline",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
+          "alarm_name": "pellum-stg-pipeline-oldest",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-stg-pipeline"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 3,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateAgeOfOldestMessage",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 300,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.oldest[\"pellum-stg-pipeline-dlq\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "oldest",
+      "index": "pellum-stg-pipeline-dlq",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging delivery lag requires investigation. An absent worker is not healthy merely because metrics are missing.",
+          "alarm_name": "pellum-stg-pipeline-dlq-oldest",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-stg-pipeline-dlq"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 3,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateAgeOfOldestMessage",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 300,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.visible[\"pellum-preview-notifications\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "visible",
+      "index": "pellum-preview-notifications",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job backlog exceeds the synthetic operating envelope.",
+          "alarm_name": "pellum-preview-notifications-visible",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-preview-notifications"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 2,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateNumberOfMessagesVisible",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 100,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.visible[\"pellum-preview-notifications-dlq\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "visible",
+      "index": "pellum-preview-notifications-dlq",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Synthetic job dead-letter queue is nonempty; inspect, never replay automatically.",
+          "alarm_name": "pellum-preview-notifications-dlq-visible",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-preview-notifications-dlq"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 2,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateNumberOfMessagesVisible",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.visible[\"pellum-preview-pipeline\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "visible",
+      "index": "pellum-preview-pipeline",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job backlog exceeds the synthetic operating envelope.",
+          "alarm_name": "pellum-preview-pipeline-visible",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-preview-pipeline"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 2,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateNumberOfMessagesVisible",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 100,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.visible[\"pellum-preview-pipeline-dlq\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "visible",
+      "index": "pellum-preview-pipeline-dlq",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Synthetic job dead-letter queue is nonempty; inspect, never replay automatically.",
+          "alarm_name": "pellum-preview-pipeline-dlq-visible",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-preview-pipeline-dlq"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 2,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateNumberOfMessagesVisible",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.visible[\"pellum-stg-notifications\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "visible",
+      "index": "pellum-stg-notifications",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job backlog exceeds the synthetic operating envelope.",
+          "alarm_name": "pellum-stg-notifications-visible",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-stg-notifications"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 2,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateNumberOfMessagesVisible",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 100,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.visible[\"pellum-stg-notifications-dlq\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "visible",
+      "index": "pellum-stg-notifications-dlq",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Synthetic job dead-letter queue is nonempty; inspect, never replay automatically.",
+          "alarm_name": "pellum-stg-notifications-dlq-visible",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-stg-notifications-dlq"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 2,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateNumberOfMessagesVisible",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.visible[\"pellum-stg-pipeline\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "visible",
+      "index": "pellum-stg-pipeline",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Staging job backlog exceeds the synthetic operating envelope.",
+          "alarm_name": "pellum-stg-pipeline-visible",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-stg-pipeline"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 2,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateNumberOfMessagesVisible",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 100,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.visible[\"pellum-stg-pipeline-dlq\"]",
+      "mode": "managed",
+      "type": "aws_cloudwatch_metric_alarm",
+      "name": "visible",
+      "index": "pellum-stg-pipeline-dlq",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "actions_enabled": null,
+          "alarm_actions": null,
+          "alarm_description": "Synthetic job dead-letter queue is nonempty; inspect, never replay automatically.",
+          "alarm_name": "pellum-stg-pipeline-dlq-visible",
+          "comparison_operator": "GreaterThanThreshold",
+          "datapoints_to_alarm": null,
+          "dimensions": {
+            "QueueName": "pellum-stg-pipeline-dlq"
+          },
+          "evaluation_criteria": [],
+          "evaluation_interval": null,
+          "evaluation_periods": 2,
+          "extended_statistic": null,
+          "insufficient_data_actions": null,
+          "metric_name": "ApproximateNumberOfMessagesVisible",
+          "metric_query": [],
+          "namespace": "AWS/SQS",
+          "ok_actions": null,
+          "period": 60,
+          "statistic": "Maximum",
+          "tags": null,
+          "threshold": 0,
+          "threshold_metric_id": null,
+          "treat_missing_data": "notBreaching",
+          "unit": null,
+          "warm_up_configuration": []
+        },
+        "after_unknown": {
+          "arn": true,
+          "dimensions": {},
+          "evaluate_low_sample_count_percentiles": true,
+          "evaluation_criteria": [],
+          "id": true,
+          "metric_query": [],
+          "region": true,
+          "tags_all": true,
+          "warm_up_configuration": []
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "dimensions": {},
+          "evaluation_criteria": [],
+          "metric_query": [],
+          "tags_all": {},
+          "warm_up_configuration": []
+        }
+      }
+    },
+    {
+      "address": "aws_iam_role.runtime[\"pellum-preview-job-dispatcher\"]",
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "runtime",
+      "index": "pellum-preview-job-dispatcher",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRoleWithWebIdentity\",\"Condition\":{\"StringEquals\":{\"oidc.vercel.com/data-analyst-mike:aud\":\"https://vercel.com/data-analyst-mike\",\"oidc.vercel.com/data-analyst-mike:sub\":\"owner:data-analyst-mike:project:autobureau-staging:environment:preview\"}},\"Effect\":\"Allow\",\"Principal\":{\"Federated\":\"arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike\"}}],\"Version\":\"2012-10-17\"}",
+          "description": null,
+          "force_detach_policies": null,
+          "inline_policy": [],
+          "max_session_duration": 3600,
+          "name": "pellum-preview-job-dispatcher",
+          "path": null,
+          "permissions_boundary": "arn:aws:iam::792394000571:policy/pellum-preview-job-runtime-boundary",
+          "tags": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "create_date": true,
+          "id": true,
+          "inline_policy": [],
+          "managed_policy_arns": true,
+          "name_prefix": true,
+          "tags_all": true,
+          "unique_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "inline_policy": [],
+          "managed_policy_arns": [],
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "aws_iam_role.runtime[\"pellum-preview-job-notifications-worker\"]",
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "runtime",
+      "index": "pellum-preview-job-notifications-worker",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRoleWithWebIdentity\",\"Condition\":{\"StringEquals\":{\"oidc.vercel.com/data-analyst-mike:aud\":\"https://vercel.com/data-analyst-mike\",\"oidc.vercel.com/data-analyst-mike:sub\":\"owner:data-analyst-mike:project:autobureau-staging:environment:preview\"}},\"Effect\":\"Allow\",\"Principal\":{\"Federated\":\"arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike\"}}],\"Version\":\"2012-10-17\"}",
+          "description": null,
+          "force_detach_policies": null,
+          "inline_policy": [],
+          "max_session_duration": 3600,
+          "name": "pellum-preview-job-notifications-worker",
+          "path": null,
+          "permissions_boundary": "arn:aws:iam::792394000571:policy/pellum-preview-job-runtime-boundary",
+          "tags": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "create_date": true,
+          "id": true,
+          "inline_policy": [],
+          "managed_policy_arns": true,
+          "name_prefix": true,
+          "tags_all": true,
+          "unique_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "inline_policy": [],
+          "managed_policy_arns": [],
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "aws_iam_role.runtime[\"pellum-preview-job-pipeline-worker\"]",
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "runtime",
+      "index": "pellum-preview-job-pipeline-worker",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRoleWithWebIdentity\",\"Condition\":{\"StringEquals\":{\"oidc.vercel.com/data-analyst-mike:aud\":\"https://vercel.com/data-analyst-mike\",\"oidc.vercel.com/data-analyst-mike:sub\":\"owner:data-analyst-mike:project:autobureau-staging:environment:preview\"}},\"Effect\":\"Allow\",\"Principal\":{\"Federated\":\"arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike\"}}],\"Version\":\"2012-10-17\"}",
+          "description": null,
+          "force_detach_policies": null,
+          "inline_policy": [],
+          "max_session_duration": 3600,
+          "name": "pellum-preview-job-pipeline-worker",
+          "path": null,
+          "permissions_boundary": "arn:aws:iam::792394000571:policy/pellum-preview-job-runtime-boundary",
+          "tags": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "create_date": true,
+          "id": true,
+          "inline_policy": [],
+          "managed_policy_arns": true,
+          "name_prefix": true,
+          "tags_all": true,
+          "unique_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "inline_policy": [],
+          "managed_policy_arns": [],
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "aws_iam_role.runtime[\"pellum-stg-job-dispatcher\"]",
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "runtime",
+      "index": "pellum-stg-job-dispatcher",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRoleWithWebIdentity\",\"Condition\":{\"StringEquals\":{\"oidc.vercel.com/data-analyst-mike:aud\":\"https://vercel.com/data-analyst-mike\",\"oidc.vercel.com/data-analyst-mike:sub\":\"owner:data-analyst-mike:project:autobureau-staging:environment:production\"}},\"Effect\":\"Allow\",\"Principal\":{\"Federated\":\"arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike\"}}],\"Version\":\"2012-10-17\"}",
+          "description": null,
+          "force_detach_policies": null,
+          "inline_policy": [],
+          "max_session_duration": 3600,
+          "name": "pellum-stg-job-dispatcher",
+          "path": null,
+          "permissions_boundary": "arn:aws:iam::792394000571:policy/pellum-stg-job-runtime-boundary",
+          "tags": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "create_date": true,
+          "id": true,
+          "inline_policy": [],
+          "managed_policy_arns": true,
+          "name_prefix": true,
+          "tags_all": true,
+          "unique_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "inline_policy": [],
+          "managed_policy_arns": [],
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "aws_iam_role.runtime[\"pellum-stg-job-notifications-worker\"]",
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "runtime",
+      "index": "pellum-stg-job-notifications-worker",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRoleWithWebIdentity\",\"Condition\":{\"StringEquals\":{\"oidc.vercel.com/data-analyst-mike:aud\":\"https://vercel.com/data-analyst-mike\",\"oidc.vercel.com/data-analyst-mike:sub\":\"owner:data-analyst-mike:project:autobureau-staging:environment:production\"}},\"Effect\":\"Allow\",\"Principal\":{\"Federated\":\"arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike\"}}],\"Version\":\"2012-10-17\"}",
+          "description": null,
+          "force_detach_policies": null,
+          "inline_policy": [],
+          "max_session_duration": 3600,
+          "name": "pellum-stg-job-notifications-worker",
+          "path": null,
+          "permissions_boundary": "arn:aws:iam::792394000571:policy/pellum-stg-job-runtime-boundary",
+          "tags": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "create_date": true,
+          "id": true,
+          "inline_policy": [],
+          "managed_policy_arns": true,
+          "name_prefix": true,
+          "tags_all": true,
+          "unique_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "inline_policy": [],
+          "managed_policy_arns": [],
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "aws_iam_role.runtime[\"pellum-stg-job-pipeline-worker\"]",
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "runtime",
+      "index": "pellum-stg-job-pipeline-worker",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRoleWithWebIdentity\",\"Condition\":{\"StringEquals\":{\"oidc.vercel.com/data-analyst-mike:aud\":\"https://vercel.com/data-analyst-mike\",\"oidc.vercel.com/data-analyst-mike:sub\":\"owner:data-analyst-mike:project:autobureau-staging:environment:production\"}},\"Effect\":\"Allow\",\"Principal\":{\"Federated\":\"arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike\"}}],\"Version\":\"2012-10-17\"}",
+          "description": null,
+          "force_detach_policies": null,
+          "inline_policy": [],
+          "max_session_duration": 3600,
+          "name": "pellum-stg-job-pipeline-worker",
+          "path": null,
+          "permissions_boundary": "arn:aws:iam::792394000571:policy/pellum-stg-job-runtime-boundary",
+          "tags": null
+        },
+        "after_unknown": {
+          "arn": true,
+          "create_date": true,
+          "id": true,
+          "inline_policy": [],
+          "managed_policy_arns": true,
+          "name_prefix": true,
+          "tags_all": true,
+          "unique_id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "inline_policy": [],
+          "managed_policy_arns": [],
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "aws_iam_role_policy.runtime[\"pellum-preview-job-dispatcher\"]",
+      "mode": "managed",
+      "type": "aws_iam_role_policy",
+      "name": "runtime",
+      "index": "pellum-preview-job-dispatcher",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "exact-queue-runtime",
+          "policy": "{\"Statement\":[{\"Action\":[\"sqs:SendMessage\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline\",\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications\"]},{\"Action\":[\"cloudwatch:PutMetricData\"],\"Condition\":{\"StringEquals\":{\"cloudwatch:namespace\":[\"Pellum/StagingJobs/preview/pipeline\",\"Pellum/StagingJobs/preview/notifications\"]}},\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}"
+        },
+        "after_unknown": {
+          "id": true,
+          "name_prefix": true,
+          "role": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_iam_role_policy.runtime[\"pellum-preview-job-notifications-worker\"]",
+      "mode": "managed",
+      "type": "aws_iam_role_policy",
+      "name": "runtime",
+      "index": "pellum-preview-job-notifications-worker",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "exact-queue-runtime",
+          "policy": "{\"Statement\":[{\"Action\":[\"sqs:ChangeMessageVisibility\",\"sqs:DeleteMessage\",\"sqs:ReceiveMessage\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications\"]},{\"Action\":[\"cloudwatch:PutMetricData\"],\"Condition\":{\"StringEquals\":{\"cloudwatch:namespace\":[\"Pellum/StagingJobs/preview/notifications\"]}},\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}"
+        },
+        "after_unknown": {
+          "id": true,
+          "name_prefix": true,
+          "role": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_iam_role_policy.runtime[\"pellum-preview-job-pipeline-worker\"]",
+      "mode": "managed",
+      "type": "aws_iam_role_policy",
+      "name": "runtime",
+      "index": "pellum-preview-job-pipeline-worker",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "exact-queue-runtime",
+          "policy": "{\"Statement\":[{\"Action\":[\"sqs:ChangeMessageVisibility\",\"sqs:DeleteMessage\",\"sqs:ReceiveMessage\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline\"]},{\"Action\":[\"cloudwatch:PutMetricData\"],\"Condition\":{\"StringEquals\":{\"cloudwatch:namespace\":[\"Pellum/StagingJobs/preview/pipeline\"]}},\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}"
+        },
+        "after_unknown": {
+          "id": true,
+          "name_prefix": true,
+          "role": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_iam_role_policy.runtime[\"pellum-stg-job-dispatcher\"]",
+      "mode": "managed",
+      "type": "aws_iam_role_policy",
+      "name": "runtime",
+      "index": "pellum-stg-job-dispatcher",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "exact-queue-runtime",
+          "policy": "{\"Statement\":[{\"Action\":[\"sqs:SendMessage\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline\",\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications\"]},{\"Action\":[\"cloudwatch:PutMetricData\"],\"Condition\":{\"StringEquals\":{\"cloudwatch:namespace\":[\"Pellum/StagingJobs/stg/pipeline\",\"Pellum/StagingJobs/stg/notifications\"]}},\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}"
+        },
+        "after_unknown": {
+          "id": true,
+          "name_prefix": true,
+          "role": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_iam_role_policy.runtime[\"pellum-stg-job-notifications-worker\"]",
+      "mode": "managed",
+      "type": "aws_iam_role_policy",
+      "name": "runtime",
+      "index": "pellum-stg-job-notifications-worker",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "exact-queue-runtime",
+          "policy": "{\"Statement\":[{\"Action\":[\"sqs:ChangeMessageVisibility\",\"sqs:DeleteMessage\",\"sqs:ReceiveMessage\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications\"]},{\"Action\":[\"cloudwatch:PutMetricData\"],\"Condition\":{\"StringEquals\":{\"cloudwatch:namespace\":[\"Pellum/StagingJobs/stg/notifications\"]}},\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}"
+        },
+        "after_unknown": {
+          "id": true,
+          "name_prefix": true,
+          "role": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_iam_role_policy.runtime[\"pellum-stg-job-pipeline-worker\"]",
+      "mode": "managed",
+      "type": "aws_iam_role_policy",
+      "name": "runtime",
+      "index": "pellum-stg-job-pipeline-worker",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "exact-queue-runtime",
+          "policy": "{\"Statement\":[{\"Action\":[\"sqs:ChangeMessageVisibility\",\"sqs:DeleteMessage\",\"sqs:ReceiveMessage\"],\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline\"]},{\"Action\":[\"cloudwatch:PutMetricData\"],\"Condition\":{\"StringEquals\":{\"cloudwatch:namespace\":[\"Pellum/StagingJobs/stg/pipeline\"]}},\"Effect\":\"Allow\",\"Resource\":\"*\"}],\"Version\":\"2012-10-17\"}"
+        },
+        "after_unknown": {
+          "id": true,
+          "name_prefix": true,
+          "role": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_sqs_queue.dlq[\"pellum-preview-notifications\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue",
+      "name": "dlq",
+      "index": "pellum-preview-notifications",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content_based_deduplication": null,
+          "delay_seconds": null,
+          "fifo_queue": false,
+          "kms_master_key_id": null,
+          "max_message_size": 1024,
+          "message_retention_seconds": 1209600,
+          "name": "pellum-preview-notifications-dlq",
+          "receive_wait_time_seconds": 20,
+          "redrive_allow_policy": "{\"redrivePermission\":\"byQueue\",\"sourceQueueArns\":[\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications\"]}",
+          "sqs_managed_sse_enabled": true,
+          "tags": null,
+          "timeouts": null,
+          "visibility_timeout_seconds": 60
+        },
+        "after_unknown": {
+          "arn": true,
+          "deduplication_scope": true,
+          "fifo_throughput_limit": true,
+          "id": true,
+          "kms_data_key_reuse_period_seconds": true,
+          "name_prefix": true,
+          "policy": true,
+          "redrive_policy": true,
+          "region": true,
+          "tags_all": true,
+          "url": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "aws_sqs_queue.dlq[\"pellum-preview-pipeline\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue",
+      "name": "dlq",
+      "index": "pellum-preview-pipeline",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content_based_deduplication": null,
+          "delay_seconds": null,
+          "fifo_queue": false,
+          "kms_master_key_id": null,
+          "max_message_size": 1024,
+          "message_retention_seconds": 1209600,
+          "name": "pellum-preview-pipeline-dlq",
+          "receive_wait_time_seconds": 20,
+          "redrive_allow_policy": "{\"redrivePermission\":\"byQueue\",\"sourceQueueArns\":[\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline\"]}",
+          "sqs_managed_sse_enabled": true,
+          "tags": null,
+          "timeouts": null,
+          "visibility_timeout_seconds": 60
+        },
+        "after_unknown": {
+          "arn": true,
+          "deduplication_scope": true,
+          "fifo_throughput_limit": true,
+          "id": true,
+          "kms_data_key_reuse_period_seconds": true,
+          "name_prefix": true,
+          "policy": true,
+          "redrive_policy": true,
+          "region": true,
+          "tags_all": true,
+          "url": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "aws_sqs_queue.dlq[\"pellum-stg-notifications\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue",
+      "name": "dlq",
+      "index": "pellum-stg-notifications",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content_based_deduplication": null,
+          "delay_seconds": null,
+          "fifo_queue": false,
+          "kms_master_key_id": null,
+          "max_message_size": 1024,
+          "message_retention_seconds": 1209600,
+          "name": "pellum-stg-notifications-dlq",
+          "receive_wait_time_seconds": 20,
+          "redrive_allow_policy": "{\"redrivePermission\":\"byQueue\",\"sourceQueueArns\":[\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications\"]}",
+          "sqs_managed_sse_enabled": true,
+          "tags": null,
+          "timeouts": null,
+          "visibility_timeout_seconds": 60
+        },
+        "after_unknown": {
+          "arn": true,
+          "deduplication_scope": true,
+          "fifo_throughput_limit": true,
+          "id": true,
+          "kms_data_key_reuse_period_seconds": true,
+          "name_prefix": true,
+          "policy": true,
+          "redrive_policy": true,
+          "region": true,
+          "tags_all": true,
+          "url": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "aws_sqs_queue.dlq[\"pellum-stg-pipeline\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue",
+      "name": "dlq",
+      "index": "pellum-stg-pipeline",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content_based_deduplication": null,
+          "delay_seconds": null,
+          "fifo_queue": false,
+          "kms_master_key_id": null,
+          "max_message_size": 1024,
+          "message_retention_seconds": 1209600,
+          "name": "pellum-stg-pipeline-dlq",
+          "receive_wait_time_seconds": 20,
+          "redrive_allow_policy": "{\"redrivePermission\":\"byQueue\",\"sourceQueueArns\":[\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline\"]}",
+          "sqs_managed_sse_enabled": true,
+          "tags": null,
+          "timeouts": null,
+          "visibility_timeout_seconds": 60
+        },
+        "after_unknown": {
+          "arn": true,
+          "deduplication_scope": true,
+          "fifo_throughput_limit": true,
+          "id": true,
+          "kms_data_key_reuse_period_seconds": true,
+          "name_prefix": true,
+          "policy": true,
+          "redrive_policy": true,
+          "region": true,
+          "tags_all": true,
+          "url": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "aws_sqs_queue.main[\"pellum-preview-notifications\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue",
+      "name": "main",
+      "index": "pellum-preview-notifications",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content_based_deduplication": null,
+          "delay_seconds": null,
+          "fifo_queue": false,
+          "kms_master_key_id": null,
+          "max_message_size": 1024,
+          "message_retention_seconds": 604800,
+          "name": "pellum-preview-notifications",
+          "receive_wait_time_seconds": 20,
+          "redrive_allow_policy": "{\"redrivePermission\":\"denyAll\"}",
+          "redrive_policy": "{\"deadLetterTargetArn\":\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications-dlq\",\"maxReceiveCount\":3}",
+          "sqs_managed_sse_enabled": true,
+          "tags": null,
+          "timeouts": null,
+          "visibility_timeout_seconds": 60
+        },
+        "after_unknown": {
+          "arn": true,
+          "deduplication_scope": true,
+          "fifo_throughput_limit": true,
+          "id": true,
+          "kms_data_key_reuse_period_seconds": true,
+          "name_prefix": true,
+          "policy": true,
+          "region": true,
+          "tags_all": true,
+          "url": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "aws_sqs_queue.main[\"pellum-preview-pipeline\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue",
+      "name": "main",
+      "index": "pellum-preview-pipeline",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content_based_deduplication": null,
+          "delay_seconds": null,
+          "fifo_queue": false,
+          "kms_master_key_id": null,
+          "max_message_size": 1024,
+          "message_retention_seconds": 604800,
+          "name": "pellum-preview-pipeline",
+          "receive_wait_time_seconds": 20,
+          "redrive_allow_policy": "{\"redrivePermission\":\"denyAll\"}",
+          "redrive_policy": "{\"deadLetterTargetArn\":\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline-dlq\",\"maxReceiveCount\":3}",
+          "sqs_managed_sse_enabled": true,
+          "tags": null,
+          "timeouts": null,
+          "visibility_timeout_seconds": 60
+        },
+        "after_unknown": {
+          "arn": true,
+          "deduplication_scope": true,
+          "fifo_throughput_limit": true,
+          "id": true,
+          "kms_data_key_reuse_period_seconds": true,
+          "name_prefix": true,
+          "policy": true,
+          "region": true,
+          "tags_all": true,
+          "url": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "aws_sqs_queue.main[\"pellum-stg-notifications\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue",
+      "name": "main",
+      "index": "pellum-stg-notifications",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content_based_deduplication": null,
+          "delay_seconds": null,
+          "fifo_queue": false,
+          "kms_master_key_id": null,
+          "max_message_size": 1024,
+          "message_retention_seconds": 604800,
+          "name": "pellum-stg-notifications",
+          "receive_wait_time_seconds": 20,
+          "redrive_allow_policy": "{\"redrivePermission\":\"denyAll\"}",
+          "redrive_policy": "{\"deadLetterTargetArn\":\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications-dlq\",\"maxReceiveCount\":3}",
+          "sqs_managed_sse_enabled": true,
+          "tags": null,
+          "timeouts": null,
+          "visibility_timeout_seconds": 60
+        },
+        "after_unknown": {
+          "arn": true,
+          "deduplication_scope": true,
+          "fifo_throughput_limit": true,
+          "id": true,
+          "kms_data_key_reuse_period_seconds": true,
+          "name_prefix": true,
+          "policy": true,
+          "region": true,
+          "tags_all": true,
+          "url": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "aws_sqs_queue.main[\"pellum-stg-pipeline\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue",
+      "name": "main",
+      "index": "pellum-stg-pipeline",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "content_based_deduplication": null,
+          "delay_seconds": null,
+          "fifo_queue": false,
+          "kms_master_key_id": null,
+          "max_message_size": 1024,
+          "message_retention_seconds": 604800,
+          "name": "pellum-stg-pipeline",
+          "receive_wait_time_seconds": 20,
+          "redrive_allow_policy": "{\"redrivePermission\":\"denyAll\"}",
+          "redrive_policy": "{\"deadLetterTargetArn\":\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline-dlq\",\"maxReceiveCount\":3}",
+          "sqs_managed_sse_enabled": true,
+          "tags": null,
+          "timeouts": null,
+          "visibility_timeout_seconds": 60
+        },
+        "after_unknown": {
+          "arn": true,
+          "deduplication_scope": true,
+          "fifo_throughput_limit": true,
+          "id": true,
+          "kms_data_key_reuse_period_seconds": true,
+          "name_prefix": true,
+          "policy": true,
+          "region": true,
+          "tags_all": true,
+          "url": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {
+          "tags_all": {}
+        }
+      }
+    },
+    {
+      "address": "aws_sqs_queue_policy.dlq[\"pellum-preview-notifications\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue_policy",
+      "name": "dlq",
+      "index": "pellum-preview-notifications",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "policy": "{\"Statement\":[{\"Action\":\"sqs:*\",\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications-dlq\",\"Sid\":\"RequireTLS\"},{\"Action\":\"sqs:*\",\"Condition\":{\"ArnNotEquals\":{\"aws:PrincipalArn\":[\"arn:aws:iam::792394000571:root\",\"arn:aws:iam::792394000571:role/pellum-stg-jobs-terraform-deploy\"]},\"Bool\":{\"aws:PrincipalIsAWSService\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications-dlq\",\"Sid\":\"NoRuntimeOrForeignDeadLetterAccess\"},{\"Action\":[\"sqs:StartMessageMoveTask\",\"sqs:PurgeQueue\"],\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications-dlq\",\"Sid\":\"NoAutomaticReplayOrPurge\"}],\"Version\":\"2012-10-17\"}"
+        },
+        "after_unknown": {
+          "id": true,
+          "queue_url": true,
+          "region": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_sqs_queue_policy.dlq[\"pellum-preview-pipeline\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue_policy",
+      "name": "dlq",
+      "index": "pellum-preview-pipeline",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "policy": "{\"Statement\":[{\"Action\":\"sqs:*\",\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline-dlq\",\"Sid\":\"RequireTLS\"},{\"Action\":\"sqs:*\",\"Condition\":{\"ArnNotEquals\":{\"aws:PrincipalArn\":[\"arn:aws:iam::792394000571:root\",\"arn:aws:iam::792394000571:role/pellum-stg-jobs-terraform-deploy\"]},\"Bool\":{\"aws:PrincipalIsAWSService\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline-dlq\",\"Sid\":\"NoRuntimeOrForeignDeadLetterAccess\"},{\"Action\":[\"sqs:StartMessageMoveTask\",\"sqs:PurgeQueue\"],\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline-dlq\",\"Sid\":\"NoAutomaticReplayOrPurge\"}],\"Version\":\"2012-10-17\"}"
+        },
+        "after_unknown": {
+          "id": true,
+          "queue_url": true,
+          "region": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_sqs_queue_policy.dlq[\"pellum-stg-notifications\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue_policy",
+      "name": "dlq",
+      "index": "pellum-stg-notifications",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "policy": "{\"Statement\":[{\"Action\":\"sqs:*\",\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications-dlq\",\"Sid\":\"RequireTLS\"},{\"Action\":\"sqs:*\",\"Condition\":{\"ArnNotEquals\":{\"aws:PrincipalArn\":[\"arn:aws:iam::792394000571:root\",\"arn:aws:iam::792394000571:role/pellum-stg-jobs-terraform-deploy\"]},\"Bool\":{\"aws:PrincipalIsAWSService\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications-dlq\",\"Sid\":\"NoRuntimeOrForeignDeadLetterAccess\"},{\"Action\":[\"sqs:StartMessageMoveTask\",\"sqs:PurgeQueue\"],\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications-dlq\",\"Sid\":\"NoAutomaticReplayOrPurge\"}],\"Version\":\"2012-10-17\"}"
+        },
+        "after_unknown": {
+          "id": true,
+          "queue_url": true,
+          "region": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_sqs_queue_policy.dlq[\"pellum-stg-pipeline\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue_policy",
+      "name": "dlq",
+      "index": "pellum-stg-pipeline",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "policy": "{\"Statement\":[{\"Action\":\"sqs:*\",\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline-dlq\",\"Sid\":\"RequireTLS\"},{\"Action\":\"sqs:*\",\"Condition\":{\"ArnNotEquals\":{\"aws:PrincipalArn\":[\"arn:aws:iam::792394000571:root\",\"arn:aws:iam::792394000571:role/pellum-stg-jobs-terraform-deploy\"]},\"Bool\":{\"aws:PrincipalIsAWSService\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline-dlq\",\"Sid\":\"NoRuntimeOrForeignDeadLetterAccess\"},{\"Action\":[\"sqs:StartMessageMoveTask\",\"sqs:PurgeQueue\"],\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline-dlq\",\"Sid\":\"NoAutomaticReplayOrPurge\"}],\"Version\":\"2012-10-17\"}"
+        },
+        "after_unknown": {
+          "id": true,
+          "queue_url": true,
+          "region": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_sqs_queue_policy.main[\"pellum-preview-notifications\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue_policy",
+      "name": "main",
+      "index": "pellum-preview-notifications",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "policy": "{\"Statement\":[{\"Action\":\"sqs:*\",\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications\",\"Sid\":\"RequireTLS\"},{\"Action\":\"sqs:*\",\"Condition\":{\"ArnNotEquals\":{\"aws:PrincipalArn\":[\"arn:aws:iam::792394000571:root\",\"arn:aws:iam::792394000571:role/pellum-stg-jobs-terraform-deploy\",\"arn:aws:iam::792394000571:role/pellum-preview-job-dispatcher\",\"arn:aws:iam::792394000571:role/pellum-preview-job-notifications-worker\"]},\"Bool\":{\"aws:PrincipalIsAWSService\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications\",\"Sid\":\"OnlyExactStagingPrincipals\"},{\"Action\":\"sqs:PurgeQueue\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-notifications\",\"Sid\":\"NoQueuePurge\"}],\"Version\":\"2012-10-17\"}"
+        },
+        "after_unknown": {
+          "id": true,
+          "queue_url": true,
+          "region": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_sqs_queue_policy.main[\"pellum-preview-pipeline\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue_policy",
+      "name": "main",
+      "index": "pellum-preview-pipeline",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "policy": "{\"Statement\":[{\"Action\":\"sqs:*\",\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline\",\"Sid\":\"RequireTLS\"},{\"Action\":\"sqs:*\",\"Condition\":{\"ArnNotEquals\":{\"aws:PrincipalArn\":[\"arn:aws:iam::792394000571:root\",\"arn:aws:iam::792394000571:role/pellum-stg-jobs-terraform-deploy\",\"arn:aws:iam::792394000571:role/pellum-preview-job-dispatcher\",\"arn:aws:iam::792394000571:role/pellum-preview-job-pipeline-worker\"]},\"Bool\":{\"aws:PrincipalIsAWSService\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline\",\"Sid\":\"OnlyExactStagingPrincipals\"},{\"Action\":\"sqs:PurgeQueue\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-preview-pipeline\",\"Sid\":\"NoQueuePurge\"}],\"Version\":\"2012-10-17\"}"
+        },
+        "after_unknown": {
+          "id": true,
+          "queue_url": true,
+          "region": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_sqs_queue_policy.main[\"pellum-stg-notifications\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue_policy",
+      "name": "main",
+      "index": "pellum-stg-notifications",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "policy": "{\"Statement\":[{\"Action\":\"sqs:*\",\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications\",\"Sid\":\"RequireTLS\"},{\"Action\":\"sqs:*\",\"Condition\":{\"ArnNotEquals\":{\"aws:PrincipalArn\":[\"arn:aws:iam::792394000571:root\",\"arn:aws:iam::792394000571:role/pellum-stg-jobs-terraform-deploy\",\"arn:aws:iam::792394000571:role/pellum-stg-job-dispatcher\",\"arn:aws:iam::792394000571:role/pellum-stg-job-notifications-worker\"]},\"Bool\":{\"aws:PrincipalIsAWSService\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications\",\"Sid\":\"OnlyExactStagingPrincipals\"},{\"Action\":\"sqs:PurgeQueue\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-notifications\",\"Sid\":\"NoQueuePurge\"}],\"Version\":\"2012-10-17\"}"
+        },
+        "after_unknown": {
+          "id": true,
+          "queue_url": true,
+          "region": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_sqs_queue_policy.main[\"pellum-stg-pipeline\"]",
+      "mode": "managed",
+      "type": "aws_sqs_queue_policy",
+      "name": "main",
+      "index": "pellum-stg-pipeline",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "policy": "{\"Statement\":[{\"Action\":\"sqs:*\",\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline\",\"Sid\":\"RequireTLS\"},{\"Action\":\"sqs:*\",\"Condition\":{\"ArnNotEquals\":{\"aws:PrincipalArn\":[\"arn:aws:iam::792394000571:root\",\"arn:aws:iam::792394000571:role/pellum-stg-jobs-terraform-deploy\",\"arn:aws:iam::792394000571:role/pellum-stg-job-dispatcher\",\"arn:aws:iam::792394000571:role/pellum-stg-job-pipeline-worker\"]},\"Bool\":{\"aws:PrincipalIsAWSService\":\"false\"}},\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline\",\"Sid\":\"OnlyExactStagingPrincipals\"},{\"Action\":\"sqs:PurgeQueue\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Resource\":\"arn:aws:sqs:us-east-2:792394000571:pellum-stg-pipeline\",\"Sid\":\"NoQueuePurge\"}],\"Version\":\"2012-10-17\"}"
+        },
+        "after_unknown": {
+          "id": true,
+          "queue_url": true,
+          "region": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    }
+  ]
+}

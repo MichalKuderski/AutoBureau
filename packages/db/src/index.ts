@@ -37,3 +37,5 @@ export { outbox, type OutboxWrite } from "./outbox.js";
 
 export { Prisma } from "@prisma/client";
 export type { PrismaClient } from "@prisma/client";
+
+export * from "./jobs.js";

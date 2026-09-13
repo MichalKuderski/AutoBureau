@@ -20,6 +20,26 @@ env:
   DATABASE_URL: postgresql://app_user:app_local_only@localhost:5432/autobureau
 
 jobs:
+  staging-jobs-plan:
+    name: staging job boundaries (mocked)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.2
+          terraform_wrapper: false
+      - working-directory: infra/terraform/envs/staging/jobs
+        run: |
+          terraform init -backend=false -input=false -lockfile=readonly
+          terraform fmt -check
+          terraform validate
+          terraform test
+      - run: node --test scripts/adr017-bootstrap-review.test.mjs scripts/adr017-plan-review.test.mjs
+
   staging-storage-plan:
     name: proposed staging storage boundaries (mocked)
     runs-on: ubuntu-latest
@@ -50,7 +70,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install cfn-lint==1.56.3
-      - run: cfn-lint infra/cloudformation/staging/adr016-state-bootstrap.json infra/cloudformation/staging/adr016-reviewed-grant.json
+      - run: cfn-lint infra/cloudformation/staging/adr016-state-bootstrap.json infra/cloudformation/staging/adr016-reviewed-grant.json infra/cloudformation/staging/adr017-state-bootstrap.json
       - run: node --test scripts/adr016-bootstrap-review.test.mjs scripts/adr016-saved-plan.test.mjs
 
   verify:
@@ -86,7 +106,7 @@ jobs:
       - name: Acceptance tenant-fixture negative controls
         run: node --test scripts/acceptance-tenant-probe.test.mjs
       - name: Infrastructure deployment identity negative controls
-        run: node --test scripts/staging-infra-oidc.test.mjs
+        run: node --test scripts/staging-infra-oidc.test.mjs scripts/staging-jobs-oidc.test.mjs
 
       # Tenant isolation is the one property we never ship unverified (review F-01).
       - name: Integration tests (RLS / tenancy / outbox)
@@ -116,7 +136,7 @@ jobs:
         run: |
           hits=$(grep -rlnE "(\.|\[[\"'])unsafeAcrossAllHouseholds" --include="*.ts" \
                    --exclude-dir=dist --exclude-dir=node_modules packages apps 2>/dev/null \
-                 | grep -vE "packages/db/(src/scoped\.ts|tests/)" || true)
+                 | grep -vE "packages/db/(src/(scoped|jobs)\.ts|tests/)" || true)
           if [ -n "$hits" ]; then
             echo "::error::unsafeAcrossAllHouseholds used outside allow-listed modules:"
             echo "$hits"

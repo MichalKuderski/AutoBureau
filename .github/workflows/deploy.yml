@@ -47,7 +47,9 @@ jobs:
   # that is never asserted against is decoration.
   preview:
     name: preview
-    if: github.event_name == 'pull_request'
+    # The explicit PR label holds Preview while an additive schema expansion is proved.
+    # CI still runs; remove the hold only after the staging migration read-back passes.
+    if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'staging-schema-pending')
     runs-on: ubuntu-latest
     environment:
       name: preview

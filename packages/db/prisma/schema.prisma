@@ -95,6 +95,8 @@ model Household {
   notifications Notification[]
 
   @@map("households")
+  jobDeliveries JobDelivery[]
+
 }
 
 enum IdempotencyState {
@@ -620,7 +622,13 @@ model OutboxEvent {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
 
+  /// Only explicitly configured staging producers enter ADR-017 transport. Legacy/null rows remain untouched.
+  transportScope String? @map("transport_scope") @db.VarChar(7)
+  routedAt DateTime? @map("routed_at") @db.Timestamptz(6)
+  deliveries JobDelivery[]
+
   @@index([publishedAt])
+  @@index([transportScope, routedAt, id])
   @@map("outbox_events")
 }
 
@@ -669,4 +677,39 @@ model InboundEmail {
 
   @@index([alias])
   @@map("inbound_emails")
+}
+
+/// Per-consumer delivery authority. Broker success never stands in for domain completion.
+model JobDelivery {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId BigInt @map("event_id")
+  householdId String @map("household_id") @db.Uuid
+  transportScope String @map("transport_scope") @db.VarChar(7)
+  consumer String @db.VarChar(32)
+  state String @default("pending") @db.VarChar(12)
+  attempts Int @default(0)
+  availableAt DateTime @default(now()) @map("available_at") @db.Timestamptz(6)
+  leaseToken String? @map("lease_token") @db.Uuid
+  leaseUntil DateTime? @map("lease_until") @db.Timestamptz(6)
+  sentAt DateTime? @map("sent_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  event OutboxEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  inbox JobInbox[]
+  @@unique([eventId, consumer])
+  @@unique([id, householdId])
+  @@index([transportScope, state, availableAt])
+  @@index([householdId])
+  @@map("job_deliveries")
+}
+
+/// Committed only in the SAME transaction as domain writes and downstream outbox intents.
+model JobInbox {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deliveryId String @unique @map("delivery_id") @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  completedAt DateTime @default(now()) @map("completed_at") @db.Timestamptz(6)
+  delivery JobDelivery @relation(fields: [deliveryId, householdId], references: [id, householdId], onDelete: Cascade)
+  @@index([householdId])
+  @@map("job_inbox")
 }
