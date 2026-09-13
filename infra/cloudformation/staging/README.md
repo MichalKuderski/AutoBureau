@@ -1,6 +1,6 @@
 # ADR-016 staging bootstrap draft
 
-**Not deployed.** The template is a proposed implementation of ADR-016's remote-state and deployment-role prerequisite. It does not satisfy the live proof gate. Account `792394000571`, resource region `us-east-2`; no Production application resources.
+**Bootstrap deployed September 13, 19:14 UTC; effective read-back passes at 19:19 UTC.** The saved CREATE change set contained exactly eight additions and no replacements/deletions/validation failures. Account `792394000571`, resource region `us-east-2`; no Production application resources. This establishes ADR-016's remote-state prerequisite, not its quarantine apply or runtime proof. See `docs/engineering/evidence/adr016-bootstrap-live-20260913.json` and `adr016-bootstrap-change-set-20260913.json`.
 
 CloudFormation owns the eight bootstrap resources so Terraform can use encrypted remote state from its first real plan. The state bucket is private, AES256 encrypted, versioned and retained. Its policy permits object access only to the exact state role and denies deletion of the state key and versions. Only the lock object may be deleted. The lock table has encryption, deletion protection and no TTL. S3 native locking is also enabled: HashiCorp now deprecates DynamoDB locking; the table temporarily preserves doc 09's existing architecture rather than silently changing it.
 

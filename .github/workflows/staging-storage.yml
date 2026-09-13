@@ -1,0 +1,77 @@
+name: Staging ADR-016 saved storage plan
+on:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+concurrency:
+  group: adr016-staging-storage
+  cancel-in-progress: false
+jobs:
+  plan:
+    if: >-
+      github.repository == 'MichalKuderski/AutoBureau'
+      && github.event.pull_request.number == 5
+      && github.event.label.name == 'adr016-storage-plan'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.head_ref == 'codex/launch-foundations'
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: us-east-2
+      AWS_DEFAULT_REGION: us-east-2
+      AWS_ROLE_ARN: arn:aws:iam::792394000571:role/pellum-stg-terraform-deploy
+      AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/pellum-adr016-github-oidc.jwt
+      AWS_ROLE_SESSION_NAME: pellum-adr016-plan
+      AWS_EC2_METADATA_DISABLED: "true"
+      TF_IN_AUTOMATION: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.2
+          terraform_wrapper: false
+      - name: Install isolated signature verifier
+        run: npm install --prefix "$RUNNER_TEMP/pellum-oidc" --ignore-scripts --no-audit --no-fund jose@6.2.8
+      - name: Verify actual signed staging job and use temporary federation
+        run: node scripts/staging-infra-oidc.mjs
+        env:
+          PELLUM_OIDC_DEPENDENCIES: ${{ runner.temp }}/pellum-oidc
+      - name: Verify exact assumed deployment identity
+        run: |
+          python3 -c 'import json,subprocess; p=json.loads(subprocess.check_output(["aws","sts","get-caller-identity","--output","json"])); assert p["Account"]=="792394000571" and p["Arn"].startswith("arn:aws:sts::792394000571:assumed-role/pellum-stg-terraform-deploy/"); print("Verified bounded staging deployment role")'
+      - name: Initialize encrypted remote state
+        working-directory: infra/terraform/envs/staging/storage
+        run: terraform init -input=false -lockfile=readonly -backend-config=backend.staging.hcl
+      - name: Refresh runner-local identity before planning
+        run: node scripts/staging-infra-oidc.mjs
+        env:
+          PELLUM_OIDC_DEPENDENCIES: ${{ runner.temp }}/pellum-oidc
+      - name: Save exact plan for separate semantic review
+        working-directory: infra/terraform/envs/staging/storage
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/adr016-plan"
+          terraform plan -input=false -lock-timeout=30s -var=federation_verified=true -var=issuer_mode=team -out="$RUNNER_TEMP/adr016-plan/storage.tfplan"
+          terraform show -json "$RUNNER_TEMP/adr016-plan/storage.tfplan" > "$RUNNER_TEMP/adr016-plan/storage-plan.json"
+          sha256sum "$RUNNER_TEMP/adr016-plan/storage.tfplan" > "$RUNNER_TEMP/adr016-plan/storage-plan.sha256"
+          git rev-parse HEAD > "$RUNNER_TEMP/adr016-plan/source-sha.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adr016-saved-plan
+          path: |
+            ${{ runner.temp }}/adr016-plan/
+            staging-infra-oidc-proof.json
+          retention-days: 7
+      - name: Remove runner-local token
+        if: always()
+        run: rm -f /tmp/pellum-adr016-github-oidc.jwt
