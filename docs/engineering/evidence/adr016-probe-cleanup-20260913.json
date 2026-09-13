@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "capturedAt": "2026-09-13T20:12:20.512980+00:00",
+  "account": "792394000571",
+  "region": "us-east-2",
+  "bucket": "pellum-stg-quarantine-792394000571-us-east-2",
+  "deletedExactIncomingFixtures": 2,
+  "sealedFixturesAlreadyAbsent": 4,
+  "postCleanupObjectCount": 0,
+  "conditionalDelete": true,
+  "productionApplicationAccessed": false
+}

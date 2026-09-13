@@ -1,6 +1,6 @@
 # ADR-016: Bucket-scoped federation for staging document quarantine
 
-**Status: Applied to staging; live synthetic probes pending.** Approved September 12, 2026. Scope: staging only. Approval is recorded in the release-director conversation and remains conditional on every pre-apply proof below. This does not change Production storage or approve public launch.
+**Status: Applied to staging; native synthetic storage probes passed.** Approved September 12, 2026. Scope: staging only. Approval is recorded in the release-director conversation and remains conditional on every pre-apply proof below. This does not change Production storage or approve public launch.
 
 ## Evidence and decision needed
 
@@ -71,3 +71,11 @@ The [signed GitHub job proof](../../engineering/evidence/staging-github-oidc-pro
 The latest checkpoint supersedes the earlier historical not-applied paragraphs. The separate eight-resource bootstrap is live and verified. An independently reviewed, expiring deployment grant was added to its bounded deployment role. GitHub run [34779180000](https://github.com/MichalKuderski/AutoBureau/actions/runs/34779180000) successfully applied the exact saved plan from run 34777452159: twelve additions, no replacements/deletions. See the [saved-plan semantic review](../../engineering/adr016-saved-plan-review-20260913.md).
 
 Effective live read-back at 19:59 UTC confirms the exact reviewed bucket policy, two role trusts/policies and permission boundary, all public-access blocks, BucketOwnerEnforced, AES256, Ohio region, seven-day quarantine expiry, one-day multipart cleanup and zero objects. This establishes configuration, not native runtime access or the required synthetic probes. Intake and worker/model processing remain disabled; Production remains untouched. ADR-017 is separate and unapplied.
+
+### September 13 native provider probes and cleanup
+
+Run [34779694901](https://github.com/MichalKuderski/AutoBureau/actions/runs/34779694901) at `c75207ddf12e71753eaa950bbf7113767ef21d28` passes 18 probes in each native Vercel scope. Exact PUT succeeds; changed type/length, expired capability, anonymous read/list, runtime bucket-listing, query-signed download and sealed overwrite are refused. Reusing an incoming capability does not change the selected sealed bytes. Conditional sealing detects a changed source with 412. Both actual cross-environment STS calls are denied. Unsupported type and oversize are refused before provider I/O.
+
+[The native receipt](../../engineering/evidence/adr016-native-storage-probes-20260913.json) includes protected aliases and unchanged stable-domain assignment. [Cleanup](../../engineering/evidence/adr016-probe-cleanup-20260913.json) verifies both exact incoming fixtures removed conditionally and all four sealed fixtures already absent; bucket object count is zero. [Effective permission tests](../../engineering/evidence/adr016-effective-permissions-20260913.json) distinguish AWS policy simulation and live trust-condition evaluation from real STS calls. Wrong-project/team/Production signed tokens were not requested; those denials are policy evidence, not an actual foreign-provider session.
+
+No continuous worker, application intake or model processing was enabled. This closes native storage enforcement evidence, not the separate deployed application, retention, scanner or safe-redaction gates. The temporary GitHub rule was removed and main-only protection verified.
