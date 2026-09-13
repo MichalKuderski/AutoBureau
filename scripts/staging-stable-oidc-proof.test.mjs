@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PROJECT, TEAM, STABLE, stagingApi, snapshot, assertUnchanged, assertProofDeployment, canRemoveProof } from './staging-stable-oidc-proof.mjs';
+import { PROJECT, TEAM, STABLE, stagingApi, snapshot, assertUnchanged, assertProofDeployment, canRemoveProof, buildWithReadback } from './staging-stable-oidc-proof.mjs';
 const env = { VERCEL_PROJECT_ID: PROJECT, VERCEL_STAGING_PROJECT_ID: PROJECT, VERCEL_ORG_ID: TEAM, VERCEL_TOKEN: 'synthetic-do-not-export' };
 const project = { id: PROJECT, name: 'autobureau-staging', accountId: TEAM, oidcTokenConfig: { enabled: true, issuerMode: 'team' }, ssoProtection: { deploymentType: 'prod_deployment_urls_and_all_previews' }, passwordProtection: { deploymentType: 'preview', password: 'must-not-export' } };
 const team = { id: TEAM, name: 'Data Analyst Mike', slug: 'data-analyst-mike' };
@@ -43,4 +43,17 @@ test('cleanup cannot delete stable, unrelated, reassigned or custom-domain deplo
 test('provider errors never retain credentials or response bodies', async () => {
   const call = stagingApi(env, async () => new Response('private provider response', { status: 403 }));
   await assert.rejects(call(`/v9/projects/${PROJECT}`), { message: 'Staging provider GET returned HTTP 403' });
+});
+test('failed build still checks stable state and records incomplete alias evidence without raw errors', async () => {
+  const before = await snapshot(api); const order = []; let evidence;
+  await assert.rejects(buildWithReadback(async () => { order.push('build'); throw new Error('secret-build-output'); },
+    async () => { order.push('inspect'); return before; }, before,
+    async value => { order.push('record'); evidence = value; }), /alias inventory still required/);
+  assert.deepEqual(order, ['build', 'inspect', 'record']);
+  assert.equal(evidence.buildFailed, true); assert.equal(evidence.aliasInspectionComplete, false);
+  assert.ok(!JSON.stringify(evidence).includes('secret-build-output'));
+});
+test('stable drift remains fatal even when the build also failed', async () => {
+  const before = await snapshot(api); const after = structuredClone(before); after.stable.deploymentId = proof.id;
+  await assert.rejects(buildWithReadback(async () => { throw new Error(); }, async () => after, before, async () => {}), /assignment or protection drift/);
 });

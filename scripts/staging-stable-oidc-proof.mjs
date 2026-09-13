@@ -47,6 +47,19 @@ export function assertUnchanged(before, after) {
   if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error('STOP: stable staging assignment or protection drift');
 }
 
+export async function buildWithReadback(build, inspect, before, recordFailure) {
+  let built, failed = false;
+  try { built = await build(); } catch { failed = true; }
+  // A failed build can still have created a deployment. Always inspect the
+  // stable assignment immediately; never treat a CLI failure as a no-op.
+  const after = await inspect();
+  if (failed) await recordFailure({ before, after, buildFailed: true,
+    aliasInspectionComplete: false, productionApplicationAccessed: false });
+  assertUnchanged(before, after);
+  if (failed) throw new Error('Proof build failed; stable assignment checked, deployment alias inventory still required');
+  return { built, after };
+}
+
 export function assertProofDeployment(deployment, before) {
   if (!deployment || deployment.projectId !== PROJECT || deployment.name !== 'autobureau-staging'
     || deployment.target !== 'production' || deployment.id === before.stable.deploymentId
@@ -103,8 +116,8 @@ export async function run(env = process.env) {
   const before = await snapshot(api);
   await writeFile('staging-proof-before.json', JSON.stringify(before, null, 2));
   process.stdout.write(`Verified staging-only target and protection: ${JSON.stringify(before)}\n`);
-  const built = await nativeBuild(env);
-  const after = await snapshot(api); assertUnchanged(before, after);
+  const { built, after } = await buildWithReadback(() => nativeBuild(env), () => snapshot(api), before,
+    evidence => writeFile('staging-stable-oidc-proof.json', JSON.stringify(evidence, null, 2)));
   const deployment = await api(`/v13/deployments/${encodeURIComponent(built.host)}`); assertProofDeployment(deployment, before);
   const assigned = await api(`/v2/deployments/${deployment.id}/aliases`);
   if (!Array.isArray(assigned?.aliases)) throw new Error('Deployment aliases unverified');
