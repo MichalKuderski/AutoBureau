@@ -22,5 +22,14 @@
   "acceptancePassed": 54,
   "acceptanceTotal": 57,
   "rootCause": "Upstream HTTP 504 is proven for this occurrence; underlying provider cause and earlier duplicate-signup failures remain unresolved",
-  "historicalProviderLogRetentionDays": 1
+  "historicalProviderLogRetentionDays": 1,
+  "gatewayCorroboration": {
+    "project": "kdqnfruwgocfqwpbpuxo",
+    "logId": "42aac198-23e9-4fb8-8954-7d266864ea96",
+    "timestamp": "2026-09-13T15:25:06Z",
+    "method": "POST",
+    "path": "/auth/v1/signup",
+    "status": 504,
+    "xSbErrorCode": null
+  }
 }

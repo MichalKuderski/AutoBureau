@@ -36,5 +36,11 @@
     "No application ACL credential configured",
     "No paid upgrade",
     "No production resource or data accessed"
-  ]
+  ],
+  "evictionReadBackEnabled": false,
+  "atRestEncryptionUpgradeRequired": true,
+  "documentedAclRequiresPaidPlan": true,
+  "prodPackAdditionalMonthlyUSD": 200,
+  "securitySource": "https://upstash.com/docs/redis/features/security",
+  "pricingSource": "https://upstash.com/pricing/redis"
 }
