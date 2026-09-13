@@ -15,7 +15,11 @@ const event = value => ({ payload: { text: `PELLUM_OIDC_PROOF ${JSON.stringify(v
 test('native evidence refuses wrong scope, project, team, issuer, audience, subject and unverified claims', () => {
   for (const key of Object.keys(claims)) assert.throws(() => claimEvidence([event({ ...claims, [key]: 'wrong' })]));
   assert.throws(() => claimEvidence([]));
-  assert.throws(() => claimEvidence([event(claims), event(claims)]));
+  assert.throws(() => claimEvidence([event(claims), event({ ...claims, iat: 1 })]));
+});
+test('recovery handles top-level provider build text and duplicate transport lines', () => {
+  assert.equal(claimEvidence([{ text: `PELLUM_OIDC_PROOF ${JSON.stringify(claims)}` }, event(claims),
+    { text: 'echo PELLUM_OIDC_PROOF from a build command' }]).signatureVerified, true);
 });
 test('recovered evidence excludes unrelated log content and unknown claim fields', () => {
   const result = claimEvidence([{ payload: { text: 'private build output' } }, event({ ...claims, token: 'must-not-export' })]);

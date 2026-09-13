@@ -13,11 +13,15 @@ export function selectCandidates(result) {
 export function claimEvidence(events) {
   if (!Array.isArray(events)) throw new Error('Build evidence unavailable');
   const marker = 'PELLUM_OIDC_PROOF ';
-  const lines = events.map(e => e.payload?.text ?? '').filter(s => typeof s === 'string' && s.includes(marker));
-  if (lines.length !== 1) throw new Error('Expected one native claim record');
-  let value;
-  try { value = JSON.parse(lines[0].slice(lines[0].indexOf(marker) + marker.length)); }
-  catch { throw new Error('Invalid native claim record'); }
+  const lines = events.flatMap(e => [e.payload?.text, e.text]).filter(s => typeof s === 'string' && s.includes(marker));
+  // Provider logs may repeat a line or also include the shell command containing the marker.
+  // Only a JSON record is evidence. Conflicting records still fail closed.
+  const records = new Map();
+  for (const line of lines) {
+    try { const v = JSON.parse(line.slice(line.indexOf(marker) + marker.length)); records.set(JSON.stringify(v), v); } catch { /* Not a JSON proof record. */ }
+  }
+  if (records.size !== 1) throw new Error(`Expected one distinct native claim record; found ${records.size} among ${lines.length} marker lines`);
+  const value = [...records.values()][0];
   if (value.signatureVerified !== true || value.environment !== 'production' || value.project_id !== PROJECT
     || value.owner_id !== 'team_CNQd2ynmaV1xtRhB6NMMeYBs'
     || value.iss !== 'https://oidc.vercel.com/data-analyst-mike'
@@ -58,7 +62,12 @@ export async function inspect(env = process.env) {
     record.probes.push({ host, status: response.status, redirectOrigin: redirect?.origin ?? null, externallyReachable: response.status < 400 && !vercelLogin });
   }
   await writeFile('staging-proof-inspection.json', JSON.stringify(evidence, null, 2));
-  record.claims = claimEvidence(await api(`/v3/deployments/${deployment.id}/events?builds=1&follow=0&limit=-1`));
+  const events = await api(`/v3/deployments/${deployment.id}/events?builds=1&follow=0&limit=-1`);
+  record.eventShape = { count: Array.isArray(events) ? events.length : null,
+    fields: [...new Set((Array.isArray(events) ? events : []).flatMap(e => Object.keys(e)))],
+    payloadFields: [...new Set((Array.isArray(events) ? events : []).flatMap(e => Object.keys(e.payload ?? {})))] };
+  await writeFile('staging-proof-inspection.json', JSON.stringify(evidence, null, 2));
+  record.claims = claimEvidence(events);
   assertUnchanged(before, await snapshot(api));
   await writeFile('staging-proof-inspection.json', JSON.stringify(evidence, null, 2));
   console.log(JSON.stringify(evidence));

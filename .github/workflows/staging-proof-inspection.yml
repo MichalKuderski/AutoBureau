@@ -15,6 +15,9 @@ jobs:
     environment: staging
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,9 +30,17 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
           VERCEL_STAGING_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+      - name: Install isolated JWT verifier
+        run: npm install --prefix "$RUNNER_TEMP/pellum-oidc" --ignore-scripts --no-audit --no-fund jose@6.2.8
+      - name: Verify signed GitHub staging claims without retaining the token
+        run: node scripts/staging-github-oidc-proof.mjs
+        env:
+          PELLUM_OIDC_DEPENDENCIES: ${{ runner.temp }}/pellum-oidc
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: staging-proof-inspection
-          path: staging-proof-inspection.json
+          path: |
+            staging-proof-inspection.json
+            staging-github-oidc-proof.json
           retention-days: 7
