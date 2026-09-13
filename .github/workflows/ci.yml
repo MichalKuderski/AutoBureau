@@ -50,8 +50,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install cfn-lint==1.56.3
-      - run: cfn-lint infra/cloudformation/staging/adr016-state-bootstrap.json
-      - run: node --test scripts/adr016-bootstrap-review.test.mjs
+      - run: cfn-lint infra/cloudformation/staging/adr016-state-bootstrap.json infra/cloudformation/staging/adr016-reviewed-grant.json
+      - run: node --test scripts/adr016-bootstrap-review.test.mjs scripts/adr016-saved-plan.test.mjs
 
   verify:
     name: lint · build · typecheck · test

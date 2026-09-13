@@ -75,3 +75,96 @@ jobs:
       - name: Remove runner-local token
         if: always()
         run: rm -f /tmp/pellum-adr016-github-oidc.jwt
+
+  apply:
+    if: >-
+      github.repository == 'MichalKuderski/AutoBureau'
+      && github.event.pull_request.number == 5
+      && github.event.label.name == 'adr016-storage-apply'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.head_ref == 'codex/launch-foundations'
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      AWS_REGION: us-east-2
+      AWS_DEFAULT_REGION: us-east-2
+      AWS_ROLE_ARN: arn:aws:iam::792394000571:role/pellum-stg-terraform-deploy
+      AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/pellum-adr016-github-oidc.jwt
+      AWS_ROLE_SESSION_NAME: pellum-adr016-apply
+      AWS_EC2_METADATA_DISABLED: "true"
+      TF_IN_AUTOMATION: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.2
+          terraform_wrapper: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: adr016-saved-plan
+          run-id: 34777452159
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/reviewed-storage
+      - name: Authenticate originating run and exact saved artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          umask 077
+          gh api repos/MichalKuderski/AutoBureau/actions/runs/34777452159 > "$RUNNER_TEMP/plan-origin.json"
+          node scripts/adr016-saved-plan.mjs "$RUNNER_TEMP/reviewed-storage" "$RUNNER_TEMP/reviewed-storage.tfplan" "$RUNNER_TEMP/plan-origin.json" > storage-apply-review.json
+      - name: Install isolated signature verifier
+        run: npm install --prefix "$RUNNER_TEMP/pellum-oidc" --ignore-scripts --no-audit --no-fund jose@6.2.8
+      - name: Verify actual signed staging job and use temporary federation
+        run: node scripts/staging-infra-oidc.mjs
+        env:
+          PELLUM_OIDC_DEPENDENCIES: ${{ runner.temp }}/pellum-oidc
+      - name: Verify exact deployment identity and expiry window
+        run: |
+          python3 - <<'PY'
+          import datetime,json,subprocess
+          def aws(*args): return json.loads(subprocess.check_output(['aws',*args,'--output','json']))
+          p=aws('sts','get-caller-identity')
+          assert p['Account']=='792394000571' and p['Arn'].startswith('arn:aws:sts::792394000571:assumed-role/pellum-stg-terraform-deploy/')
+          # The runtime grant cannot read/modify its own role. The operator's immediate
+          # pre-dispatch proof records that boundary and exact grant independently.
+          assert datetime.datetime.now(datetime.timezone.utc)<datetime.datetime.fromisoformat('2026-09-13T21:45:00+00:00')
+          print('Verified bounded staging deployment identity and unexpired window')
+          PY
+      - name: Initialize existing encrypted state and verify binary interpretation
+        working-directory: infra/terraform/envs/staging/storage
+        run: |
+          terraform init -input=false -lockfile=readonly -backend-config=backend.staging.hcl
+          terraform show -json "$RUNNER_TEMP/reviewed-storage.tfplan" > "$RUNNER_TEMP/binary-plan.json"
+          node ../../../../../scripts/adr016-plan-review.mjs "$RUNNER_TEMP/binary-plan.json"
+      - name: Refresh runner-local identity before applying
+        run: node scripts/staging-infra-oidc.mjs
+        env:
+          PELLUM_OIDC_DEPENDENCIES: ${{ runner.temp }}/pellum-oidc
+      - name: Apply only the already saved and verified plan
+        working-directory: infra/terraform/envs/staging/storage
+        run: terraform apply -input=false -lock-timeout=30s "$RUNNER_TEMP/reviewed-storage.tfplan"
+      - name: Save non-secret output inventory
+        working-directory: infra/terraform/envs/staging/storage
+        run: terraform output -json > "$GITHUB_WORKSPACE/storage-outputs.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: adr016-storage-apply-receipt
+          path: |
+            storage-apply-review.json
+            storage-outputs.json
+            staging-infra-oidc-proof.json
+          retention-days: 7
+      - name: Remove runner-local token and plan
+        if: always()
+        run: rm -f /tmp/pellum-adr016-github-oidc.jwt "$RUNNER_TEMP/reviewed-storage.tfplan"
