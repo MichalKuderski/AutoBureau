@@ -1,6 +1,6 @@
 # ADR-016 staging pre-apply evidence
 
-September 12, 2026. **APPLY BLOCKED. No real Terraform plan or AWS resource creation has occurred.** Founder architecture approval is recorded; it is not a substitute for the outstanding proof gates.
+September 13, 2026. **APPLY BLOCKED. No real Terraform plan or AWS resource creation has occurred.** Founder architecture and staging-hosting proof approval are recorded; they are not substitutes for the outstanding proof gates.
 
 | Gate | Status | Evidence or remaining work |
 | --- | --- | --- |
@@ -8,9 +8,9 @@ September 12, 2026. **APPLY BLOCKED. No real Terraform plan or AWS resource crea
 | Conflicting resources | Clear at inspection | Named quarantine bucket returned NotFound; no Pellum buckets/roles or OIDC providers existed. Recheck availability before creation. |
 | Vercel project and issuer mode | PASS | Exact staging project/team IDs, OIDC enabled, team issuer mode; [metadata](evidence/adr016-vercel-settings-20260912.json). |
 | Preview signed claims | PASS for native build issuance | [Signature-verified claims](evidence/adr016-preview-oidc-20260912.json), run 34723153581. Token stayed inside Vercel. |
-| Stable-staging signed claims | BLOCKED | Automatic review rejected the staging project's production-hosting-scope build. Explicit clarification requested. No stable alias or separate Production application changed. |
+| Stable-staging signed claims | BLOCKED | Founder explicitly approved the staging-only native `--prod --skip-domain` proof. The dedicated workflow is ready; automatic review separately rejected its temporary GitHub staging rule `refs/pull/5/merge`. Explicit exception approval is pending. No proof build, stable alias change or separate Production access occurred. |
 | Exact trust and negative assumption proofs | PENDING | Do not set `federation_verified` until both scopes are verified. Real STS calls and effective-policy verification remain outstanding. |
-| Remote state and deployment role | PENDING | Encrypted/access-controlled remote state, lock and bounded deployment authority must precede the application-resource apply. No bootstrap resources created. |
+| Remote state and deployment role | PREPARED, NOT LIVE | Eight-resource CloudFormation draft; private encrypted/versioned/retained state, locks, exact GitHub trust including ref and immutable IDs, separate state and read-only deployment roles, immutable permission ceilings. Local cfn-lint/Guard, 18 semantic tests and three Terraform mocked tests pass. AWS read-only template/policy validation passes with only a satisfied scalar-audience suggestion. Actual GitHub signed claims, change sets, resource creation/read-back and final plan-derived grant remain gates. |
 | Exact saved Terraform plan | PENDING | Must contain only approved staging additions, with no delete/replace/unrelated resource/access-key/Supabase-key actions. No real plan saved yet. |
 | Bucket safeguards | Source/mocked evidence only | Public block, enforced ownership, TLS, AES256, seven-day quarantine, one-day multipart cleanup, prevent_destroy and force_destroy=false exist in the proposed module. Live read-back remains required. |
 | Role/namespace least privilege | Source/mocked evidence only | Exact two role subjects and bucket incoming/sealed namespace; no ListBucket or other-bucket grant. Real policy validation remains required. |

@@ -19,12 +19,18 @@ locals {
   team        = "data-analyst-mike"
   project     = "autobureau-staging"
   issuer_host = var.issuer_mode == "team" ? "oidc.vercel.com/${local.team}" : "oidc.vercel.com"
+  # Known before apply: policy bodies must be reviewable in the saved plan.
+  bucket_arn        = "arn:aws:s3:::${local.bucket_name}"
+  oidc_provider_arn = "arn:aws:iam::${local.account_id}:oidc-provider/${local.issuer_host}"
+  upload_boundary   = "arn:aws:iam::${local.account_id}:policy/pellum-stg-upload-boundary"
   environments = {
     stg     = "production" # Stable scope of autobureau-staging, never the Production project.
     preview = "preview"
   }
   objects = "arn:aws:s3:::${local.bucket_name}/hh/*/upload/*"
 }
+
+data "aws_caller_identity" "deployment" {}
 
 resource "aws_s3_bucket" "quarantine" {
   bucket        = local.bucket_name
@@ -34,6 +40,10 @@ resource "aws_s3_bucket" "quarantine" {
     precondition {
       condition     = var.federation_verified
       error_message = "STOP: ADR-016 approval and read-only staging OIDC verification are required before planning resource creation."
+    }
+    precondition {
+      condition     = startswith(data.aws_caller_identity.deployment.arn, "arn:aws:sts::792394000571:assumed-role/pellum-stg-terraform-deploy/")
+      error_message = "STOP: use the bounded staging Terraform deployment role, never the interactive login or a Production role."
     }
   }
 }
@@ -93,7 +103,7 @@ resource "aws_s3_bucket_policy" "quarantine" {
         Effect    = "Deny"
         Principal = "*"
         Action    = "s3:*"
-        Resource  = [aws_s3_bucket.quarantine.arn, "${aws_s3_bucket.quarantine.arn}/*"]
+        Resource  = [local.bucket_arn, "${local.bucket_arn}/*"]
         Condition = { Bool = { "aws:SecureTransport" = "false" } }
       },
       {
@@ -101,7 +111,7 @@ resource "aws_s3_bucket_policy" "quarantine" {
         Effect    = "Deny"
         Principal = "*"
         Action    = "s3:*"
-        Resource  = "${aws_s3_bucket.quarantine.arn}/*"
+        Resource  = "${local.bucket_arn}/*"
         Condition = {
           StringEquals       = { "s3:authType" = "REST-QUERY-STRING" }
           NumericGreaterThan = { "s3:signatureAge" = "900000" }
@@ -112,7 +122,7 @@ resource "aws_s3_bucket_policy" "quarantine" {
         Effect    = "Deny"
         Principal = "*"
         Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.quarantine.arn}/*"
+        Resource  = "${local.bucket_arn}/*"
         Condition = { StringEquals = { "s3:authType" = "REST-QUERY-STRING" } }
       },
       {
@@ -120,7 +130,7 @@ resource "aws_s3_bucket_policy" "quarantine" {
         Effect    = "Deny"
         Principal = "*"
         Action    = "s3:PutObject"
-        Resource  = "${aws_s3_bucket.quarantine.arn}/hh/*/upload/*/sealed/*"
+        Resource  = "${local.bucket_arn}/hh/*/upload/*/sealed/*"
         Condition = { StringEquals = { "s3:authType" = "REST-QUERY-STRING" } }
       },
     ]
@@ -138,11 +148,12 @@ resource "aws_iam_role" "upload_signer" {
   name                 = "pellum-${each.key}-upload-signer"
   description          = "Temporary Vercel credentials for the staging quarantine bucket only."
   max_session_duration = 3600
+  permissions_boundary = local.upload_boundary
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect    = "Allow"
-      Principal = { Federated = aws_iam_openid_connect_provider.vercel.arn }
+      Principal = { Federated = local.oidc_provider_arn }
       Action    = "sts:AssumeRoleWithWebIdentity"
       Condition = { StringEquals = {
         "${local.issuer_host}:aud" = "https://vercel.com/${local.team}"
@@ -150,6 +161,7 @@ resource "aws_iam_role" "upload_signer" {
       } }
     }]
   })
+  depends_on = [aws_iam_openid_connect_provider.vercel]
 }
 
 resource "aws_iam_role_policy" "quarantine_only" {

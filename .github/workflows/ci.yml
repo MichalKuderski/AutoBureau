@@ -38,6 +38,21 @@ jobs:
       # The test file mocks AWS. There are no AWS credentials, plans or real applies in CI.
       - run: terraform test
 
+  staging-bootstrap:
+    name: proposed staging bootstrap boundaries (local only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install cfn-lint==1.56.3
+      - run: cfn-lint infra/cloudformation/staging/adr016-state-bootstrap.json
+      - run: node --test scripts/adr016-bootstrap-review.test.mjs
+
   verify:
     name: lint · build · typecheck · test
     runs-on: ubuntu-latest

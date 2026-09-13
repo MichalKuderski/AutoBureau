@@ -1,6 +1,6 @@
 # Pellum staging release-candidate risk register
 
-Updated September 12, 2026. Scope: `codex/launch-foundations`, draft PR #5. This is a working register, not a release approval.
+Updated September 13, 2026. Scope: `codex/launch-foundations`, draft PR #5. This is a working register, not a release approval.
 
 | Risk | State | Evidence / required closure |
 | --- | --- | --- |
@@ -20,6 +20,12 @@ Updated September 12, 2026. Scope: `codex/launch-foundations`, draft PR #5. This
 | Production readiness gates | NO-GO | No launch-branch merge, Production mutation, live billing, domain purchase/DNS or public launch authorized. External release prerequisites remain applicable. |
 
 ## Environment baseline
+
+September 13 checkpoint: `d2edac7d46b614719b056f32b0823b06d8ed7050` passes CI 34733788931 (1,021 unit tests, 58 DB + 370 web integration tests, 13 OIDC script controls), Preview 34733788880 (17/17 smoke, 57/57 acceptance, signup 204/202/202/429/429), native Preview claim proof 34733788922 and metadata preflight 34733788945. These are Preview results, not the final stable-staging candidate. The founder has now explicitly authorized the staging project's `--prod --skip-domain` proof; automatic review separately blocked the temporary GitHub staging exception `refs/pull/5/merge`. That rule was not added and the proof workflow has not run. The normal main-only protection remains unchanged.
+
+The local bootstrap increment prepares private retained state, separate state/deploy roles and permission ceilings. Local schema validation, three Guard groups, 18 semantic tests and three mocked Terraform tests pass. Those tests reject wildcard/Production trust, persistent credentials, cross-bucket grants, state deletion and interactive-principal planning. The deployment role starts read-only; its final plan-derived grant, remote bootstrap, real saved plan, apply and live probes remain incomplete. AWS's runtime policy generator returned optional KMS/access-point/cross-bucket grants; its output was rejected, not deployed. Latest AWS read-only inventory at 2026-09-13T02:56:27Z shows no buckets, no Pellum roles and zero OIDC providers. The existing migration host/volume remain present; the free plan reports $95.10 remaining. The budget query returned null, so no configured budget is asserted. Upstash's available Codex tab still shows sign-in. PRD v1.1 now records Plaid as required launch work with unchanged metric thresholds, not a deferred non-blocker.
+
+Older evidence below is chronological history. It does not override this checkpoint or turn a prepared template into a live service.
 
 September 12 OIDC checkpoint: `cfa4a5b` passes CI 34722425519, Preview 34722425477 (17/17 smoke and 57/57 acceptance; signup sequence 204 → 202 → 202 → 429 → 429), and metadata preflight 34722425482. `8a23e00` adds the native Preview claim proof, which passes run 34723153581. Its exact issuer/audience/subject, project/team IDs and one-hour token lifetime are [recorded without a token](evidence/adr016-preview-oidc-20260912.json). This is build-issued-token evidence, not AWS or runtime-role proof. Automatic review blocked the stable-staging production-hosting-scope build; explicit clarification is pending. No AWS state/bootstrap/storage resource has been applied. The earlier timestamped household count below must not be reused as a fresh total after later synthetic acceptance runs.
 

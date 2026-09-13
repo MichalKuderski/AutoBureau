@@ -1,4 +1,10 @@
 mock_provider "aws" {
+  mock_data "aws_caller_identity" {
+    defaults = {
+      account_id = "792394000571"
+      arn        = "arn:aws:sts::792394000571:assumed-role/pellum-stg-terraform-deploy/mock-only"
+    }
+  }
   mock_resource "aws_s3_bucket" {
     defaults = {
       id  = "pellum-stg-quarantine-792394000571-us-east-2"
@@ -21,6 +27,10 @@ run "staging_storage_boundaries" {
   variables {
     federation_verified = true
     issuer_mode         = "team"
+  }
+  assert {
+    condition     = alltrue([for role in aws_iam_role.upload_signer : role.permissions_boundary == "arn:aws:iam::792394000571:policy/pellum-stg-upload-boundary"])
+    error_message = "Both upload roles require the immutable quarantine-only boundary."
   }
   assert {
     condition     = aws_s3_bucket_public_access_block.quarantine.block_public_acls && aws_s3_bucket_public_access_block.quarantine.block_public_policy && aws_s3_bucket_public_access_block.quarantine.ignore_public_acls && aws_s3_bucket_public_access_block.quarantine.restrict_public_buckets
@@ -54,4 +64,17 @@ run "staging_storage_boundaries" {
     condition     = jsondecode(aws_s3_bucket_policy.quarantine.policy).Statement[2].Action == "s3:GetObject" && jsondecode(aws_s3_bucket_policy.quarantine.policy).Statement[3].Action == "s3:PutObject"
     error_message = "Presigned requests must not download quarantine or overwrite sealed copies."
   }
+}
+
+run "interactive_credentials_cannot_plan" {
+  command = plan
+  variables {
+    federation_verified = true
+    issuer_mode         = "team"
+  }
+  override_data {
+    target = data.aws_caller_identity.deployment
+    values = { arn = "arn:aws:iam::792394000571:root" }
+  }
+  expect_failures = [aws_s3_bucket.quarantine]
 }

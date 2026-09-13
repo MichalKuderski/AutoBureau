@@ -1,0 +1,666 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Staging Terraform state and bounded CI roles; bootstrap resources remain outside the quarantine resource state.",
+  "Metadata": {
+    "AWSToolsMetrics": {
+      "AWSAgentToolkit": "aws-cloudformation@2"
+    },
+    "com.aws.cloudformation.Context": {
+      "ref": [
+        {
+          "at": "docs/architecture/adr/ADR-016-staging-quarantine-federation.md",
+          "has": "Approved conditional staging architecture"
+        }
+      ],
+      "must": [
+        "No Production application resources or trust.",
+        "No persistent credentials.",
+        "No execution before all ADR-016 live pre-apply gates."
+      ]
+    }
+  },
+  "Conditions": {
+    "StagingAccountAndRegion": {
+      "Fn::And": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AWS::AccountId"
+            },
+            "792394000571"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AWS::Region"
+            },
+            "us-east-2"
+          ]
+        }
+      ]
+    }
+  },
+  "Resources": {
+    "StateBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Preserve reviewed infrastructure state independently of resources it manages. Fixed name enables exact IAM scope.",
+          "must": [
+            "Private encrypted versioned state only; no application documents.",
+            "Never delete or replace without separate approval."
+          ]
+        }
+      },
+      "Properties": {
+        "BucketName": "pellum-stg-tfstate-792394000571-us-east-2",
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        },
+        "Tags": [
+          {
+            "Key": "Application",
+            "Value": "Pellum"
+          },
+          {
+            "Key": "Environment",
+            "Value": "staging"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "terraform-state"
+          }
+        ]
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "StateBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Separate state access from application deployment and runtime access.",
+          "must": [
+            "Only the state role accesses objects; retain state versions.",
+            "TLS denial applies to all principals."
+          ]
+        }
+      },
+      "Properties": {
+        "Bucket": {
+          "Ref": "StateBucket"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "RequireTLS",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                "arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2",
+                "arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2/*"
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            },
+            {
+              "Sid": "OnlyStateRoleMayAccessStateObjects",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": [
+                "s3:GetObject",
+                "s3:GetObjectVersion",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:DeleteObjectVersion"
+              ],
+              "Resource": "arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2/*",
+              "Condition": {
+                "ArnNotEquals": {
+                  "aws:PrincipalArn": "arn:aws:iam::792394000571:role/pellum-stg-terraform-state"
+                }
+              }
+            },
+            {
+              "Sid": "NeverDeleteStateVersions",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": [
+                "s3:DeleteObject",
+                "s3:DeleteObjectVersion"
+              ],
+              "Resource": "arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2/adr016/storage.tfstate"
+            }
+          ]
+        }
+      }
+    },
+    "StateLocks": {
+      "Type": "AWS::DynamoDB::Table",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Preserve the doc-09 lock mechanism alongside native S3 locking during migration from deprecated DynamoDB locking.",
+          "must": [
+            "Only infrastructure lock/checksum records.",
+            "No time-to-live that could expire a held lock."
+          ]
+        }
+      },
+      "Properties": {
+        "TableName": "pellum-stg-tfstate-locks",
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "LockID",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "LockID",
+            "KeyType": "HASH"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "DeletionProtectionEnabled": true,
+        "Tags": [
+          {
+            "Key": "Application",
+            "Value": "Pellum"
+          },
+          {
+            "Key": "Environment",
+            "Value": "staging"
+          }
+        ]
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "GitHubProvider": {
+      "Type": "AWS::IAM::OIDCProvider",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Short-lived CI federation; no IAM user or access key.",
+          "must": [
+            "Verify account provider inventory before creation; never replace another provider."
+          ]
+        }
+      },
+      "Properties": {
+        "Url": "https://token.actions.githubusercontent.com",
+        "ClientIdList": [
+          "sts.amazonaws.com"
+        ]
+      }
+    },
+    "UploadBoundary": {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "A deployment cannot turn an upload role into a bucket administrator or cross-bucket reader.",
+          "must": [
+            "Deployment role cannot edit, detach or replace this boundary.",
+            "No ListBucket, KMS, IAM, access-point, version-delete or other-bucket grant."
+          ]
+        }
+      },
+      "Properties": {
+        "ManagedPolicyName": "pellum-stg-upload-boundary",
+        "Description": "Immutable ceiling for two staging upload roles; no keys or other buckets.",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "ReadAndWriteUploadObjects",
+              "Effect": "Allow",
+              "Action": [
+                "s3:GetObject",
+                "s3:PutObject"
+              ],
+              "Resource": [
+                "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/incoming",
+                "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/sealed/*"
+              ]
+            },
+            {
+              "Sid": "DiscardSealedAttempts",
+              "Effect": "Allow",
+              "Action": "s3:DeleteObject",
+              "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/sealed/*"
+            }
+          ]
+        }
+      }
+    },
+    "DeploymentBoundary": {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Cap future plan-derived permissions before they are granted. The boundary alone grants nothing.",
+          "must": [
+            "No state bucket, object contents, IAM users/keys, PassRole, compute or other buckets.",
+            "No delete/replacement or permissions-boundary administration."
+          ]
+        }
+      },
+      "Properties": {
+        "ManagedPolicyName": "pellum-stg-terraform-deploy-boundary",
+        "Description": "Ceiling for an additions-only quarantine deployment, separate from state.",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "ReadNamedQuarantineConfiguration",
+              "Effect": "Allow",
+              "Action": [
+                "s3:GetBucketLocation",
+                "s3:GetBucketTagging",
+                "s3:GetBucketPolicy",
+                "s3:GetBucketPublicAccessBlock",
+                "s3:GetBucketOwnershipControls",
+                "s3:GetEncryptionConfiguration",
+                "s3:GetBucketCORS",
+                "s3:GetLifecycleConfiguration",
+                "s3:GetBucketVersioning",
+                "s3:GetBucketAcl",
+                "s3:GetAccelerateConfiguration",
+                "s3:GetBucketRequestPayment",
+                "s3:GetBucketWebsite",
+                "s3:GetReplicationConfiguration",
+                "s3:GetBucketLogging",
+                "s3:GetBucketObjectLockConfiguration",
+                "s3:ListBucket"
+              ],
+              "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2"
+            },
+            {
+              "Sid": "ReadTwoUploadRoles",
+              "Effect": "Allow",
+              "Action": [
+                "iam:GetRole",
+                "iam:GetRolePolicy",
+                "iam:ListRolePolicies",
+                "iam:ListAttachedRolePolicies",
+                "iam:ListInstanceProfilesForRole",
+                "iam:ListRoleTags"
+              ],
+              "Resource": [
+                "arn:aws:iam::792394000571:role/pellum-stg-upload-signer",
+                "arn:aws:iam::792394000571:role/pellum-preview-upload-signer"
+              ]
+            },
+            {
+              "Sid": "ReadNamedVercelProvider",
+              "Effect": "Allow",
+              "Action": [
+                "iam:GetOpenIDConnectProvider",
+                "iam:ListOpenIDConnectProviderTags"
+              ],
+              "Resource": "arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike"
+            },
+            {
+              "Sid": "CreateOhioQuarantineBucket",
+              "Effect": "Allow",
+              "Action": [
+                "s3:CreateBucket"
+              ],
+              "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2",
+              "Condition": {
+                "StringEquals": {
+                  "s3:LocationConstraint": "us-east-2"
+                }
+              }
+            },
+            {
+              "Sid": "ConfigureOnlyQuarantine",
+              "Effect": "Allow",
+              "Action": [
+                "s3:PutBucketTagging",
+                "s3:PutBucketPolicy",
+                "s3:PutBucketPublicAccessBlock",
+                "s3:PutBucketOwnershipControls",
+                "s3:PutEncryptionConfiguration",
+                "s3:PutBucketCORS",
+                "s3:PutLifecycleConfiguration"
+              ],
+              "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2"
+            },
+            {
+              "Sid": "CreateOnlyBoundedUploadRoles",
+              "Effect": "Allow",
+              "Action": [
+                "iam:CreateRole"
+              ],
+              "Resource": [
+                "arn:aws:iam::792394000571:role/pellum-stg-upload-signer",
+                "arn:aws:iam::792394000571:role/pellum-preview-upload-signer"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "iam:PermissionsBoundary": "arn:aws:iam::792394000571:policy/pellum-stg-upload-boundary"
+                }
+              }
+            },
+            {
+              "Sid": "ConfigureOnlyUploadRoles",
+              "Effect": "Allow",
+              "Action": [
+                "iam:TagRole",
+                "iam:PutRolePolicy",
+                "iam:UpdateAssumeRolePolicy"
+              ],
+              "Resource": [
+                "arn:aws:iam::792394000571:role/pellum-stg-upload-signer",
+                "arn:aws:iam::792394000571:role/pellum-preview-upload-signer"
+              ]
+            },
+            {
+              "Sid": "CreateNamedVercelProvider",
+              "Effect": "Allow",
+              "Action": [
+                "iam:CreateOpenIDConnectProvider",
+                "iam:TagOpenIDConnectProvider"
+              ],
+              "Resource": "arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike"
+            }
+          ]
+        }
+      }
+    },
+    "StateRole": {
+      "Type": "AWS::IAM::Role",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "State authority is distinct from resource deployment authority.",
+          "must": [
+            "Exact repository and protected staging environment OIDC subject.",
+            "No deletion of state, non-default workspace, application data, or infrastructure changes."
+          ]
+        }
+      },
+      "Properties": {
+        "RoleName": "pellum-stg-terraform-state",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "arn:aws:iam::792394000571:oidc-provider/token.actions.githubusercontent.com"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                  "token.actions.githubusercontent.com:sub": "repo:MichalKuderski/AutoBureau:environment:staging",
+                  "token.actions.githubusercontent.com:repository_id": "1336298759",
+                  "token.actions.githubusercontent.com:repository_owner_id": "177895094",
+                  "token.actions.githubusercontent.com:environment": "staging",
+                  "token.actions.githubusercontent.com:ref": [
+                    "refs/heads/main",
+                    "refs/pull/5/merge"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "one-state-and-lock",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "ListDedicatedStateBucket",
+                  "Effect": "Allow",
+                  "Action": "s3:ListBucket",
+                  "Resource": "arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2"
+                },
+                {
+                  "Sid": "ReadAndWriteState",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject",
+                    "s3:PutObject"
+                  ],
+                  "Resource": "arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2/adr016/storage.tfstate"
+                },
+                {
+                  "Sid": "NativeLock",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject",
+                    "s3:PutObject",
+                    "s3:DeleteObject"
+                  ],
+                  "Resource": "arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2/adr016/storage.tfstate.tflock"
+                },
+                {
+                  "Sid": "DescribeLockTable",
+                  "Effect": "Allow",
+                  "Action": "dynamodb:DescribeTable",
+                  "Resource": "arn:aws:dynamodb:us-east-2:792394000571:table/pellum-stg-tfstate-locks"
+                },
+                {
+                  "Sid": "ExactLockRecords",
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:DeleteItem"
+                  ],
+                  "Resource": "arn:aws:dynamodb:us-east-2:792394000571:table/pellum-stg-tfstate-locks",
+                  "Condition": {
+                    "ForAllValues:StringEquals": {
+                      "dynamodb:LeadingKeys": [
+                        "pellum-stg-tfstate-792394000571-us-east-2/adr016/storage.tfstate",
+                        "pellum-stg-tfstate-792394000571-us-east-2/adr016/storage.tfstate-md5"
+                      ]
+                    },
+                    "Null": {
+                      "dynamodb:LeadingKeys": "false"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "DependsOn": [
+        "GitHubProvider"
+      ]
+    },
+    "DeploymentRole": {
+      "Type": "AWS::IAM::Role",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Initially read-only. Add a separate plan-derived policy only after exact saved-plan review; no bootstrap-wide grant.",
+          "must": [
+            "Exact repository and protected staging environment OIDC subject.",
+            "Cannot edit bootstrap/state roles or managed boundaries.",
+            "No mutations authorized by this initial inline policy."
+          ]
+        }
+      },
+      "Properties": {
+        "RoleName": "pellum-stg-terraform-deploy",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "arn:aws:iam::792394000571:oidc-provider/token.actions.githubusercontent.com"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                  "token.actions.githubusercontent.com:sub": "repo:MichalKuderski/AutoBureau:environment:staging",
+                  "token.actions.githubusercontent.com:repository_id": "1336298759",
+                  "token.actions.githubusercontent.com:repository_owner_id": "177895094",
+                  "token.actions.githubusercontent.com:environment": "staging",
+                  "token.actions.githubusercontent.com:ref": [
+                    "refs/heads/main",
+                    "refs/pull/5/merge"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "PermissionsBoundary": {
+          "Ref": "DeploymentBoundary"
+        },
+        "Policies": [
+          {
+            "PolicyName": "plan-read-only",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "ReadNamedQuarantineConfiguration",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetBucketLocation",
+                    "s3:GetBucketTagging",
+                    "s3:GetBucketPolicy",
+                    "s3:GetBucketPublicAccessBlock",
+                    "s3:GetBucketOwnershipControls",
+                    "s3:GetEncryptionConfiguration",
+                    "s3:GetBucketCORS",
+                    "s3:GetLifecycleConfiguration",
+                    "s3:GetBucketVersioning",
+                    "s3:GetBucketAcl",
+                    "s3:GetAccelerateConfiguration",
+                    "s3:GetBucketRequestPayment",
+                    "s3:GetBucketWebsite",
+                    "s3:GetReplicationConfiguration",
+                    "s3:GetBucketLogging",
+                    "s3:GetBucketObjectLockConfiguration",
+                    "s3:ListBucket"
+                  ],
+                  "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2"
+                },
+                {
+                  "Sid": "ReadTwoUploadRoles",
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:GetRole",
+                    "iam:GetRolePolicy",
+                    "iam:ListRolePolicies",
+                    "iam:ListAttachedRolePolicies",
+                    "iam:ListInstanceProfilesForRole",
+                    "iam:ListRoleTags"
+                  ],
+                  "Resource": [
+                    "arn:aws:iam::792394000571:role/pellum-stg-upload-signer",
+                    "arn:aws:iam::792394000571:role/pellum-preview-upload-signer"
+                  ]
+                },
+                {
+                  "Sid": "ReadNamedVercelProvider",
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:GetOpenIDConnectProvider",
+                    "iam:ListOpenIDConnectProviderTags"
+                  ],
+                  "Resource": "arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "DependsOn": [
+        "GitHubProvider"
+      ]
+    }
+  },
+  "Outputs": {
+    "StateBucket": {
+      "Value": {
+        "Ref": "StateBucket"
+      },
+      "Description": "Dedicated encrypted Terraform state bucket",
+      "Condition": "StagingAccountAndRegion"
+    },
+    "LockTable": {
+      "Value": {
+        "Ref": "StateLocks"
+      },
+      "Description": "DynamoDB lock compatibility table",
+      "Condition": "StagingAccountAndRegion"
+    },
+    "StateRoleArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "StateRole",
+          "Arn"
+        ]
+      },
+      "Description": "Role for the S3 backend only",
+      "Condition": "StagingAccountAndRegion"
+    },
+    "DeploymentRoleArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "DeploymentRole",
+          "Arn"
+        ]
+      },
+      "Description": "Initially read-only plan role with immutable deployment ceiling",
+      "Condition": "StagingAccountAndRegion"
+    },
+    "UploadBoundaryArn": {
+      "Value": {
+        "Ref": "UploadBoundary"
+      },
+      "Description": "Required permissions boundary for both upload roles",
+      "Condition": "StagingAccountAndRegion"
+    }
+  }
+}
