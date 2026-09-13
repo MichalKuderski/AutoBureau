@@ -500,11 +500,17 @@ describe("H · the 429 response contract (ADR-013 D10)", () => {
 
   it("H4b Retry-After shrinks as the window is consumed", async () => {
     await attemptSignIn(6);
+    // The real window may have less than a minute left when the suite starts.
+    // Establish a known live expiry so subtracting a minute cannot delete the row
+    // in the limiter's expiry sweep and accidentally test a new window instead.
+    await admin.$executeRawUnsafe(`
+      UPDATE auth_rate_limits SET expires_at = now() + interval '5 minutes'
+    `);
     const first = Number(
       (await signIn(signInRequest({ email: EMAIL, password: "wrong" }))).headers.get("retry-after"),
     );
 
-    // Push the whole window five minutes into the past WITHOUT expiring it, so the same
+    // Move expiry one minute earlier WITHOUT expiring it, so the same
     // row is still the live one and only its remaining time changes.
     await admin.$executeRawUnsafe(`
       UPDATE auth_rate_limits SET expires_at = expires_at - interval '1 minute'

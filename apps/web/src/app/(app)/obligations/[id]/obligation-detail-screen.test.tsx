@@ -1,9 +1,12 @@
+import { installDomainHttpFixtures } from "@/test/domain-http-fixtures";
 import { describe, expect, it } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderScreen } from "@/test/render";
 import { OBLIGATIONS } from "@/lib/domain/fixtures";
 import { ObligationDetailScreen } from "./obligation-detail-screen";
+
+installDomainHttpFixtures();
 
 /**
  * The detail screen carries two promises the rest of the product rests on: that a
@@ -23,7 +26,7 @@ describe("ObligationDetailScreen", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/found this in a document/i)).toBeInTheDocument();
     expect(screen.getByText(AI_SOURCED.provenance!.document_title)).toBeInTheDocument();
-    expect(screen.getByText(/94% confidence/)).toBeInTheDocument();
+    expect(screen.getByText(/94% recorded confidence/)).toBeInTheDocument();
   });
 
   it("says plainly when there is no source document rather than implying one", async () => {

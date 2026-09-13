@@ -48,16 +48,19 @@ export function formatTime(
   return dateFormatter(locale, timeZone, { hour: "numeric", minute: "2-digit" }).format(d);
 }
 
+/** A calendar date in the household timezone, independent of the browser locale. */
+export function dayKeyInZone(value: string | Date, timeZone: string): string {
+  const parts = dateFormatter("en-US", timeZone, { year: "numeric", month: "2-digit", day: "2-digit" })
+    .formatToParts(typeof value === "string" ? new Date(value) : value);
+  const part = (name: string) => parts.find((entry) => entry.type === name)!.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
 /** Whole days between now and `value`, computed in the household's timezone. */
 export function daysUntil(value: string | Date, timeZone = "UTC", now: Date = new Date()): number {
   const target = typeof value === "string" ? new Date(value) : value;
   const dayInTz = (d: Date) => {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(d);
+    const parts = dayKeyInZone(d, timeZone);
     return Date.UTC(
       Number(parts.slice(0, 4)),
       Number(parts.slice(5, 7)) - 1,

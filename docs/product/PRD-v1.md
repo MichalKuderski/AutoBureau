@@ -1,6 +1,6 @@
 # AutoBureau v1 — Product Requirements Document
 
-**Status:** FROZEN (pending one override clause, §4.1) · **Version:** 1.0 · **Date:** 2026-07-27
+**Status:** FROZEN with recorded launch amendment (§21.1; §4.1 remains open) · **Version:** 1.1 · **Date:** 2026-09-13
 **Owner:** Head of Product · **Engineering contract:** anything not in this document is out of scope for v1. Scope enters only by PRD amendment (§21), never by Slack, vibes, or "while we're in there."
 **Canonical references:** architecture set v0.2.0-review (constraints), red-team A-B1–6 (cuts), ledger thesis A-F1–5 (data doctrine), execution blueprint (gates G1–G4). Where this PRD and those documents disagree on *product scope*, this PRD wins; on *engineering constraints*, the architecture set wins.
 
@@ -58,7 +58,7 @@ This PRD freezes ahead of gate G1 (blueprint P0). If G1's data contradicts the c
 
 ## 6. Problems we explicitly DO NOT solve (v1)
 
-No executing actions on the user's behalf (no sending, submitting, canceling *for* you). No storing portal/bank credentials; no logging into anything. No moving money, paying bills, tax prep/filing, or financial/legal/medical advice. No bank-transaction ingestion (Plaid). No bill negotiation. No conversational assistant. No collaboration (second logins). No business/side-hustle admin. No paper mail scanning service. No non-US formats. **Support will be given canned "not yet, here's why" responses for each of these — the roadmap defends itself.**
+No executing actions on the user's behalf (no sending, submitting, canceling *for* you). No storing portal/bank login credentials; no logging into anything on the user's behalf. No moving money, paying bills, tax prep/filing, or financial/legal/medical advice. Read-only, consented Plaid integration is the bounded exception recorded in F18 and §21.1; provider-issued access tokens are encrypted server-side credentials, never bank passwords. No bill negotiation. No conversational assistant. No collaboration (second logins). No business/side-hustle admin. No paper mail scanning service. No non-US formats. **Support will be given canned "not yet, here's why" responses for each of these — the roadmap defends itself.**
 
 ## 7. Core user journeys
 
@@ -91,10 +91,11 @@ No executing actions on the user's behalf (no sending, submitting, canceling *fo
 | F15 | Privacy center | Export (async zip), deletion (14-day grace), security page, "what we can/can't see" explainer |
 | F16 | PWA shell | Installable; camera; web push; responsive; offline read-only view of obligations |
 | F17 | Ops console (internal) | Staff review mode (Wizard-of-Oz behind queue), rulebook tooling v0, household support view (consent-scoped) |
+| F18 | Consented financial connections | Plaid read-only Link, account/balance and approved transaction/liability data; safe reconnect/disconnect and privacy lifecycle. Required before public launch; Sandbox/Development implementation first. No payment initiation or advice. |
 
 ## 9. Features explicitly postponed (with the release that owns them)
 
-Chat assistant (v2, only if search telemetry proves demand) · autonomous execution + approval machinery (v2 — the entire doc-04 agent/approval architecture stays on paper) · multi-user logins/invites/roles (v1.x post-launch) · Outlook OAuth (v1.1) · Plaid/transactions (v2, tied to monetization ADR-011) · subscription-auditor-as-headline (v2) · SMS (v1.x, 10DLC lead time) · Google Calendar OAuth (v1.1; ICS ships now) · native apps (data-gated) · resolution rails (v2 flagship) · additional doc types (content-ops cadence post-launch) · B2B2C, public API, EU, affiliate (all Act II+). **Each postponement is a decision, not a backlog item; revisiting one requires the §21 process.**
+Chat assistant (v2, only if search telemetry proves demand) · autonomous execution + approval machinery (v2 — the entire doc-04 agent/approval architecture stays on paper) · multi-user logins/invites/roles (v1.x post-launch) · Outlook OAuth (v1.1) · subscription-auditor-as-headline (v2) · SMS (v1.x, 10DLC lead time) · Google Calendar OAuth (v1.1; ICS ships now) · native apps (data-gated) · resolution rails (v2 flagship) · additional doc types (content-ops cadence post-launch) · B2B2C, public API, EU, affiliate (all Act II+). **Each postponement is a decision, not a backlog item; revisiting one requires the §21 process.** Plaid's former postponement is superseded only by the recorded §21.1 amendment.
 
 ## 10. Success metrics (targets at +60 days post-launch unless noted)
 
@@ -184,6 +185,7 @@ WCAG 2.1 AA across all surfaces (axe CI on core flows; manual audit pre-launch).
 **F15 Privacy center:** export completes ≤ 24 h (target minutes) with email + signed URL (72 h TTL); zip contains originals + JSONL + audit trail; deletion sets 14-day grace with undo, then executes doc-13 cascade and emails the receipt; security page + "what we can't see" live and linked from footer + onboarding.
 **F16 PWA:** installable (manifest + SW) on iOS Safari + Android Chrome; push permission requested in context (after first obligation, never at first paint); offline shows cached obligations read-only with staleness banner.
 **F17 Ops console:** staff review actions attributable and audit-logged; support view requires user-granted, time-boxed consent token; rulebook entries versioned with author + evidence link; Wizard-of-Oz mode measurable (staff-completed vs auto-completed tagged in analytics).
+**F18 Financial connections:** authenticated, tenant-associated Link token creation; public-token exchange only server-side; encrypted provider tokens never returned to browsers/logs/analytics/models; scoped institution/Item/account persistence; duplicate Item handling; approved read-only data with accurate freshness/status and integer money; verified webhook authenticity and durable idempotent processing; retries, reconnect/Update Mode, disconnect and documented data deletion/export semantics; Sandbox fixtures and real tenant-isolation tests; complete loading/error/empty/consent states. Provider Production approval, integration readiness and separate authorization to use Production are prerequisites to public launch. Sandbox success alone is not Production readiness. No real financial-data ingestion is authorized by implementation approval.
 
 ## 20. Release checklist (G4 in checklist form; every box or no launch)
 
@@ -197,3 +199,11 @@ WCAG 2.1 AA across all surfaces (axe CI on core flows; manual audit pre-launch).
 ## 21. Change control
 
 Amendments require: written proposal → impact on §10/§11 metrics stated → Head of Product + founder sign-off → PRD version bump with changelog. The §4.1 G1-override is pre-authorized. Everything else — including "small" additions — goes through this door. **The most likely failure mode of this document is death by a hundred reasonable exceptions; the process exists to make exceptions expensive on purpose.**
+
+### 21.1 Version 1.1 — required Plaid launch work
+
+This written amendment records the founder's explicit release-director mandate, reiterated September 12, that both Stripe and Plaid must be finalized and Production-ready before official public launch. It supersedes the earlier approved deferral and authorizes feasible Sandbox/Development work now. The approval source is the founder's direct product-scope decision in that conversation; no separate person's sign-off or successful product validation is claimed. See [the approved launch direction](launch-direction-2026-09-11.md).
+
+Scope changes: §6 admits only consented read-only provider integration; §8 adds F18; §9 removes the Plaid postponement; §19 adds its acceptance gate. Bank passwords, financial advice, money movement, unapproved Production use and actual financial-data ingestion remain excluded. Provider credentials need their own reviewed encrypted custody and erasure design before deployment; this amendment does not waive the constitutional identifier, tenancy, audit or outbox constraints.
+
+Metric impact: financial connection and data freshness may support M2 coverage and M10 freshness, but do not count as a document, a true obligation, successful extraction or a Gmail connection for M1/M3/M4/M5. M8/M9 pricing/retention effects remain hypotheses. Provider usage, support and reconciliation costs count toward X5/X7; no cost threshold is relaxed. A connection error must not create an uncited date or obligation, preserving X1. Targets in §§10–11 remain unchanged. Launch timing and provider approval become additional release dependencies; no G1/economics evidence is inferred from this scope decision.

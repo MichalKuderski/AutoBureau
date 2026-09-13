@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Select, TextInput } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
@@ -31,8 +32,12 @@ export function OutcomeDialog({
   obligation,
   onClose,
   onSubmit,
+  pending = false,
+  error,
 }: {
   open: boolean;
+  pending?: boolean;
+  error?: string | undefined;
   obligation: ObligationView;
   onClose: () => void;
   /** `undefined` means the user skipped — done, but nothing learned. */
@@ -49,11 +54,13 @@ export function OutcomeDialog({
   };
 
   const close = () => {
+    if (pending) return;
     reset();
     onClose();
   };
 
   const save = () => {
+    if (pending) return;
     const trimmed = cost.trim();
     let costCents: number | null = null;
     if (trimmed) {
@@ -64,13 +71,11 @@ export function OutcomeDialog({
       }
       costCents = parsed;
     }
-    reset();
     onSubmit({ done_via: doneVia, cost_cents: costCents });
   };
 
   const skip = () => {
-    reset();
-    onSubmit(undefined);
+    if (!pending) onSubmit(undefined);
   };
 
   return (
@@ -82,27 +87,30 @@ export function OutcomeDialog({
       description="Two optional questions. What you tell us here makes the next reminder better."
       footer={
         <>
-          <Button variant="ghost" onClick={skip}>
+          <Button variant="ghost" onClick={skip} disabled={pending}>
             Skip
           </Button>
-          <Button variant="primary" onClick={save} data-autofocus>
+          <Button variant="primary" onClick={save} loading={pending} loadingLabel="Saving completion" data-autofocus>
             Save and close
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-4">
+        {error && <Alert tone="critical" title="Couldn’t save this completion">{error}</Alert>}
         <Select
+          disabled={pending}
           label="Who handled it"
           options={HANDLED_BY}
           value={doneVia}
           onChange={(e) => setDoneVia(e.target.value as ObligationOutcome["done_via"])}
         />
         <TextInput
+          disabled={pending}
           label="What did it cost?"
           inputMode="decimal"
           placeholder={obligation.currency === "USD" || !obligation.currency ? "0.00" : ""}
-          description="Optional. Leave blank if it was free, or if you'd rather not say."
+          description="Optional. Enter 0 if it was free, or leave blank if you’d rather not say."
           value={cost}
           error={costError}
           onChange={(e) => {

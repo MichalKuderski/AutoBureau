@@ -74,7 +74,8 @@ export function CommandPalette() {
 
   useFocusTrap(panelRef, open, () => setOpen(false));
 
-  const { data: obligations = [] } = useObligations(household.id, { search: query });
+  const search = useObligations(household.id, { search: query }, open && query.trim().length > 0);
+  const obligations = search.data;
 
   useEffect(() => {
     const reset = () => {
@@ -193,6 +194,8 @@ export function CommandPalette() {
           </kbd>
         </div>
 
+        {query.trim() && search.isPending && <p role="status" className="px-4 py-2 text-sm text-ink-secondary">Searching obligations…</p>}
+        {query.trim() && search.isError && <p role="alert" className="px-4 py-2 text-sm text-critical">Obligations couldn’t be searched. You can still jump to a page.</p>}
         <ul
           ref={listRef}
           id="command-results"
@@ -200,9 +203,9 @@ export function CommandPalette() {
           aria-label="Search results"
           className="max-h-80 overflow-y-auto p-1.5"
         >
-          {results.length === 0 ? (
+          {results.length === 0 && !search.isPending && !search.isError ? (
             <li className="px-3 py-8 text-center text-sm text-ink-tertiary">
-              Nothing matched “{query}”. Try a name, a vendor, or a date.
+              Nothing matched “{query}”. Try part of the title or item name.
             </li>
           ) : (
             results.map((r, index) => {
@@ -248,7 +251,7 @@ export function CommandPalette() {
         <div className="flex items-center gap-4 border-t border-line bg-surface-sunken/60 px-4 py-2 text-2xs text-ink-tertiary">
           <span>↑↓ to navigate</span>
           <span>↵ to open</span>
-          <span className="ml-auto">Search only — AutoBureau doesn't chat</span>
+          <span className="ml-auto">Search only — Pellum doesn't chat</span>
         </div>
       </div>
     </div>,

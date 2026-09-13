@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { BrandMark } from "@/components/brand/brand-mark";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { Icon } from "@/components/ui/icon";
 import { OnboardingProvider, ONBOARDING_STEPS } from "./onboarding-provider";
 
 /**
@@ -29,13 +29,8 @@ export function OnboardingShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-dvh flex-col bg-canvas">
         <header className="border-b border-line bg-surface">
           <div className="mx-auto flex w-full max-w-3xl items-center gap-3 px-4 py-3.5 sm:px-6">
-            <span
-              aria-hidden
-              className="flex size-8 items-center justify-center rounded-md bg-accent text-accent-ink"
-            >
-              <Icon.Shield className="size-4.5" />
-            </span>
-            <span className="font-serif text-lg font-semibold tracking-tight">AutoBureau</span>
+            <BrandMark className="size-8 shrink-0 text-accent" />
+            <span className="font-serif text-lg font-semibold tracking-tight">Pellum</span>
             <Link
               href="/dashboard"
               className="ml-auto text-sm text-ink-secondary underline-offset-4 transition-colors hover:text-ink hover:underline"
@@ -63,7 +58,7 @@ export function OnboardingShell({ children }: { children: React.ReactNode }) {
                   >
                     <span className="sr-only">
                       Step {index + 1} of {ONBOARDING_STEPS.length}
-                      {state === "done" ? ", complete" : ""}:{" "}
+                      :{" "}
                     </span>
                     <span className="block truncate">{step.label}</span>
                   </span>

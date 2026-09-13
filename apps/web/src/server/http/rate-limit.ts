@@ -239,14 +239,19 @@ interface CounterRow {
  * on each other — this runs on the hot path of exactly the attack that creates contention.
  */
 async function count(tx: GlobalClient, policy: PolicyName, bucket: string, windowSeconds: number) {
+  // Materialize the batch once: an IN subplan with SKIP LOCKED can be rescanned as
+  // DELETE advances, selecting fresh rows each time and exceeding LIMIT overall.
+  // Reproduced by the 150-row bounded-sweep regression on PostgreSQL 18.
   await tx.$queryRaw`
-    DELETE FROM auth_rate_limits
-    WHERE id IN (
+    WITH expired AS MATERIALIZED (
       SELECT id FROM auth_rate_limits
       WHERE policy = ${policy} AND expires_at <= now()
       LIMIT 100
       FOR UPDATE SKIP LOCKED
     )
+    DELETE FROM auth_rate_limits AS counters
+    USING expired
+    WHERE counters.id = expired.id
   `;
   const rows = await tx.$queryRaw<CounterRow[]>`
     WITH w AS (

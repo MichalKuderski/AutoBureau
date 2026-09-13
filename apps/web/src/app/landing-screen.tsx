@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandMark } from "@/components/brand/brand-mark";
 import { Icon } from "@/components/ui/icon";
 
 /**
@@ -16,7 +17,7 @@ import { Icon } from "@/components/ui/icon";
  * an unsourced number on a marketing page is exactly the kind of confidently-wrong
  * claim the rest of the product is engineered to avoid.
  *
- * The section on what AutoBureau will never do is not a disclaimer at the bottom. It
+ * The section on what Pellum will never do is not a disclaimer at the bottom. It
  * is the middle of the page, because for this category the boundary *is* the pitch.
  *
  * Rendered as a server component with no client JavaScript of its own: this is the
@@ -35,13 +36,8 @@ export function LandingScreen() {
 
       <header className="border-b border-line">
         <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-4 py-4 sm:px-6">
-          <span
-            aria-hidden
-            className="flex size-8 items-center justify-center rounded-md bg-accent text-accent-ink"
-          >
-            <Icon.Shield className="size-4.5" />
-          </span>
-          <span className="font-serif text-lg font-semibold tracking-tight">AutoBureau</span>
+          <BrandMark className="size-8 shrink-0 text-accent" />
+          <span className="font-serif text-lg font-semibold tracking-tight">Pellum</span>
 
           <nav aria-label="Account" className="ml-auto flex items-center gap-1.5">
             <Link
@@ -64,12 +60,12 @@ export function LandingScreen() {
         <section className="mx-auto w-full max-w-5xl px-4 pb-14 pt-14 sm:px-6 sm:pb-20 sm:pt-24">
           <div className="max-w-2xl">
             <h1 className="text-4xl leading-[1.1] sm:text-5xl">
-              Your parents&apos; paperwork, finally under control.
+              A little less<br />to carry.
             </h1>
             <p className="mt-5 text-lg text-ink-secondary text-pretty">
-              When you&apos;re the one holding it all together, AutoBureau holds it with you —
-              every policy, renewal, and deadline for the whole family, in one place that never
-              forgets.
+              For the person who keeps the family&apos;s paperwork in mind.
+              We&apos;re building a calmer place for important records, their sources,
+              and the next thing to do.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -88,7 +84,7 @@ export function LandingScreen() {
             </div>
 
             <p className="mt-4 text-sm text-ink-tertiary text-pretty">
-              Free to start, no card. Nothing is sent, cancelled, or filed unless you do it.
+              Private preview. No card needed. No service is cancelled or paperwork filed on your behalf.
             </p>
           </div>
         </section>
@@ -99,7 +95,7 @@ export function LandingScreen() {
         >
           <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
             <h2 id="how-it-works" className="text-2xl sm:text-3xl">
-              Three steps, then it runs without you
+              The experience we’re building
             </h2>
             <ol className="mt-8 grid gap-8 sm:grid-cols-3">
               {STEPS.map((step, index) => (
@@ -121,7 +117,7 @@ export function LandingScreen() {
         <section aria-labelledby="what-you-see" className="py-14 sm:py-20">
           <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
             <h2 id="what-you-see" className="text-2xl sm:text-3xl">
-              What you get for the trouble
+              A clearer picture of what matters
             </h2>
             <div className="mt-8 grid gap-5 sm:grid-cols-3">
               {BENEFITS.map(({ title, body, Glyph }) => (
@@ -142,7 +138,7 @@ export function LandingScreen() {
           <div className="mx-auto grid w-full max-w-5xl gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_1.1fr]">
             <div>
               <h2 id="never" className="text-2xl sm:text-3xl">
-                What AutoBureau will never do
+                What Pellum will never do
               </h2>
               <p className="mt-3 text-ink-secondary text-pretty">
                 This product holds some of the most sensitive paper a family owns. Every line below
@@ -168,7 +164,7 @@ export function LandingScreen() {
         <section aria-labelledby="pricing" className="py-14 sm:py-20">
           <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
             <h2 id="pricing" className="text-2xl sm:text-3xl">
-              Pricing
+              Planned pricing
             </h2>
             <div className="mt-8 grid gap-5 sm:grid-cols-2">
               <div className="rounded-lg border border-line bg-surface p-6">
@@ -203,8 +199,8 @@ export function LandingScreen() {
               </div>
             </div>
             <p className="mt-4 text-sm text-ink-tertiary text-pretty">
-              Cancel in one click — no retention maze, no phone call. Prices are not final until
-              launch; if they change, anyone who has already signed up hears it from us first.
+              Paid plans are not available in this preview. These prices and features are provisional;
+              final limits and cancellation terms will be shown before any purchase.
             </p>
           </div>
         </section>
@@ -228,11 +224,11 @@ export function LandingScreen() {
       <footer className="border-t border-line py-8">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 text-sm text-ink-tertiary sm:px-6">
           <p className="text-pretty">
-            AutoBureau is in early access. Some steps are still done by a person rather than a
-            model — where that is true, we say so rather than letting you assume otherwise.
+            Pellum is a private development preview. Document processing, reminders, billing
+            and data export are still being implemented and verified. Use sample data during testing.
           </p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span>© {new Date().getFullYear()} AutoBureau</span>
+            <span>© {new Date().getFullYear()} Pellum</span>
             <Link href="/sign-in" className="underline-offset-4 hover:text-ink hover:underline">
               Sign in
             </Link>
@@ -266,7 +262,7 @@ const BENEFITS = [
   },
   {
     title: "What you're owed, too",
-    body: "Refundable deposits, warranties still in force, claims never filed. Most households are owed money they will never think to collect.",
+    body: "Refundable deposits, warranties still in force, claims never filed. Keep the evidence close when it is time to follow up.",
     Glyph: Icon.Wallet,
   },
   {
@@ -288,11 +284,11 @@ const FREE_FEATURES = [
   "10 documents a month",
   "One person you care for, plus your own household",
   "Deadline tracking and reminders",
-  "Export everything, any time",
+  "Data export (planned)",
 ];
 
 const PREMIUM_FEATURES = [
-  "Unlimited documents",
+  "Document allowance to be confirmed before launch",
   "Everyone in the household",
   "Forwarding address and inbox scanning",
   "Weekly summary and pre-filled action kits",

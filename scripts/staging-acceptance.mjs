@@ -107,13 +107,13 @@ const created = [];
  * is the one case where this suite can hand over something that shortens the next step.
  *
  * `problemResponse` bodies are written to be safe to show — deliberately generic, naming no
- * account and no configuration — and `x-trace-id` is the id the server put on its own log
+ * account and no configuration — and `x-request-id` is the id the server put on its own log
  * record. Printing the pair turns "search the function logs" into "search for this id",
  * which matters because the actual cause (a database error, say) never reaches the caller.
  */
 async function diagnose(label, res) {
   if (res.status < 500) return;
-  const trace = res.headers.get("x-trace-id") ?? "(none)";
+  const trace = res.headers.get("x-request-id") ?? res.headers.get("x-trace-id") ?? "(none)";
   const body = await res.clone().text().catch(() => "");
   let detail = body.slice(0, 200);
   try {

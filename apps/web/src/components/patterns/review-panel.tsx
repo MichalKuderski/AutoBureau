@@ -43,18 +43,6 @@ export function ReviewPanel({ document, onDone }: ReviewPanelProps) {
   const changes = document.proposed_changes ?? [];
   const needsReview = document.status === "needs_review";
 
-  const accept = () => {
-    const corrected = Object.keys(edits).length;
-    toast({
-      tone: "success",
-      title: corrected > 0 ? "Saved with your corrections" : "Filed",
-      description:
-        corrected > 0
-          ? "Thanks — corrections make the next document better."
-          : "We've added this to your household registry.",
-    });
-    onDone?.();
-  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -81,8 +69,7 @@ export function ReviewPanel({ document, onDone }: ReviewPanelProps) {
 
       {changes.length === 0 ? (
         <p className="text-sm text-ink-secondary">
-          Nothing was extracted from this document. It's stored and searchable, but it didn't
-          produce any items or deadlines.
+          Validated review details are not available for this document yet. No changes can be filed from this panel.
         </p>
       ) : (
         <div className="flex flex-col gap-4">
@@ -101,10 +88,11 @@ export function ReviewPanel({ document, onDone }: ReviewPanelProps) {
 
       {needsReview ? (
         <div className="flex flex-col gap-2">
-          <Button variant="primary" onClick={accept}>
+          <Button variant="primary" disabled aria-describedby="review-save-unavailable">
             <Icon.Check className="size-4" />
             {Object.keys(edits).length > 0 ? "Save corrections and file" : "Looks right — file it"}
           </Button>
+          <p id="review-save-unavailable" className="text-sm text-ink-secondary">Saving a review is not available yet.</p>
           <Button
             variant="ghost"
             onClick={() => {

@@ -26,7 +26,8 @@ import { UUID_RE } from "@autobureau/contracts";
  *   expiry      — and `exp` is *required*, because jose only validates a claim it finds
  *   subject     — must be a UUID, because it becomes `users.id`
  *
- * Failure is always a `TokenError` with a coarse reason. The reason is deliberately
+ * Invalid credentials produce `TokenError`; a key-service failure produces
+ * `VerificationUnavailableError` without declaring the credential invalid. Reasons are
  * coarse and the message never contains the token, a claim value, or a key: an auth
  * error that explains precisely why it failed is an oracle.
  */
@@ -53,6 +54,15 @@ export class TokenError extends Error {
 /** Thrown at construction, not at verification: misconfiguration must fail at boot. */
 export class VerifierConfigError extends Error {
   override readonly name = "VerifierConfigError";
+}
+
+/** Verification failed closed, but signing the user out would misdiagnose an outage. */
+export class VerificationUnavailableError extends Error {
+  override readonly name = "VerificationUnavailableError";
+  readonly reason = "key-service-unavailable";
+  constructor() {
+    super("The signing-key service is temporarily unavailable.");
+  }
 }
 
 /**
@@ -129,14 +139,40 @@ function assertConfig(config: JwtVerifierConfig): void {
   }
 }
 
+// Shared across verifier construction in this runtime, never across configured URLs.
+// jose still owns key expiry (10 minutes), rotation and unknown-kid cooldown (30s).
+// Only trusted configuration supplies URLs; bound memory in tests/multi-config runtimes.
+const remoteResolvers = new Map<string, JWTVerifyGetKey>();
+
 function resolveKeys(source: JwksSource): JWTVerifyGetKey {
-  return "uri" in source
-    ? createRemoteJWKSet(new URL(source.uri))
-    : createLocalJWKSet(source.keys);
+  if ("keys" in source) return createLocalJWKSet(source.keys);
+  const uri = new URL(source.uri).href;
+  const existing = remoteResolvers.get(uri);
+  if (existing) return existing;
+  const remote = createRemoteJWKSet(new URL(uri));
+  const resolver: JWTVerifyGetKey = async (header, token) => {
+    // A single retry of a read-only key lookup tolerates a transient fetch failure.
+    // Each fetch remains bounded by jose's 5s timeout. No credentials are redeemed,
+    // no stale keys are used after expiry and no signature/claim checks are bypassed.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await remote(header, token);
+      } catch (cause) {
+        if (cause instanceof errors.JWKSNoMatchingKey ||
+            cause instanceof errors.JWKSMultipleMatchingKeys) throw cause;
+        if (attempt === 1) throw new VerificationUnavailableError();
+      }
+    }
+    throw new VerificationUnavailableError();
+  };
+  if (remoteResolvers.size >= 8) remoteResolvers.delete(remoteResolvers.keys().next().value!);
+  remoteResolvers.set(uri, resolver);
+  return resolver;
 }
 
 /** jose's error taxonomy → our coarse reasons. Anything unrecognised fails closed. */
-function translate(cause: unknown): TokenError {
+function translate(cause: unknown): TokenError | VerificationUnavailableError {
+  if (cause instanceof VerificationUnavailableError) return cause;
   if (cause instanceof errors.JWTExpired) {
     return new TokenError("expired", "token has expired");
   }

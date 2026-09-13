@@ -26,6 +26,7 @@ One versioned REST API, OpenAPI-first (ADR-008). The contract in `packages/contr
 |---|---|---|
 | GET | `/v1/me` | Profile + memberships + capabilities |
 | PATCH | `/v1/me` | Profile, timezone, locale |
+| GET/PATCH | `/v1/onboarding` | Owner-only saved setup; atomic people/census save; unverified record seeding without dated obligations |
 | DELETE | `/v1/me` | Starts account deletion workflow (doc 13 §4) — 202 |
 | GET/POST | `/v1/households` | List mine / create |
 | GET/PATCH/DELETE | `/v1/households/{id}` | Delete: owner-only, typed-confirmation, 202 async |
@@ -53,9 +54,10 @@ One versioned REST API, OpenAPI-first (ADR-008). The contract in `packages/contr
 | GET/POST | `/v1/items` | Filter: `kind, member_id, status, expiring_within` |
 | GET/PATCH/DELETE | `/v1/items/{id}` | PATCH validates `attrs` against the kind's schema version |
 | GET | `/v1/items/{id}/timeline` | Documents + obligations + task runs for one item |
+| GET | `/v1/timeline` | Household audit history; `lens` filters all, obligations, documents or items; cursor-paginated |
 | PUT | `/v1/items/{id}/secrets/{field}` | Write-only; response returns `last4` only (doc 12 §5) |
-| GET/POST | `/v1/obligations` | Filter: `status, kind, due_before, member_id, priority` |
-| GET/PATCH | `/v1/obligations/{id}` | |
+| GET/POST | `/v1/obligations` | Scoped list / manual user-confirmed creation. POST requires an exact `due_at` with UTC offset; never accepts client authority or AI provenance. |
+| GET/PATCH | `/v1/obligations/{id}` | Scoped detail / either lifecycle transition or manual detail patch; the two mutation shapes cannot be mixed. Date edits cancel stale scheduled reminders and emit an outbox intent atomically. |
 | POST | `/v1/obligations/{id}/complete` \| `/dismiss` \| `/snooze` | Snooze body: `{until}` — reshuffles reminder rows |
 | GET | `/v1/subscriptions/audit` | Subscription-auditor view: recurring items + detected anomalies (price hikes, zombies) |
 

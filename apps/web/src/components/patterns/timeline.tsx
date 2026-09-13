@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useId } from "react";
 import { cn } from "@/lib/cn";
 import { dynamicHref } from "@/lib/routes";
 import { Icon } from "@/components/ui/icon";
-import { formatDate, formatMoney, formatTime } from "@/lib/format";
+import { dayKeyInZone, formatDate, formatMoney, formatTime } from "@/lib/format";
 import type { TimelineEntry } from "@/lib/domain/types";
 
 /**
@@ -25,15 +26,15 @@ const KIND: Record<
   document_added: { Glyph: Icon.Documents, ring: "border-line", tint: "text-ink-tertiary" },
   obligation_created: { Glyph: Icon.Obligations, ring: "border-info/40", tint: "text-info" },
   obligation_completed: { Glyph: Icon.Check, ring: "border-success/40", tint: "text-success" },
+  obligation_dismissed: { Glyph: Icon.Check, ring: "border-line", tint: "text-ink-tertiary" },
+  obligation_status_changed: { Glyph: Icon.Clock, ring: "border-line", tint: "text-ink-tertiary" },
+  obligation_changed: { Glyph: Icon.Clock, ring: "border-line", tint: "text-ink-tertiary" },
+  item_changed: { Glyph: Icon.Household, ring: "border-line", tint: "text-ink-tertiary" },
   item_added: { Glyph: Icon.Household, ring: "border-line", tint: "text-ink-tertiary" },
   item_expiring: { Glyph: Icon.Clock, ring: "border-warning/40", tint: "text-warning" },
   reminder_sent: { Glyph: Icon.Bell, ring: "border-line", tint: "text-ink-tertiary" },
   value_found: { Glyph: Icon.Sparkle, ring: "border-success/40", tint: "text-success" },
 };
-
-function dayKey(iso: string): string {
-  return iso.slice(0, 10);
-}
 
 export interface TimelineProps {
   entries: TimelineEntry[];
@@ -42,9 +43,10 @@ export interface TimelineProps {
 }
 
 export function Timeline({ entries, timeZone = "UTC", className }: TimelineProps) {
+  const headingId = useId();
   const groups = new Map<string, TimelineEntry[]>();
   for (const e of entries) {
-    const k = dayKey(e.at);
+    const k = dayKeyInZone(e.at, timeZone);
     const bucket = groups.get(k);
     if (bucket) bucket.push(e);
     else groups.set(k, [e]);
@@ -53,15 +55,15 @@ export function Timeline({ entries, timeZone = "UTC", className }: TimelineProps
   return (
     <div className={cn("flex flex-col gap-6", className)}>
       {[...groups.entries()].map(([day, group]) => (
-        <section key={day} aria-labelledby={`tl-${day}`}>
+        <section key={day} aria-labelledby={`${headingId}-${day}`}>
           <h3
-            id={`tl-${day}`}
+            id={`${headingId}-${day}`}
             className="mb-3 text-xs font-medium tracking-wide text-ink-tertiary uppercase"
           >
-            {formatDate(day, { timeZone, style: "medium" })}
+            {formatDate(group[0]!.at, { timeZone, style: "medium" })}
           </h3>
           <ol className="relative flex flex-col gap-3">
-            <span
+            <li
               aria-hidden="true"
               className="absolute top-2 bottom-2 left-[15px] w-px bg-line"
             />

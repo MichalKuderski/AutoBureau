@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CollectionMore } from "@/components/patterns/collection-more";
+import { ObligationForm } from "@/components/patterns/obligation-form";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/patterns/page-header";
 import { ObligationCard } from "@/components/patterns/obligation-card";
 import { FilterBar, SearchInput, type FilterOption } from "@/components/ui/filter-bar";
@@ -32,46 +35,23 @@ const FILTERS: Array<{ value: StatusFilter; label: string }> = [
  * count so the shape of the workload is readable without counting cards.
  */
 export function ObligationsScreen() {
-  const { household } = useHousehold();
+  const { household, can } = useHousehold();
+  const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<StatusFilter>("open");
   const [search, setSearch] = useState("");
   const [memberId, setMemberId] = useState<string | null>(null);
 
-  const query = useObligations(household.id, { search });
+  const query = useObligations(household.id, { search, memberId,
+    ...(filter === "open" ? { status: ["upcoming", "action_needed", "in_progress", "waiting", "missed"] } :
+      filter === "owed_to_us" ? { direction: "owed_to_household", status: ["upcoming", "action_needed", "in_progress", "waiting", "missed"] } :
+      filter === "all" ? {} : { status: [filter] }),
+  });
   const updateStatus = useUpdateObligationStatus(household.id);
   const { toast } = useToast();
 
   const all = useMemo(() => query.data ?? [], [query.data]);
 
-  const counts = useMemo(
-    () => ({
-      open: all.filter((o) => o.status !== "done" && o.status !== "dismissed").length,
-      action_needed: all.filter((o) => o.status === "action_needed").length,
-      owed_to_us: all.filter(
-        (o) => o.direction === "owed_to_household" && o.status !== "done",
-      ).length,
-      done: all.filter((o) => o.status === "done").length,
-      all: all.length,
-    }),
-    [all],
-  );
-
-  const filtered = useMemo(() => {
-    let list = all;
-    if (memberId) list = list.filter((o) => o.member_id === memberId);
-    switch (filter) {
-      case "open":
-        return list.filter((o) => o.status !== "done" && o.status !== "dismissed");
-      case "action_needed":
-        return list.filter((o) => o.status === "action_needed");
-      case "owed_to_us":
-        return list.filter((o) => o.direction === "owed_to_household" && o.status !== "done");
-      case "done":
-        return list.filter((o) => o.status === "done");
-      case "all":
-        return list;
-    }
-  }, [all, filter, memberId]);
+  const filtered = all;
 
   const groups = useMemo(() => groupByHorizon(filtered), [filtered]);
 
@@ -86,24 +66,27 @@ export function ObligationsScreen() {
             tone: "success",
             action: {
               label: "Undo",
-              onClick: () => updateStatus.mutate({ id: o.id, status: "action_needed" }),
+              onClick: () => updateStatus.mutate({ id: o.id, status: o.status }),
             },
           }),
+        onError: () => toast({ title: "Couldn’t update that", description: "Your saved status is unchanged. Try again.", tone: "critical" }),
       },
     );
   };
 
-  const filterOptions: FilterOption<StatusFilter>[] = FILTERS.map((f) => ({
-    ...f,
-    count: counts[f.value],
-  }));
+  const filterOptions: FilterOption<StatusFilter>[] = [...FILTERS];
 
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeader
         title="Obligations"
         description="Everything your household owes, and everything it's owed."
+        actions={can("write") ? <Button variant="primary" onClick={() => setCreating(true)}>Add deadline</Button> : undefined}
       />
+      {creating && <ObligationForm onClose={() => setCreating(false)} onSaved={(saved) => {
+        setCreating(false); setFilter("all"); setSearch(""); setMemberId(null);
+        toast({ title: "Deadline saved", description: saved.title, tone: "success" });
+      }} />}
 
       <div className="mb-5 flex flex-col gap-3">
         <SearchInput
@@ -156,13 +139,14 @@ export function ObligationsScreen() {
               </div>
               <div className="flex flex-col gap-3">
                 {group.items.map((o) => (
-                  <ObligationCard key={o.id} obligation={o} onComplete={() => complete(o)} />
+                  <ObligationCard key={o.id} obligation={o} pending={updateStatus.isPending} onComplete={() => complete(o)} />
                 ))}
               </div>
             </section>
           ))}
         </div>
       )}
+      <CollectionMore query={query} />
     </div>
   );
 }
@@ -205,5 +189,5 @@ function emptyDescription(filter: StatusFilter, search: string): string {
   if (filter === "owed_to_us")
     return "We flag warranties, deposits, and refunds as we find them in your documents.";
   if (filter === "done") return "Completed obligations will collect here.";
-  return "We're watching every deadline we know about. Add a document to widen the net.";
+  return "No saved deadlines match this view. You can add a date you have confirmed.";
 }

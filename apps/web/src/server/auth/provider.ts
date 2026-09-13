@@ -61,6 +61,8 @@ export class ProviderError extends Error {
   constructor(
     readonly reason: ProviderRejection,
     message: string,
+    /** Numeric HTTP status only; never the provider body or submitted credentials. */
+    readonly httpStatus?: number,
   ) {
     super(message);
   }
@@ -234,7 +236,7 @@ export function createGoTrueProvider(
         // The body is never surfaced. GoTrue distinguishes "already registered" from a
         // rejected password, and passing that through would hand the caller an
         // account-enumeration oracle the route then has to un-leak.
-        throw new ProviderError(mapStatus(response.status, "invalid-credentials"), "sign-up was refused");
+        throw new ProviderError(mapStatus(response.status, "invalid-credentials"), "sign-up was refused", response.status);
       }
 
       const body: unknown = await response.json().catch(() => null);

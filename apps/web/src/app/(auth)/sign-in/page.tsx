@@ -4,7 +4,7 @@ import { SignInForm } from "./sign-in-form";
 
 export const metadata: Metadata = {
   title: "Sign in",
-  description: "Sign in to AutoBureau.",
+  description: "Sign in to Pellum.",
 };
 
 /**

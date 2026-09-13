@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Icon } from "@/components/ui/icon";
+import { BrandMark } from "@/components/brand/brand-mark";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -24,13 +24,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           href="/"
           className="inline-flex items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
         >
-          <span
-            aria-hidden
-            className="flex size-8 items-center justify-center rounded-md bg-accent text-accent-ink"
-          >
-            <Icon.Shield className="size-4.5" />
-          </span>
-          <span className="font-serif text-lg font-semibold tracking-tight">AutoBureau</span>
+          <BrandMark className="size-8 shrink-0 text-accent" />
+          <span className="font-serif text-lg font-semibold tracking-tight">Pellum</span>
         </Link>
       </header>
 
@@ -40,7 +35,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       <footer className="px-4 pb-8 text-center text-xs text-ink-tertiary sm:px-6">
         <p className="text-pretty">
-          AutoBureau never asks for a bank or government login, and never moves money.
+          Pellum never asks for a bank or government login, and never moves money.
         </p>
       </footer>
     </div>

@@ -39,10 +39,12 @@ export function ObligationCard({
   obligation,
   onComplete,
   compact,
+  pending = false,
 }: {
   obligation: ObligationView;
   onComplete?: ((id: string) => void) | undefined;
   compact?: boolean | undefined;
+  pending?: boolean;
 }) {
   const { household, can } = useHousehold();
   const sev = severity(obligation);
@@ -121,6 +123,8 @@ export function ObligationCard({
             <button
               type="button"
               onClick={() => onComplete(obligation.id)}
+              disabled={pending}
+              aria-busy={pending}
               aria-label={`Mark "${obligation.title}" as done`}
               className={cn(
                 "relative z-10 shrink-0 rounded-md border border-line p-2 text-ink-tertiary transition-colors",

@@ -69,6 +69,8 @@ const SENSITIVE_KEY_FRAGMENTS = [
   "sessionid",
   "connectionstring",
   "databaseurl",
+  "signedurl",
+  "uploadurl",
   "email",
 ] as const;
 
@@ -93,6 +95,9 @@ export function isSensitiveKey(key: string): boolean {
  * the URL — including the host — in the log.
  */
 const SCRUBBERS: ReadonlyArray<readonly [RegExp, string]> = [
+  // A presigned URL is the entire bearer capability, including its object path.
+  // Remove it before individual token/signature scrubbers can partially rewrite it.
+  [/https?:\/\/[^\s"'<>]*[?&](?:X-Amz-(?:Algorithm|Credential|Signature|Security-Token)|AWSAccessKeyId|Signature)=[^\s"'<>]*/gi, REDACTED],
   // A JWT, which is what every access and refresh token in this system looks like.
   [/\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}/g, REDACTED],
   // A three-segment opaque token that is not obviously a JWT. Segment length is set high

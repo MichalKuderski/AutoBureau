@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { installDomainHttpFixtures } from "@/test/domain-http-fixtures";
+import { describe, expect, it } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderScreen } from "@/test/render";
@@ -15,19 +16,7 @@ import { HouseholdScreen } from "./household-screen";
  * narrow: stop claiming the storage and audit trail are already real.
  */
 
-const NO_CONTENT_HOUSEHOLD = (): Response =>
-  new Response(JSON.stringify({ id: "h-1", name: "Reyes Household", role: "owner" }), {
-    status: 200,
-    headers: { "content-type": "application/json" },
-  });
-
-beforeEach(() => {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(NO_CONTENT_HOUSEHOLD()));
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
+installDomainHttpFixtures();
 
 async function openPassportDetail(): Promise<void> {
   renderScreen(<HouseholdScreen />);
@@ -104,35 +93,15 @@ describe("P0-10 Test C · the masked value and surrounding detail are unaffected
   });
 });
 
-/**
- * Blueprint P0-11.
- *
- * "Add item" is this screen's primary CTA and had no `onClick` at all — pressing it
- * produced no request, no dialog, no toast, no anything. No item-creation endpoint or
- * mutation exists anywhere in this repository. These assertions prove the button is
- * now genuinely non-interactive, not merely styled to look that way.
- */
-
-describe("P0-11 · Add item is not actionable", () => {
-  it("is a disabled button, not merely styled to look inactive", async () => {
+describe("manual item entry", () => {
+  it("opens a working creation form and cancels without a success claim", async () => {
     renderScreen(<HouseholdScreen />);
-    const button = await screen.findByRole("button", { name: /add item/i });
-    expect(button).toBeDisabled();
-  });
-
-  it("states plainly that it is not available", async () => {
-    renderScreen(<HouseholdScreen />);
-    await screen.findByRole("button", { name: /add item/i });
-    expect(screen.getByText("Not available yet.")).toBeInTheDocument();
-  });
-
-  it("produces no dialog, toast, or new row when clicked", async () => {
-    renderScreen(<HouseholdScreen />);
-    const button = await screen.findByRole("button", { name: /add item/i });
-    // A disabled control fires no click; this is the click a user would attempt.
-    await userEvent.click(button);
+    await userEvent.click(await screen.findByRole("button", { name: /add item/i }));
+    const dialog = await screen.findByRole("dialog", { name: "Add item" });
+    expect(within(dialog).getByLabelText(/Item name/)).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.queryByText(/item added|item created/i)).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: /add item/i })).toHaveFocus());
   });
 });
 

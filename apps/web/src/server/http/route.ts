@@ -1,5 +1,5 @@
 import { runAsUser, type Database } from "@autobureau/db";
-import { createJwtVerifier } from "../auth/jwt";
+import { createJwtVerifier, VerificationUnavailableError } from "../auth/jwt";
 import { AuthConfigError, authConfigFromEnv, type AuthConfig } from "../auth/config";
 import { DatabaseConfigError, getDatabase } from "../db";
 import {
@@ -18,7 +18,9 @@ import {
   traceIdFrom,
   withTraceHeader,
 } from "../observability";
-import { jsonResponse, problemResponse } from "./problem";
+import { HttpProblem, jsonResponse, problemResponse } from "./problem";
+import { ListQueryError } from "./list";
+import { fieldErrorsFrom } from "./problem";
 
 /**
  * The `/v1` request boundary (ADR-009 D1–D5).
@@ -239,6 +241,22 @@ interface ProblemContext {
  * entirely absent today. An unexpected throw is the opposite — a defect, with a stack.
  */
 function toProblem(cause: unknown, context: ProblemContext): Response {
+  if (cause instanceof ListQueryError) {
+    return problemResponse("validation", { detail: "Check the filters or page cursor.",
+      ...(cause.issues ? { errors: fieldErrorsFrom(cause.issues) } : {}) });
+  }
+  if (cause instanceof HttpProblem) {
+    return problemResponse(cause.kind, {
+      detail: cause.detail,
+      ...(cause.errors ? { errors: cause.errors } : {}),
+    });
+  }
+  if (cause instanceof VerificationUnavailableError) {
+    log({ event: "auth.key_service_unavailable", level: "error", ...context, status: 503, error: cause });
+    const response = problemResponse("unavailable", { detail: "Session verification is briefly unavailable. Please retry." });
+    response.headers.set("retry-after", "5");
+    return response;
+  }
   const rejection = (status: number) =>
     log({
       event: "http.rejected",

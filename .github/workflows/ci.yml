@@ -20,6 +20,39 @@ env:
   DATABASE_URL: postgresql://app_user:app_local_only@localhost:5432/autobureau
 
 jobs:
+  staging-storage-plan:
+    name: proposed staging storage boundaries (mocked)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform/envs/staging/storage
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.2
+          terraform_wrapper: false
+      - run: terraform init -backend=false -input=false -lockfile=readonly
+      - run: terraform fmt -check
+      - run: terraform validate
+      # The test file mocks AWS. There are no AWS credentials, plans or real applies in CI.
+      - run: terraform test
+
+  staging-bootstrap:
+    name: proposed staging bootstrap boundaries (local only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install cfn-lint==1.56.3
+      - run: cfn-lint infra/cloudformation/staging/adr016-state-bootstrap.json
+      - run: node --test scripts/adr016-bootstrap-review.test.mjs
+
   verify:
     name: lint · build · typecheck · test
     runs-on: ubuntu-latest
@@ -48,6 +81,8 @@ jobs:
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
+      - name: OIDC proof negative controls
+        run: node --test scripts/staging-oidc-settings.test.mjs scripts/staging-cloud-oidc-proof.test.mjs scripts/staging-stable-oidc-proof.test.mjs
 
       # Tenant isolation is the one property we never ship unverified (review F-01).
       - name: Integration tests (RLS / tenancy / outbox)

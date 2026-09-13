@@ -173,6 +173,7 @@ describe("signUp — no account-enumeration oracle", () => {
         .signUp("someone@example.test", "correct horse battery", "Ada")
         .catch((e: unknown) => e);
       expect((error as ProviderError).reason).toBe("unavailable");
+      expect((error as ProviderError).httpStatus).toBe(status);
     }
   });
 });

@@ -23,7 +23,7 @@ on:
         options: [staging, production]
       stage:
         description: >-
-          production only. `migrate` applies migrations and stops, so that D-4 — granting
+          `migrate` applies migrations and stops in staging or production. In production, D-4 — granting
           app_user LOGIN, which no automated path performs — happens before a build is
           shipped against a database it cannot reach. `deploy` then builds and ships. `all`
           fuses both and is only correct once app_user can already log in.
@@ -129,6 +129,16 @@ jobs:
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
+      - name: Read redacted Preview auth diagnostics after a failure
+        if: failure() && steps.deploy.outputs.url != ''
+        continue-on-error: true
+        run: node scripts/preview-auth-diagnostics.mjs "$PREVIEW_URL"
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.url }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
+
   # ── staging ────────────────────────────────────────────────────────────────────────
   # Migrations run before the code that depends on them, and staging is where a
   # migration is proved. Deploy order is always: migrate (expand) → deploy (doc 09 §4).
@@ -152,11 +162,15 @@ jobs:
       # Direct connection, not the pooled one: `migrate deploy` takes advisory locks and
       # issues DDL, and transaction-mode pooling breaks both.
       - name: Apply migrations (expand)
-        run: pnpm --filter @autobureau/db exec prisma migrate deploy
+        if: github.event.inputs.stage != 'deploy'
+        run: |
+          node scripts/verify-staging-migration-target.mjs
+          pnpm --filter @autobureau/db exec prisma migrate deploy
         env:
           DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}
 
-      - run: npm install --global vercel@latest
+      - if: github.event.inputs.stage != 'migrate'
+        run: npm install --global vercel@latest
 
       # No `--git-branch`. Vercel accepts it only alongside `--environment=preview`, because
       # branch overrides exist only in the preview scope; pairing it with `production`
@@ -174,6 +188,7 @@ jobs:
       # sibling `vercel pull` calls were always correct — preview passes
       # `--environment=preview` with no branch, production passes neither.
       - name: Pull Vercel staging configuration
+        if: github.event.inputs.stage != 'migrate'
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -181,6 +196,7 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
 
       - name: Build
+        if: github.event.inputs.stage != 'migrate'
         run: vercel build --prod --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -188,6 +204,7 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
 
       - name: Deploy prebuilt artifact
+        if: github.event.inputs.stage != 'migrate'
         id: deploy
         run: |
           url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
@@ -212,6 +229,7 @@ jobs:
       # the acceptance suite below sign anyone in at all. `--prod` promotes this deployment
       # to that domain, so it is the same artifact either way.
       - name: Smoke staging
+        if: github.event.inputs.stage != 'migrate'
         run: node scripts/smoke-deployment.mjs "https://${{ vars.STAGING_HOST }}"
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
@@ -223,6 +241,7 @@ jobs:
       # Synthetic identities only, against the staging backend doc 09 §1 already fixes as
       # synthetic-only. It never touches production: this job only ever holds a staging host.
       - name: Staging acceptance against the deployment
+        if: github.event.inputs.stage != 'migrate'
         run: node scripts/staging-acceptance.mjs "https://${{ vars.STAGING_HOST }}"
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { Select, TextInput } from "@/components/ui/field";
+import { Alert } from "@/components/ui/alert";
 import { Icon } from "@/components/ui/icon";
 import { StepFooter } from "./onboarding-shell";
 import { useOnboarding, type CaringFor, type DraftMember } from "./onboarding-provider";
@@ -40,7 +41,7 @@ const MEMBER_KINDS: Array<{ value: DraftMember["kind"]; label: string }> = [
 
 export function HouseholdStep() {
   const router = useRouter();
-  const { caringFor, setCaringFor, members, addMember, updateMember, removeMember } =
+  const { caringFor, setCaringFor, members, addMember, updateMember, removeMember, save, saving, saveError } =
     useOnboarding();
 
   const namedCount = members.filter((m) => m.displayName.trim()).length;
@@ -71,6 +72,7 @@ export function HouseholdStep() {
                 <span className="flex items-start gap-2.5">
                   <input
                     type="radio"
+                    disabled={saving}
                     name="caring-for"
                     value={choice.value}
                     checked={selected}
@@ -111,6 +113,8 @@ export function HouseholdStep() {
                     <TextInput
                       label={`Name${members.length > 1 ? ` (person ${index + 1})` : ""}`}
                       value={member.displayName}
+                      disabled={saving}
+                      maxLength={120}
                       autoComplete="off"
                       placeholder="Elena Reyes"
                       onChange={(e) => updateMember(member.id, { displayName: e.target.value })}
@@ -119,6 +123,7 @@ export function HouseholdStep() {
                   <div className="sm:w-52">
                     <Select
                       label="Relationship"
+                      disabled={saving}
                       options={MEMBER_KINDS}
                       value={member.kind}
                       onChange={(e) =>
@@ -130,6 +135,7 @@ export function HouseholdStep() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      disabled={member.memberId !== null || saving}
                       onClick={() => removeMember(member.id)}
                       aria-label={`Remove ${member.displayName.trim() || `person ${index + 1}`}`}
                     >
@@ -148,12 +154,15 @@ export function HouseholdStep() {
             className="mt-3"
             iconLeft={<Icon.Plus className="size-4" />}
             onClick={() => addMember({ displayName: "", kind: "adult" })}
+            disabled={saving}
           >
             Add someone
           </Button>
         </section>
       ) : null}
 
+      {members.some((member) => member.memberId !== null) && <p className="mt-4 text-xs text-ink-secondary">Saved people stay in your household. To archive someone, open People in Settings.</p>}
+      {saveError && <Alert className="mt-5" tone="critical" title="Couldn’t save your setup">{saveError}</Alert>}
       <StepFooter
         note={
           namedCount === 0
@@ -161,7 +170,7 @@ export function HouseholdStep() {
             : undefined
         }
       >
-        <Button variant="primary" onClick={() => router.push("/onboarding/census")}>
+        <Button variant="primary" disabled={caringFor === null} loading={saving} loadingLabel="Saving setup" onClick={async () => { if (await save("household")) router.push("/onboarding/census"); }}>
           Continue
         </Button>
         {caringFor === null ? (

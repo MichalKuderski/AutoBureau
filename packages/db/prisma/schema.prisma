@@ -56,6 +56,8 @@ model User {
   members          HouseholdMember[]
   createdHouseholds Household[]      @relation("household_creator")
   idempotencyKeys  IdempotencyKey[]
+  notifications Notification[]
+  notificationPreferences NotificationPreference[]
 
   @@map("users")
 }
@@ -90,6 +92,7 @@ model Household {
   obligations Obligation[]
   entitlement Entitlement?
   idempotencyKeys IdempotencyKey[]
+  notifications Notification[]
 
   @@map("households")
 }
@@ -276,7 +279,7 @@ model Document {
   storagePath  String     @map("storage_path")
   mimeType     String     @map("mime_type")
   sizeBytes    BigInt     @map("size_bytes")
-  sha256       Bytes
+  sha256       Bytes?     // Set only after hashing actual quarantined bytes.
   status       DocStatus  @default(received)
   docType      String?    @map("doc_type")
   confidence   Decimal?   @db.Decimal(4, 3)
@@ -290,6 +293,7 @@ model Document {
   updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   household Household       @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  upload    DocumentUpload?
   chunks    DocumentChunk[]
   items     Item[]
 
@@ -297,6 +301,21 @@ model Document {
   @@index([householdId, status])
   @@index([householdId, docType, docDate])
   @@map("documents")
+}
+
+/// Upload capability metadata is separate from trusted processed document metadata.
+/// Tenant access is derived through the parent document's forced-RLS policy.
+model DocumentUpload {
+  documentId  String    @id @map("document_id") @db.Uuid
+  objectKey   String    @unique @map("object_key") @db.VarChar(300)
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("document_uploads")
 }
 
 /// A3/F-05: NO vector index at launch. Retrieval is exact KNN inside one household
@@ -495,6 +514,77 @@ enum ReminderStatus {
   sent
   skipped
   cancelled
+}
+
+// ─────────────────────────── notification ledger ───────────────────────────
+
+enum NotificationChannel {
+  email
+  push
+  inapp
+}
+
+enum NotificationDeliveryStatus {
+  queued
+  sent
+  delivered
+  bounced
+  failed
+  suppressed
+}
+
+model Notification {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  userId      String @map("user_id") @db.Uuid
+  kind        String @db.VarChar(80)
+  title       String @db.VarChar(300)
+  body        String @db.VarChar(2000)
+  targetType  String? @map("target_type") @db.VarChar(32)
+  targetId    String? @map("target_id") @db.Uuid
+  dedupeKey   String @map("dedupe_key") @db.VarChar(200)
+  readAt      DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
+
+  @@unique([householdId, userId, dedupeKey])
+  @@index([householdId, userId, createdAt, id])
+  @@index([userId])
+  @@map("notifications")
+}
+
+model NotificationDelivery {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  notificationId String @map("notification_id") @db.Uuid
+  channel        NotificationChannel
+  status         NotificationDeliveryStatus @default(queued)
+  providerMessageId String? @map("provider_message_id") @db.VarChar(255)
+  availableAt    DateTime @default(now()) @map("available_at") @db.Timestamptz(6)
+  attempts       Int @default(0)
+  leaseToken     String? @map("lease_token") @db.Uuid
+  leaseUntil     DateTime? @map("lease_until") @db.Timestamptz(6)
+  sentAt         DateTime? @map("sent_at") @db.Timestamptz(6)
+  deliveredAt    DateTime? @map("delivered_at") @db.Timestamptz(6)
+  errorCode      String? @map("error_code") @db.VarChar(80)
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, channel])
+  @@index([status, availableAt])
+  @@map("notification_deliveries")
+}
+
+model NotificationPreference {
+  userId  String @map("user_id") @db.Uuid
+  kind    String @db.VarChar(80)
+  channel NotificationChannel
+  enabled Boolean @default(true)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, kind, channel])
+  @@map("notification_preferences")
 }
 
 /// Reminders are materialized rows so the scheduler is an indexed scan (doc 07 §5)

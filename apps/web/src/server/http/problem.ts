@@ -1,6 +1,16 @@
 import { problem, type FieldError, type ProblemKind } from "@autobureau/contracts";
 import type { ZodError } from "zod";
 
+/** Intentional, coarse domain errors; never wrap raw database/provider messages. */
+export class HttpProblem extends Error {
+  override readonly name = "HttpProblem";
+  constructor(
+    readonly kind: ProblemKind,
+    readonly detail: string,
+    readonly errors?: FieldError[],
+  ) { super(detail); }
+}
+
 /**
  * RFC 9457 responses (doc 03 §1) — the only error shape `/v1` returns.
  *

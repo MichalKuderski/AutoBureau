@@ -1,8 +1,11 @@
+import { installDomainHttpFixtures } from "@/test/domain-http-fixtures";
 import { describe, expect, it } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderScreen } from "@/test/render";
 import { DocumentsScreen } from "./documents-screen";
+
+installDomainHttpFixtures();
 
 /**
  * Blueprint P0-07.
@@ -47,8 +50,9 @@ describe("Test B · the documents drawer is truthful", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /close/i }));
 
-    expect(screen.queryByText(/documents? received/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/added|uploaded|saved/i)).not.toBeInTheDocument();
+    const notifications = within(screen.getByRole("region", { name: "Notifications" }));
+    expect(notifications.queryByText(/documents? received/i)).not.toBeInTheDocument();
+    expect(notifications.queryByText(/added|uploaded|saved/i)).not.toBeInTheDocument();
   });
 });
 
@@ -59,7 +63,7 @@ describe("Test D · the rest of the documents screen is unaffected", () => {
     expect(screen.getByRole("columnheader", { name: /document/i })).toBeInTheDocument();
   });
 
-  it("removed the upload promise from the empty-state copy without touching the forwarding claim", async () => {
+  it("offers an honest empty search without promising ingestion", async () => {
     renderScreen(<DocumentsScreen />);
     // The empty state this copy lives in only renders with zero matching rows, so a
     // search guaranteed to match nothing is what actually exercises it — asserting on
@@ -70,8 +74,7 @@ describe("Test D · the rest of the documents screen is unaffected", () => {
     );
 
     expect(await screen.findByText(/nothing matches that/i)).toBeInTheDocument();
-    expect(screen.getByText(/forward a bill or renewal notice/i)).toBeInTheDocument();
-    expect(screen.getByText(/uploading isn't available yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/try a different word or clear the search/i)).toBeInTheDocument();
     expect(
       screen.queryByText(/upload a folder of pdfs — we'll take it from there/i),
     ).not.toBeInTheDocument();
