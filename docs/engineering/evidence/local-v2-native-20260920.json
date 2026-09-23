@@ -1,0 +1,172 @@
+{
+  "verifiedAtUTC": "2026-09-20T18:49:41.788789+00:00",
+  "classification": "LOCAL DEVELOPMENT VERIFIED; NO-GO FOR PRODUCTION PREFLIGHT",
+  "implementationSha": "22756b6eb9be24f60f9e7710fd24906adb525cb5",
+  "packageBaseSha": "7863ec89e1cfd35abb3dcd0132ba2ae1c42c6595",
+  "originalCheckout": {
+    "branch": "main",
+    "sha": "56cf76ed3f6da70b506a1dd34b7258bfe6eebd95",
+    "preservedFileHashes": 386,
+    "unchanged": true
+  },
+  "reviewBranch": "codex/review-pellum-hardening-v2",
+  "packageZipSha256": "cb07b85109bf71bbfbc5c3cd9428fd1cd10e301326940d8366e815a13f3fbe08",
+  "cumulativePatchSha256": "e0a48545e9a8b4e7c26550f68d3fd8e072491ea3e43d04f06d85e4dfe4cbbdac",
+  "packageReconciliation": {
+    "baselineFilesMatched": 3,
+    "initialProposedFilesMatched": 18,
+    "applied": "cumulative v2 once",
+    "deltaApplied": false,
+    "originalMainIsAncestor": true
+  },
+  "toolchain": {
+    "node": "22.16.0",
+    "pnpm": "10.34.5",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7",
+    "next": "15.5.22",
+    "prisma": "6.19.3",
+    "stripeDevOnly": "22.6.2"
+  },
+  "checks": {
+    "frozenInstall": true,
+    "lint": {
+      "errors": 0,
+      "existingWarnings": 13
+    },
+    "build": true,
+    "typecheck": true,
+    "unit": {
+      "web": 1247,
+      "contracts": 99,
+      "db": 16,
+      "ops": 8,
+      "total": 1370
+    },
+    "integration": {
+      "web": 377,
+      "db": 70,
+      "total": 447,
+      "postgresMajor": 18,
+      "ciPostgres16Verified": false
+    },
+    "infrastructureAcceptanceControls": 153,
+    "architectureChecks": 7,
+    "packageHelper": 9,
+    "initialPackageFocusedNative": 308,
+    "officialStripeSdkSynthetic": 16,
+    "stripeBufferRegression": 1
+  },
+  "negativeControl": {
+    "historicalProviderFailsNewRouteCases": 4,
+    "expectedStatus": 503,
+    "historicalStatus": 202,
+    "hardenedProviderRestored": true
+  },
+  "failureResolved": {
+    "initialIntegrationFailures": 4,
+    "cause": "Synthetic cases reused one signup address and exhausted its unchanged three-attempt bucket",
+    "fix": "Distinct random synthetic identifier per case; rate-limit expectations and policy unchanged"
+  },
+  "localDatabase": {
+    "database": "pellum_v2_review",
+    "server_version": "18.3 (Postgres.app)",
+    "data_directory": "/private/tmp/pellum-v2-review-20260920/pgdata",
+    "completed_migrations": 13,
+    "rolled_back_migrations": 0,
+    "forced_rls_tables": 21,
+    "policies": 27,
+    "ensure_rls_triggers": 0,
+    "app_user": {
+      "superuser": false,
+      "bypassrls": false,
+      "login": true
+    },
+    "app_user_owned_tables": 0,
+    "stoppedAfterVerification": true
+  },
+  "scope": {
+    "hostedProviderFlowsRun": false,
+    "stableStagingAcceptanceRun": false,
+    "productionMutations": false,
+    "stripeLive": false,
+    "plaidProduction": false,
+    "realFinancialData": false,
+    "realDocumentProcessing": false,
+    "modelCalls": false,
+    "cloudResourcesCreated": false,
+    "pushed": false,
+    "deployed": false
+  },
+  "providerBlocker": "Supabase staging dashboard redirected to sign-in; user session restoration pending. No old credential replay or repeat OAuth revocation.",
+  "supabase504": "UNRESOLVED: local synthetic resilience does not establish provider root cause or end-to-end recovery",
+  "remainingGates": [
+    "OAuth containment evidence/current management access",
+    "SNS confirmation and email receipt",
+    "ADR-017 effective live transport proof",
+    "scanner/dispatcher/retention",
+    "safe pre-provider redaction",
+    "document processing/review/delivery",
+    "reminders",
+    "recovery/MFA/privacy",
+    "Stripe TEST lifecycle",
+    "Plaid Sandbox lifecycle and encrypted custody",
+    "exhaustive UI/accessibility",
+    "exact-SHA hosted/stable acceptance",
+    "legal/operator/domain prerequisites"
+  ],
+  "logs": {
+    "install-final": {
+      "sha256": "69cdbba3dde5f7b526642af92ae1af3d2a6157414ea10a2f50b444642b029146",
+      "exitCode": 0
+    },
+    "lint-complete": {
+      "sha256": "ffb00d50730c5999cc7fa10f1f288eb495a3b77ecddd12dc87641761981ab9c9",
+      "exitCode": 0
+    },
+    "build-complete": {
+      "sha256": "7003a7df3e0ff96639d63f362f8423fe9a043fb4fb0898bf6c28ce9c2097bda0",
+      "exitCode": 0
+    },
+    "typecheck-complete": {
+      "sha256": "4d96348bc6a1d6c1152c718c6b7c01942b69ca6009535dc90f2d3f2f6e2849db",
+      "exitCode": 0
+    },
+    "unit-complete": {
+      "sha256": "7f1fd9bb65e5dc32c816227f7a2106f571a0f7bac5fa1797817ea304a8ffe193",
+      "exitCode": 0
+    },
+    "integration-complete": {
+      "sha256": "1ec5a04b33c9a65b46ffb40bd13f9240faf50699244fbf5758a3a88a3f116611",
+      "exitCode": 0
+    },
+    "focused": {
+      "sha256": "464c7434609a14fc2527e9fdf91882836e594238178588555e5afdf1f603d879",
+      "exitCode": 0
+    },
+    "stripe-sdk": {
+      "sha256": "4b19ed4d85ad4e31c158e90e501fc958cbd4b5d8bd28b5ecfa126eb13c5e0b37",
+      "exitCode": 0
+    },
+    "guardrails": {
+      "sha256": "cbab49e93de6328ba63961bff22dfeec6ef34afdaefc6815c43006f9efbaa463",
+      "exitCode": 0
+    },
+    "alert-guard": {
+      "sha256": "dfa67689c17b6903fd09c99a436fcee900f3ff1685b11cfacdf13349c7d3f4a9",
+      "exitCode": 0
+    },
+    "package-helper": {
+      "sha256": "7ff81a619965423f1bb576985499bd1acf640e043624c9e13244561a4b424c10",
+      "exitCode": 0
+    },
+    "integration": {
+      "sha256": "6b3fc66f30d22b8438f8928367e43943cd57ae8abf75fcc799a0be273a0dafbe",
+      "exitCode": 1
+    },
+    "integration-negative-baseline": {
+      "sha256": "f1913d8ec1fe993a310de80e946db7c2b518103f78520ac13eff48a48dd78d72",
+      "exitCode": 1
+    }
+  }
+}

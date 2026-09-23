@@ -1,0 +1,31 @@
+{
+  "capturedAt": "2026-09-13T22:28:10.166149Z",
+  "projectId": "kdqnfruwgocfqwpbpuxo",
+  "households": 167,
+  "entitlements": 167,
+  "documents": 0,
+  "jobDeliveries": 0,
+  "jobInbox": 0,
+  "completedMigrations": 13,
+  "rolledBackMigrations": 0,
+  "forcedRlsTables": 21,
+  "policies": 27,
+  "ensureRlsTriggers": 0,
+  "providerApiTableGrants": 0,
+  "controlledIdentity": {
+    "authUsers": 1,
+    "confirmed": true,
+    "sessions": 1
+  },
+  "pointInTimeDatabase": {
+    "backends": 15,
+    "maxConnections": 60,
+    "waitingForLock": 0
+  },
+  "fixtureDelta": {
+    "from": 164,
+    "to": 167,
+    "reason": "three successful synthetic signups in Preview run 34786603902"
+  },
+  "productionAccessed": false
+}

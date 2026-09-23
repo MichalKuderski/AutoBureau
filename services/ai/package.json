@@ -1,0 +1,11 @@
+{
+  "name": "@autobureau/ai-boundary",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/gateway.js",
+  "types": "./dist/gateway.d.ts",
+  "exports": { ".": { "types": "./dist/gateway.d.ts", "default": "./dist/gateway.js" } },
+  "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit", "test": "vitest run" },
+  "devDependencies": { "@types/node": "^22.20.1", "typescript": "^5.8.0", "vitest": "^3.0.0" }
+}

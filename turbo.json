@@ -1,0 +1,51 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**"
+      ]
+    },
+    "test": {
+      "dependsOn": [
+        "^build"
+      ]
+    },
+    "test:integration": {
+      "dependsOn": [
+        "^build",
+        "build",
+        "^test:integration"
+      ],
+      "cache": false,
+      "env": [
+        "DATABASE_URL",
+        "DATABASE_ADMIN_URL"
+      ]
+    },
+    "typecheck": {
+      "dependsOn": [
+        "^build"
+      ]
+    },
+    "@autobureau/db#build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**"
+      ],
+      "cache": false
+    },
+    "@autobureau/db#typecheck": {
+      "dependsOn": [
+        "build"
+      ]
+    }
+  }
+}

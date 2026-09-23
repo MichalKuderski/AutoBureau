@@ -1,0 +1,183 @@
+{
+  "capturedAt": "2026-09-13T20:21:02.393031+00:00",
+  "status": "PASS",
+  "permissions": [
+    {
+      "scope": "stg",
+      "action": "s3:GetObject",
+      "resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/11111111-1111-4111-8111-111111111111/upload/22222222-2222-4222-8222-222222222222/incoming",
+      "decision": "allowed",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "stg",
+      "action": "s3:PutObject",
+      "resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/11111111-1111-4111-8111-111111111111/upload/22222222-2222-4222-8222-222222222222/incoming",
+      "decision": "allowed",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "stg",
+      "action": "s3:DeleteObject",
+      "resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/11111111-1111-4111-8111-111111111111/upload/22222222-2222-4222-8222-222222222222/incoming",
+      "decision": "implicitDeny",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "stg",
+      "action": "s3:ListBucket",
+      "resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2",
+      "decision": "implicitDeny",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "stg",
+      "action": "s3:PutBucketPolicy",
+      "resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2",
+      "decision": "implicitDeny",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "stg",
+      "action": "s3:GetObject",
+      "resource": "arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2/adr016/storage.tfstate",
+      "decision": "implicitDeny",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "stg",
+      "action": "iam:CreateUser",
+      "resource": "arn:aws:iam::792394000571:user/synthetic-forbidden",
+      "decision": "implicitDeny",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "stg",
+      "action": "sts:AssumeRole",
+      "resource": "arn:aws:iam::792394000571:role/pellum-stg-terraform-deploy",
+      "decision": "implicitDeny",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "preview",
+      "action": "s3:GetObject",
+      "resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/11111111-1111-4111-8111-111111111111/upload/22222222-2222-4222-8222-222222222222/incoming",
+      "decision": "allowed",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "preview",
+      "action": "s3:PutObject",
+      "resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/11111111-1111-4111-8111-111111111111/upload/22222222-2222-4222-8222-222222222222/incoming",
+      "decision": "allowed",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "preview",
+      "action": "s3:DeleteObject",
+      "resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/11111111-1111-4111-8111-111111111111/upload/22222222-2222-4222-8222-222222222222/incoming",
+      "decision": "implicitDeny",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "preview",
+      "action": "s3:ListBucket",
+      "resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2",
+      "decision": "implicitDeny",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "preview",
+      "action": "s3:PutBucketPolicy",
+      "resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2",
+      "decision": "implicitDeny",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "preview",
+      "action": "s3:GetObject",
+      "resource": "arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2/adr016/storage.tfstate",
+      "decision": "implicitDeny",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "preview",
+      "action": "iam:CreateUser",
+      "resource": "arn:aws:iam::792394000571:user/synthetic-forbidden",
+      "decision": "implicitDeny",
+      "mechanism": "AWS effective principal-policy simulation"
+    },
+    {
+      "scope": "preview",
+      "action": "sts:AssumeRole",
+      "resource": "arn:aws:iam::792394000571:role/pellum-stg-terraform-deploy",
+      "decision": "implicitDeny",
+      "mechanism": "AWS effective principal-policy simulation"
+    }
+  ],
+  "trust": [
+    {
+      "scope": "stg",
+      "principalCase": "intended",
+      "trustMatches": true,
+      "mechanism": "exact live IAM trust condition evaluation; no foreign account/project was accessed"
+    },
+    {
+      "scope": "stg",
+      "principalCase": "wrong_project",
+      "trustMatches": false,
+      "mechanism": "exact live IAM trust condition evaluation; no foreign account/project was accessed"
+    },
+    {
+      "scope": "stg",
+      "principalCase": "wrong_team",
+      "trustMatches": false,
+      "mechanism": "exact live IAM trust condition evaluation; no foreign account/project was accessed"
+    },
+    {
+      "scope": "stg",
+      "principalCase": "wrong_environment",
+      "trustMatches": false,
+      "mechanism": "exact live IAM trust condition evaluation; no foreign account/project was accessed"
+    },
+    {
+      "scope": "stg",
+      "principalCase": "production_application",
+      "trustMatches": false,
+      "mechanism": "exact live IAM trust condition evaluation; no foreign account/project was accessed"
+    },
+    {
+      "scope": "preview",
+      "principalCase": "intended",
+      "trustMatches": true,
+      "mechanism": "exact live IAM trust condition evaluation; no foreign account/project was accessed"
+    },
+    {
+      "scope": "preview",
+      "principalCase": "wrong_project",
+      "trustMatches": false,
+      "mechanism": "exact live IAM trust condition evaluation; no foreign account/project was accessed"
+    },
+    {
+      "scope": "preview",
+      "principalCase": "wrong_team",
+      "trustMatches": false,
+      "mechanism": "exact live IAM trust condition evaluation; no foreign account/project was accessed"
+    },
+    {
+      "scope": "preview",
+      "principalCase": "wrong_environment",
+      "trustMatches": false,
+      "mechanism": "exact live IAM trust condition evaluation; no foreign account/project was accessed"
+    },
+    {
+      "scope": "preview",
+      "principalCase": "production_application",
+      "trustMatches": false,
+      "mechanism": "exact live IAM trust condition evaluation; no foreign account/project was accessed"
+    }
+  ],
+  "liveCrossEnvironmentStsDenial": "passed in native probe34779694901",
+  "foreignSignedTokenStsCallsPerformed": false,
+  "productionApplicationAccessed": false
+}

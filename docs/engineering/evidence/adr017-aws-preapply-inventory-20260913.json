@@ -1,0 +1,161 @@
+{
+  "capturedAt": "2026-09-13T21:33:08.350551+00:00",
+  "account": "792394000571",
+  "region": "us-east-2",
+  "checks": {
+    "queues": {},
+    "roles": [
+      {
+        "name": "AWSServiceRoleForResourceExplorer",
+        "arn": "arn:aws:iam::792394000571:role/aws-service-role/resource-explorer-2.amazonaws.com/AWSServiceRoleForResourceExplorer"
+      },
+      {
+        "name": "AWSServiceRoleForSupport",
+        "arn": "arn:aws:iam::792394000571:role/aws-service-role/support.amazonaws.com/AWSServiceRoleForSupport"
+      },
+      {
+        "name": "AWSServiceRoleForTrustedAdvisor",
+        "arn": "arn:aws:iam::792394000571:role/aws-service-role/trustedadvisor.amazonaws.com/AWSServiceRoleForTrustedAdvisor"
+      },
+      {
+        "name": "pellum-preview-upload-signer",
+        "arn": "arn:aws:iam::792394000571:role/pellum-preview-upload-signer"
+      },
+      {
+        "name": "pellum-stg-terraform-deploy",
+        "arn": "arn:aws:iam::792394000571:role/pellum-stg-terraform-deploy"
+      },
+      {
+        "name": "pellum-stg-terraform-state",
+        "arn": "arn:aws:iam::792394000571:role/pellum-stg-terraform-state"
+      },
+      {
+        "name": "pellum-stg-upload-signer",
+        "arn": "arn:aws:iam::792394000571:role/pellum-stg-upload-signer"
+      }
+    ],
+    "policies": [
+      {
+        "name": "pellum-stg-terraform-deploy-boundary",
+        "arn": "arn:aws:iam::792394000571:policy/pellum-stg-terraform-deploy-boundary"
+      },
+      {
+        "name": "pellum-stg-upload-boundary",
+        "arn": "arn:aws:iam::792394000571:policy/pellum-stg-upload-boundary"
+      }
+    ],
+    "buckets": [
+      "pellum-stg-quarantine-792394000571-us-east-2",
+      "pellum-stg-tfstate-792394000571-us-east-2"
+    ],
+    "jobs_state_absence": {
+      "error": [
+        "404"
+      ]
+    },
+    "tables": {
+      "TableNames": [
+        "pellum-stg-tfstate-locks"
+      ]
+    },
+    "alarms": [],
+    "dashboards": [],
+    "oidc": {
+      "OpenIDConnectProviderList": [
+        {
+          "Arn": "arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike"
+        },
+        {
+          "Arn": "arn:aws:iam::792394000571:oidc-provider/token.actions.githubusercontent.com"
+        }
+      ]
+    },
+    "free_usage": {
+      "freeTierUsages": [
+        {
+          "service": "AWS Glue",
+          "operation": "Request",
+          "usageType": "Catalog-Request",
+          "region": "global",
+          "actualUsageAmount": 24.0,
+          "forecastedUsageAmount": 55.38461538461539,
+          "limit": 1000000.0,
+          "unit": "Request",
+          "description": "1000000.0 Request are always free per month as part of AWS Free Usage Tier (Global-Catalog-Request)",
+          "freeTierType": "Always Free"
+        },
+        {
+          "service": "Amazon Simple Queue Service",
+          "operation": "",
+          "usageType": "Requests",
+          "region": "global",
+          "actualUsageAmount": 2.0,
+          "forecastedUsageAmount": 4.615384615384616,
+          "limit": 1000000.0,
+          "unit": "Requests",
+          "description": "1000000.0 Requests are always free per month as part of AWS Free Usage Tier (Global-Requests)",
+          "freeTierType": "Always Free"
+        },
+        {
+          "service": "Amazon Simple Notification Service",
+          "operation": "",
+          "usageType": "USE2-Requests-Tier1",
+          "region": "us-east-2",
+          "actualUsageAmount": 2.0,
+          "forecastedUsageAmount": 4.615384615384616,
+          "limit": 1000000.0,
+          "unit": "Requests",
+          "description": "1000000.0 Requests are always free per month as part of AWS Free Usage Tier (USE2-Requests-Tier1)",
+          "freeTierType": "Always Free"
+        },
+        {
+          "service": "AWS Key Management Service",
+          "operation": "",
+          "usageType": "KMS-Requests",
+          "region": "global",
+          "actualUsageAmount": 4.0,
+          "forecastedUsageAmount": 9.230769230769232,
+          "limit": 20000.0,
+          "unit": "Requests",
+          "description": "20000.0 Requests are always free per month as part of AWS Free Usage Tier (Global-KMS-Requests)",
+          "freeTierType": "Always Free"
+        }
+      ]
+    },
+    "free_plan": {
+      "accountId": "792394000571",
+      "accountPlanType": "FREE",
+      "accountPlanStatus": "ACTIVE",
+      "accountPlanRemainingCredits": {
+        "amount": 94.68,
+        "unit": "USD"
+      },
+      "accountPlanExpirationDate": "2027-02-28T19:01:45.799000+00:00"
+    },
+    "ec2": [
+      {
+        "id": "i-0da03b27a0a02b7df",
+        "state": "running",
+        "type": "t3.micro"
+      }
+    ],
+    "volumes": [
+      {
+        "id": "vol-0ec2ddc07f532ab23",
+        "size": 8,
+        "encrypted": false,
+        "type": "gp3"
+      }
+    ],
+    "stacks": [
+      {
+        "name": "pellum-stg-adr016-grant",
+        "status": "CREATE_COMPLETE"
+      },
+      {
+        "name": "pellum-stg-adr016-bootstrap",
+        "status": "CREATE_COMPLETE"
+      }
+    ]
+  }
+}

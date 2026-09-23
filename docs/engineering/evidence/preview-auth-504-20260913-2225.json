@@ -1,0 +1,35 @@
+{
+  "capturedAt": "2026-09-13T22:25:30.563Z",
+  "scope": "Preview only",
+  "project": "autobureau-staging",
+  "sourceSha": "a352d1c083d17b0d1282eb8ef4e59aa28ed5aada",
+  "runId": 34786603902,
+  "url": "https://autobureau-staging-6kj7aan5i-data-analyst-mike.vercel.app",
+  "smoke": {
+    "passed": 17,
+    "total": 17
+  },
+  "acceptance": {
+    "passed": 56,
+    "total": 57,
+    "failure": "wrong-password sign-in returned 503 instead of 401"
+  },
+  "providerFailure": {
+    "event": "auth.sign_in_provider_unavailable",
+    "traceId": "01a09cdf-cacb-7875-99cd-543f33318c3b",
+    "upstreamStatus": 504,
+    "failure": "http",
+    "durationMs": 5030,
+    "requestId": "01a09cdf-cf92-7e3b-a9cc-e59dfdd0a8fa"
+  },
+  "signupSequence": [
+    204,
+    202,
+    202,
+    429,
+    429
+  ],
+  "immediateCause": "Upstream HTTP 504 before the 10-second application deadline",
+  "deeperProviderCause": "unresolved",
+  "productionAccessed": false
+}

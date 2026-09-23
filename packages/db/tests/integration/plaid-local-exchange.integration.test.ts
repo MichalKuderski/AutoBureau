@@ -1,0 +1,96 @@
+import {randomUUID} from 'node:crypto';
+import {PrismaClient} from '@prisma/client';
+import {beforeAll,afterAll,it,expect} from 'vitest';
+import {Database} from '../../src/scoped.js';
+import {runAsUser} from '../../src/audit.js';
+import {requestLocalPlaidExchange,claimLocalPlaidExchange,completeLocalPlaidExchange} from '../../src/plaid-local-exchange.js';
+import {createLocalPlaidCustody} from '../../../../services/plaid/src/local-custody.js';
+import {runLocalPlaidExchange} from '../../../../scripts/local-plaid-exchange.js';
+import {ADMIN_URL,APP_URL,bootstrapDatabase,grantAppUserLogin} from './setup.js';
+let admin:PrismaClient,app:PrismaClient,runtime:PrismaClient,db:Database,appDb:Database;
+const households:string[]=[],users:string[]=[];
+beforeAll(async()=>{await bootstrapDatabase();await grantAppUserLogin();admin=new PrismaClient({datasourceUrl:ADMIN_URL});app=new PrismaClient({datasourceUrl:APP_URL});appDb=new Database(app);await admin.$executeRawUnsafe("ALTER ROLE app_plaid_sandbox LOGIN PASSWORD 'local_plaid_fixture_only'");const u=new URL(ADMIN_URL);u.username='app_plaid_sandbox';u.password='local_plaid_fixture_only';runtime=new PrismaClient({datasourceUrl:u.toString()});db=new Database(runtime);},120000);
+afterAll(async()=>{if(admin){const where={householdId:{in:households}};await admin.deletionObservation.deleteMany({where});await admin.deletionAttempt.deleteMany({where});await admin.deletionResource.deleteMany({where});await admin.householdDeletion.deleteMany({where});await admin.plaidLocalCredential.deleteMany({where});await admin.plaidLocalItem.deleteMany({where});await admin.plaidLocalExchange.deleteMany({where});await admin.plaidLocalSubject.deleteMany({where});await admin.outboxEvent.deleteMany({where});await admin.household.deleteMany({where:{id:{in:households}}});await admin.auditLog.deleteMany({where});await admin.user.deleteMany({where:{id:{in:users}}});await admin.$executeRawUnsafe('ALTER ROLE app_plaid_sandbox NOLOGIN PASSWORD NULL');}await Promise.all([admin,app,runtime].map(c=>c?.$disconnect()));});
+async function fixture(){const hh=randomUUID(),owner=randomUUID(),operation=randomUUID();households.push(hh);users.push(owner);await admin.user.create({data:{id:owner,email:owner+'@example.test'}});await admin.household.create({data:{id:hh,createdBy:owner,name:'PUBLIC financial fixture'}});await admin.householdUser.create({data:{householdId:hh,userId:owner,role:'owner'}});await runAsUser(owner,()=>requestLocalPlaidExchange(appDb,hh,operation,'READ ONLY PUBLIC SYNTHETIC ACCOUNTS'));return{hh,owner,operation};}
+async function prepared(f:Awaited<ReturnType<typeof fixture>>){const claim=(await claimLocalPlaidExchange(db,f.hh,f.operation))!,keyring=createLocalPlaidCustody(),providerItemId='public-fixture-item-'+randomUUID(),token='access-sandbox-PUBLIC_SYNTHETIC_'+randomUUID();const binding={environment:'local-synthetic-sandbox' as const,householdId:f.hh,incarnationId:claim.incarnationId,itemId:f.operation,providerItemId,revision:1};return{claim,keyring,providerItemId,token,binding,envelope:keyring.seal(binding,token)};}
+it('durably activates exactly one owner-bound encrypted Item outside the intent transaction',async()=>{const f=await fixture(),keys=createLocalPlaidCustody();let calls=0;const token='access-sandbox-PUBLIC_SYNTHETIC_'+randomUUID();const adapter={exchange:async()=>{calls++;await appDb.withHousehold(f.hh,tx=>tx.$executeRaw`SELECT app.assert_household_open(${f.hh}::uuid)`);return{itemId:'public-fixture-item-'+randomUUID(),accessToken:token};}};
+ try{expect(await runLocalPlaidExchange(db,f.hh,f.operation,'public-sandbox-PUBLIC_SYNTHETIC_'+randomUUID(),keys,adapter)).toMatchObject({status:'completed',id:f.operation,replayed:false});expect(await runLocalPlaidExchange(db,f.hh,f.operation,'public-sandbox-PUBLIC_SYNTHETIC_'+randomUUID(),keys,adapter)).toEqual({status:'not-claimable'});expect(calls).toBe(1);
+ const rows=await db.withHousehold(f.hh,tx=>tx.$queryRaw<Array<{ciphertext:string}>>`SELECT ciphertext FROM plaid_local_credentials`);expect(rows).toHaveLength(1);expect(JSON.stringify(rows)).not.toContain(token);
+ expect(await appDb.withHousehold(f.hh,tx=>tx.$queryRaw`SELECT id,state FROM plaid_local_items`)).toEqual([{id:f.operation,state:'active'}]);
+ expect(await db.withHousehold(f.hh,tx=>tx.outboxEvent.count({where:{eventType:'plaid.local_item_activated'}}))).toBe(1);
+ }finally{keys.close();}
+});
+it('duplicate intent and concurrent claims never exchange twice',async()=>{const f=await fixture();await runAsUser(f.owner,()=>requestLocalPlaidExchange(appDb,f.hh,f.operation,'READ ONLY PUBLIC SYNTHETIC ACCOUNTS'));const claims=await Promise.all([claimLocalPlaidExchange(db,f.hh,f.operation),claimLocalPlaidExchange(db,f.hh,f.operation)]);expect(claims.filter(Boolean)).toHaveLength(1);});
+it('lost commit acknowledgement reuses immutable Item and cannot overwrite ciphertext',async()=>{const f=await fixture(),p=await prepared(f);try{const first=await completeLocalPlaidExchange(db,p.claim,p.providerItemId,p.envelope);expect(first).toEqual({id:f.operation,replayed:false});expect(await completeLocalPlaidExchange(db,p.claim,p.providerItemId,p.envelope)).toEqual({id:f.operation,replayed:true});await expect(completeLocalPlaidExchange(db,p.claim,'public-fixture-item-'+randomUUID(),p.envelope)).rejects.toThrow('Local financial operation refused');}finally{p.keyring.close();}});
+it('expired started exchange becomes indeterminate and is never automatically reclaimed',async()=>{const f=await fixture(),p=await prepared(f);try{await admin.plaidLocalExchange.update({where:{id:f.operation},data:{leaseUntil:new Date(0)}});expect(await claimLocalPlaidExchange(db,f.hh,f.operation)).toBeNull();expect(await appDb.withHousehold(f.hh,tx=>tx.$queryRaw`SELECT state FROM plaid_local_exchanges`)).toEqual([{state:'indeterminate'}]);await expect(completeLocalPlaidExchange(db,p.claim,p.providerItemId,p.envelope)).rejects.toThrow();}finally{p.keyring.close();}});
+it('provider failure retains one attempted operation without leaking its error or retrying',async()=>{const f=await fixture(),keys=createLocalPlaidCustody();let calls=0;const adapter={exchange:async()=>{calls++;throw new Error('private provider diagnostic');}};try{await expect(runLocalPlaidExchange(db,f.hh,f.operation,'public-sandbox-PUBLIC_SYNTHETIC_'+randomUUID(),keys,adapter)).rejects.toThrow('Local financial operation refused');expect(await runLocalPlaidExchange(db,f.hh,f.operation,'public-sandbox-PUBLIC_SYNTHETIC_'+randomUUID(),keys,adapter)).toEqual({status:'not-claimable'});expect(calls).toBe(1);}finally{keys.close();}});
+it.each(['owner','fence','incarnation','nonce','foreign','suspended'])('%s change after provider response refuses activation atomically',async reason=>{const f=await fixture(),p=await prepared(f);try{
+ if(reason==='suspended')await admin.user.update({where:{id:f.owner},data:{status:'suspended'}});
+ if(reason==='owner')await admin.householdUser.deleteMany({where:{householdId:f.hh,userId:f.owner}});
+ if(reason==='fence')await admin.householdDeletion.create({data:{householdId:f.hh,requestedBy:f.owner,requestedAt:new Date(Date.now()-20*86400000),undoUntil:new Date(Date.now()-6*86400000),state:'fenced',fencedAt:new Date(Date.now()-3600000),settleUntil:new Date(Date.now()-2700000)}});
+ const claim={...p.claim,...(reason==='incarnation'?{incarnationId:randomUUID()}:reason==='nonce'?{leaseToken:randomUUID()}:reason==='foreign'?{householdId:(await fixture()).hh}:{})};
+ await expect(completeLocalPlaidExchange(db,claim,p.providerItemId,p.envelope)).rejects.toThrow('Local financial operation refused');expect(await db.withHousehold(f.hh,tx=>tx.plaidLocalCredential.count())).toBe(0);
+ }finally{p.keyring.close();}});
+it('copied ciphertext cannot be used across the durable incarnation binding',async()=>{const f=await fixture(),p=await prepared(f);try{await completeLocalPlaidExchange(db,p.claim,p.providerItemId,p.envelope);let called=false;expect(()=>p.keyring.use({...p.binding,incarnationId:randomUUID()},p.envelope,()=>{called=true;})).toThrow();expect(called).toBe(false);}finally{p.keyring.close();}});
+it('duplicate provider Item cannot attach to a second household and errors are coarse',async()=>{const a=await fixture(),b=await fixture(),p=await prepared(a),q=await prepared(b);try{await completeLocalPlaidExchange(db,p.claim,p.providerItemId,p.envelope);const second=q.keyring.seal({...q.binding,providerItemId:p.providerItemId},q.token);await expect(completeLocalPlaidExchange(db,q.claim,p.providerItemId,second)).rejects.toThrow('Local financial operation refused');expect(await db.withHousehold(b.hh,tx=>tx.plaidLocalItem.count())).toBe(0);}finally{p.keyring.close();q.keyring.close();}});
+it.each(['app_user','app_document_worker','app_job_worker','app_billing_test'])('%s cannot read credential custody or provider binding',async role=>{const f=await fixture(),p=await prepared(f);let c:PrismaClient|undefined;try{await completeLocalPlaidExchange(db,p.claim,p.providerItemId,p.envelope);await admin.$executeRawUnsafe(`ALTER ROLE ${role} LOGIN PASSWORD 'plaid_denial_local_only'`);const u=new URL(ADMIN_URL);u.username=role;u.password='plaid_denial_local_only';c=new PrismaClient({datasourceUrl:u.toString()});const other=new Database(c);await expect(other.withHousehold(f.hh,tx=>tx.$queryRaw`SELECT ciphertext FROM plaid_local_credentials`)).rejects.toThrow('permission denied');await expect(other.withHousehold(f.hh,tx=>tx.$queryRaw`SELECT provider_item_id FROM plaid_local_items`)).rejects.toThrow('permission denied');}finally{p.keyring.close();await c?.$disconnect();await admin.$executeRawUnsafe(role==='app_user'?"ALTER ROLE app_user LOGIN PASSWORD 'app_local_only'":`ALTER ROLE ${role} NOLOGIN PASSWORD NULL`);}});
+it('runtime has no document, identifier, MFA or billing authority; unscoped and foreign reads deny',async()=>{const f=await fixture(),other=await fixture(),p=await prepared(f);try{await completeLocalPlaidExchange(db,p.claim,p.providerItemId,p.envelope);for(const query of [()=>db.withHousehold(f.hh,tx=>tx.$queryRaw`SELECT id FROM documents`),()=>db.withHousehold(f.hh,tx=>tx.$queryRaw`SELECT id FROM item_secrets`),()=>db.withHousehold(f.hh,tx=>tx.$queryRaw`SELECT id FROM account_security_challenges`),()=>db.withHousehold(f.hh,tx=>tx.$queryRaw`SELECT id FROM stripe_test_bindings`)])await expect(query()).rejects.toThrow('permission denied');
+ expect(await runtime.plaidLocalCredential.count()).toBe(0);expect(await db.withHousehold(other.hh,tx=>tx.plaidLocalCredential.count())).toBe(0);
+ const [role]=await runtime.$queryRaw<Array<{rolsuper:boolean;rolbypassrls:boolean;rolcreaterole:boolean}>>`SELECT rolsuper,rolbypassrls,rolcreaterole FROM pg_roles WHERE rolname=current_user`;expect(role).toEqual({rolsuper:false,rolbypassrls:false,rolcreaterole:false});
+ await expect(db.withHousehold(f.hh,tx=>tx.$executeRaw`UPDATE plaid_local_credentials SET ciphertext='changed' WHERE id=${f.operation}::uuid`)).rejects.toThrow('permission denied');}finally{p.keyring.close();}});
+it('expired completion is refused even before a reconciliation invocation',async()=>{const f=await fixture(),p=await prepared(f);try{await admin.plaidLocalExchange.update({where:{id:f.operation},data:{leaseUntil:new Date(0)}});await expect(completeLocalPlaidExchange(db,p.claim,p.providerItemId,p.envelope)).rejects.toThrow();expect(await db.withHousehold(f.hh,tx=>tx.plaidLocalItem.count())).toBe(0);}finally{p.keyring.close();}});
+it('raw runtime completion without transactional activation intent rolls back ciphertext and Item',async()=>{const f=await fixture(),p=await prepared(f);try{
+ await expect(db.withHousehold(f.hh,async tx=>{await tx.$executeRaw`SELECT set_config('request.plaid_lease',${p.claim.leaseToken},true)`;
+ await tx.$executeRaw`INSERT INTO plaid_local_items(id,household_id,exchange_id,provider_item_id) VALUES(${f.operation}::uuid,${f.hh}::uuid,${f.operation}::uuid,${p.providerItemId})`;
+ const e=p.envelope;await tx.$executeRaw`INSERT INTO plaid_local_credentials(id,household_id,version,key_version,nonce,wrap_nonce,wrapped_key,ciphertext) VALUES(${f.operation}::uuid,${f.hh}::uuid,1,${e.keyVersion},${e.nonce},${e.wrapNonce},${e.wrappedKey},${e.ciphertext})`;
+ await tx.$executeRaw`UPDATE plaid_local_exchanges SET state='completed' WHERE id=${f.operation}::uuid`;
+ })).rejects.toThrow('commit incomplete');expect(await db.withHousehold(f.hh,tx=>tx.plaidLocalCredential.count())).toBe(0);
+ }finally{p.keyring.close();}});
+it('privacy inventory sees every Plaid journal but cannot read ciphertext or retire records',async()=>{const f=await fixture(),p=await prepared(f);const clients:PrismaClient[]=[];try{await completeLocalPlaidExchange(db,p.claim,p.providerItemId,p.envelope);const deletion=await admin.householdDeletion.create({data:{householdId:f.hh,requestedBy:f.owner,requestedAt:new Date(Date.now()-20*86400000),undoUntil:new Date(Date.now()-6*86400000),state:'fenced',fencedAt:new Date(Date.now()-3600000),settleUntil:new Date(Date.now()-2700000)}});
+ for(const role of ['app_retention_worker','app_deletion_verifier']){await admin.$executeRawUnsafe(`ALTER ROLE ${role} LOGIN PASSWORD 'local_plaid_privacy_only'`);const u=new URL(ADMIN_URL);u.username=role;u.password='local_plaid_privacy_only';clients.push(new PrismaClient({datasourceUrl:u.toString()}));}
+ const retention=new Database(clients[0]!),verifier=new Database(clients[1]!);const {inventoryLocalDeletionPage,reconcileLocalDeletionInventory}=await import('../../src/privacy-inventory.js');
+ for(const source of ['plaid-subjects','plaid-exchanges','plaid-items','plaid-credentials'] as const){expect(await inventoryLocalDeletionPage(retention,f.hh,deletion.id,source)).toMatchObject({recorded:1,more:false});expect(await reconcileLocalDeletionInventory(verifier,f.hh,deletion.id,source)).toMatchObject({sourceCount:1,localSourceMatches:true,finalReceiptIssuable:false});}
+ await expect(verifier.withHousehold(f.hh,tx=>tx.$queryRaw`SELECT wrapped_key FROM plaid_local_credentials`)).rejects.toThrow('permission denied');await expect(retention.withHousehold(f.hh,tx=>tx.$executeRaw`DELETE FROM plaid_local_credentials WHERE id=${f.operation}::uuid`)).rejects.toThrow('permission denied');
+ }finally{p.keyring.close();await Promise.all(clients.map(c=>c.$disconnect()));for(const role of ['app_retention_worker','app_deletion_verifier'])await admin.$executeRawUnsafe(`ALTER ROLE ${role} NOLOGIN PASSWORD NULL`);}});
+
+it('financial identity reads expose only the bound owner while application identity lookup remains available',async()=>{
+ const f=await fixture(),other=await fixture();
+ expect(await runtime.$queryRaw`SELECT id,status FROM users`).toEqual([]);
+ expect(await db.withHousehold(f.hh,tx=>tx.$queryRaw`SELECT id,status FROM users`)).toEqual([{id:f.owner,status:'active'}]);
+ expect(await db.withHousehold(f.hh,tx=>tx.$queryRaw`SELECT id FROM users WHERE id=${other.owner}::uuid`)).toEqual([]);
+ expect(await app.user.findUnique({where:{id:f.owner},select:{id:true}})).toEqual({id:f.owner});
+});
+it('runtime cannot invent an activation event for a pending exchange or an unrelated aggregate',async()=>{
+ const f=await fixture();
+ await expect(db.withHousehold(f.hh,tx=>tx.$executeRaw`INSERT INTO outbox_events(household_id,event_type,aggregate_type,aggregate_id,payload) VALUES(${f.hh}::uuid,'plaid.local_item_activated','plaid-local-item',${f.operation}::uuid,jsonb_build_object('version',1,'operation_id',${f.operation}::text))`)).rejects.toThrow();
+ const p=await prepared(f);try{await completeLocalPlaidExchange(db,p.claim,p.providerItemId,p.envelope);
+ await expect(db.withHousehold(f.hh,tx=>tx.$executeRaw`INSERT INTO outbox_events(household_id,event_type,aggregate_type,aggregate_id,payload) VALUES(${f.hh}::uuid,'plaid.local_item_activated','plaid-local-item',${randomUUID()}::uuid,jsonb_build_object('version',1,'operation_id',${f.operation}::text))`)).rejects.toThrow();
+ }finally{p.keyring.close();}
+});
+it('persisted encrypted custody round-trips through a reopened DB connection with the same isolated keyring',async()=>{
+ const f=await fixture(),p=await prepared(f);let reopened:PrismaClient|undefined;try{await completeLocalPlaidExchange(db,p.claim,p.providerItemId,p.envelope);
+ const url=new URL(ADMIN_URL);url.username='app_plaid_sandbox';url.password='local_plaid_fixture_only';reopened=new PrismaClient({datasourceUrl:url.toString()});const independent=new Database(reopened);
+ const saved=await independent.withHousehold(f.hh,tx=>tx.plaidLocalCredential.findFirstOrThrow({where:{id:f.operation}}));
+ const envelope={version:1 as const,keyVersion:saved.keyVersion,nonce:saved.nonce,wrapNonce:saved.wrapNonce,wrappedKey:saved.wrappedKey,ciphertext:saved.ciphertext};let used=false;
+ p.keyring.use(p.binding,envelope,token=>{expect(token).toBe(p.token);used=true;});expect(used).toBe(true);
+ expect(()=>p.keyring.use({...p.binding,householdId:randomUUID()},envelope,()=>{throw new Error('must not run');})).toThrow('custody refused');
+ // Reopening the DB proves persisted envelope mapping, not durable KEK custody.
+ }finally{p.keyring.close();await reopened?.$disconnect();}
+});
+it('temporary owner tables cannot bypass current owner checks at the runtime mutation gateway',async()=>{
+ const f=await fixture();await admin.householdUser.deleteMany({where:{householdId:f.hh,userId:f.owner}});
+ await expect(db.withHousehold(f.hh,async tx=>{
+  await tx.$executeRaw`CREATE TEMP TABLE household_users(household_id uuid,user_id uuid,role text) ON COMMIT DROP`;
+  await tx.$executeRaw`CREATE TEMP TABLE users(id uuid,status text) ON COMMIT DROP`;
+  await tx.$executeRaw`INSERT INTO pg_temp.household_users VALUES(${f.hh}::uuid,${f.owner}::uuid,'owner')`;
+  await tx.$executeRaw`INSERT INTO pg_temp.users VALUES(${f.owner}::uuid,'active')`;
+  await tx.$executeRaw`UPDATE public.plaid_local_exchanges SET state='started',lease_token=${randomUUID()}::uuid WHERE id=${f.operation}::uuid`;
+ })).rejects.toThrow('Local financial operation refused');
+ expect((await admin.plaidLocalExchange.findUniqueOrThrow({where:{id:f.operation}})).state).toBe('pending');
+});
+it('runtime cannot create objects in trusted schemas and all reviewed guards search temporary objects last',async()=>{
+ const [permissions]=await runtime.$queryRaw<Array<{public_create:boolean;app_create:boolean}>>`SELECT has_schema_privilege(current_user,'public','CREATE') AS public_create,has_schema_privilege(current_user,'app','CREATE') AS app_create`;
+ expect(permissions).toEqual({public_create:false,app_create:false});
+ const guards=await runtime.$queryRaw<Array<{proconfig:string[];prosecdef:boolean}>>`SELECT proconfig,prosecdef FROM pg_proc WHERE pronamespace='app'::regnamespace AND proconfig IS NOT NULL`;
+ expect(guards).toHaveLength(30);for(const guard of guards)expect(guard).toEqual({proconfig:['search_path=pg_catalog, public, app, pg_temp'],prosecdef:false});
+});

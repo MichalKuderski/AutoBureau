@@ -1,0 +1,11 @@
+rule exact_staging_grant {
+  Resources.*.Type == 'AWS::IAM::Policy'
+  Resources.ReviewedStorageGrant.Condition == 'StagingAccountAndRegion'
+  Resources.ReviewedStorageGrant.Properties.PolicyName == 'apply-reviewed-adr016-storage-plan'
+  Resources.ReviewedStorageGrant.Properties.Roles == ['pellum-stg-terraform-deploy']
+  Resources.ReviewedStorageGrant.Properties.PolicyDocument.Statement.*.Effect == 'Allow'
+  Resources.ReviewedStorageGrant.Properties.PolicyDocument.Statement.*.Condition.DateLessThan.'aws:CurrentTime' == '2026-09-13T22:00:00Z'
+  Resources.ReviewedStorageGrant.Properties.PolicyDocument.Statement.*.NotAction !exists
+  Resources.ReviewedStorageGrant.Properties.PolicyDocument.Statement.*.NotResource !exists
+  Resources.ReviewedStorageGrant.Properties.PolicyDocument.Statement.*.Principal !exists
+}

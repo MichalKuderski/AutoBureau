@@ -1,0 +1,218 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Time-bounded deployment grant intersected with a verified immutable ceiling for one reviewed staging storage plan.",
+  "Metadata": {
+    "AWSToolsMetrics": {
+      "AWSAgentToolkit": "aws-cloudformation@2"
+    },
+    "ReviewedPlan": {
+      "sha256": "7c553fe2df069921c9cd201f947e0df8a6b54356e4aae02c4edbacbcc1db46c7",
+      "runId": "34777452159",
+      "sourceSha": "8ebf4dbd8ff52230b9b2a2d0d89337eee1c1907b"
+    },
+    "com.aws.cloudformation.Context": {
+      "ref": [
+        {
+          "at": "docs/architecture/adr/ADR-016-staging-quarantine-federation.md",
+          "has": "Approved staging-only conditions"
+        }
+      ]
+    }
+  },
+  "Conditions": {
+    "StagingAccountAndRegion": {
+      "Fn::And": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AWS::AccountId"
+            },
+            "792394000571"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AWS::Region"
+            },
+            "us-east-2"
+          ]
+        }
+      ]
+    }
+  },
+  "Resources": {
+    "ReviewedStorageGrant": {
+      "Type": "AWS::IAM::Policy",
+      "Condition": "StagingAccountAndRegion",
+      "Metadata": {
+        "com.aws.cloudformation.Context": {
+          "why": "Exact physical role and ARNs are required to prevent granting authority to another environment. Existing bootstrap owns the ceiling and role; this grant cannot modify either.",
+          "must": [
+            "No deletion, role passing, boundary editing, state access, object contents or unrelated resource grants.",
+            "Expires automatically at the explicit UTC deadline. Apply only the reviewed saved plan."
+          ]
+        }
+      },
+      "Properties": {
+        "PolicyName": "apply-reviewed-adr016-storage-plan",
+        "Roles": [
+          "pellum-stg-terraform-deploy"
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "ReadNamedQuarantineConfiguration",
+              "Effect": "Allow",
+              "Action": [
+                "s3:GetBucketTagging",
+                "s3:GetBucketPolicy",
+                "s3:GetBucketPublicAccessBlock",
+                "s3:GetBucketOwnershipControls",
+                "s3:GetEncryptionConfiguration",
+                "s3:GetBucketCORS",
+                "s3:GetLifecycleConfiguration",
+                "s3:GetBucketVersioning",
+                "s3:GetBucketAcl",
+                "s3:GetAccelerateConfiguration",
+                "s3:GetBucketRequestPayment",
+                "s3:GetBucketWebsite",
+                "s3:GetReplicationConfiguration",
+                "s3:GetBucketLogging",
+                "s3:GetBucketObjectLockConfiguration",
+                "s3:ListBucket"
+              ],
+              "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2",
+              "Condition": {
+                "DateLessThan": {
+                  "aws:CurrentTime": "2026-09-13T22:00:00Z"
+                }
+              }
+            },
+            {
+              "Sid": "ReadTwoUploadRoles",
+              "Effect": "Allow",
+              "Action": [
+                "iam:GetRole",
+                "iam:GetRolePolicy",
+                "iam:ListRolePolicies",
+                "iam:ListAttachedRolePolicies",
+                "iam:ListInstanceProfilesForRole",
+                "iam:ListRoleTags"
+              ],
+              "Resource": [
+                "arn:aws:iam::792394000571:role/pellum-stg-upload-signer",
+                "arn:aws:iam::792394000571:role/pellum-preview-upload-signer"
+              ],
+              "Condition": {
+                "DateLessThan": {
+                  "aws:CurrentTime": "2026-09-13T22:00:00Z"
+                }
+              }
+            },
+            {
+              "Sid": "ReadNamedVercelProvider",
+              "Effect": "Allow",
+              "Action": [
+                "iam:GetOpenIDConnectProvider",
+                "iam:ListOpenIDConnectProviderTags"
+              ],
+              "Resource": "arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike",
+              "Condition": {
+                "DateLessThan": {
+                  "aws:CurrentTime": "2026-09-13T22:00:00Z"
+                }
+              }
+            },
+            {
+              "Sid": "CreateOhioQuarantineBucket",
+              "Effect": "Allow",
+              "Action": [
+                "s3:CreateBucket"
+              ],
+              "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2",
+              "Condition": {
+                "StringEquals": {
+                  "s3:LocationConstraint": "us-east-2"
+                },
+                "DateLessThan": {
+                  "aws:CurrentTime": "2026-09-13T22:00:00Z"
+                }
+              }
+            },
+            {
+              "Sid": "ConfigureOnlyQuarantine",
+              "Effect": "Allow",
+              "Action": [
+                "s3:PutBucketTagging",
+                "s3:PutBucketPolicy",
+                "s3:PutBucketPublicAccessBlock",
+                "s3:PutBucketOwnershipControls",
+                "s3:PutEncryptionConfiguration",
+                "s3:PutBucketCORS",
+                "s3:PutLifecycleConfiguration"
+              ],
+              "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2",
+              "Condition": {
+                "DateLessThan": {
+                  "aws:CurrentTime": "2026-09-13T22:00:00Z"
+                }
+              }
+            },
+            {
+              "Sid": "CreateOnlyBoundedUploadRoles",
+              "Effect": "Allow",
+              "Action": [
+                "iam:CreateRole"
+              ],
+              "Resource": [
+                "arn:aws:iam::792394000571:role/pellum-stg-upload-signer",
+                "arn:aws:iam::792394000571:role/pellum-preview-upload-signer"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "iam:PermissionsBoundary": "arn:aws:iam::792394000571:policy/pellum-stg-upload-boundary"
+                },
+                "DateLessThan": {
+                  "aws:CurrentTime": "2026-09-13T22:00:00Z"
+                }
+              }
+            },
+            {
+              "Sid": "ConfigureOnlyUploadRoles",
+              "Effect": "Allow",
+              "Action": [
+                "iam:TagRole",
+                "iam:PutRolePolicy"
+              ],
+              "Resource": [
+                "arn:aws:iam::792394000571:role/pellum-stg-upload-signer",
+                "arn:aws:iam::792394000571:role/pellum-preview-upload-signer"
+              ],
+              "Condition": {
+                "DateLessThan": {
+                  "aws:CurrentTime": "2026-09-13T22:00:00Z"
+                }
+              }
+            },
+            {
+              "Sid": "CreateNamedVercelProvider",
+              "Effect": "Allow",
+              "Action": [
+                "iam:CreateOpenIDConnectProvider",
+                "iam:TagOpenIDConnectProvider"
+              ],
+              "Resource": "arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike",
+              "Condition": {
+                "DateLessThan": {
+                  "aws:CurrentTime": "2026-09-13T22:00:00Z"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

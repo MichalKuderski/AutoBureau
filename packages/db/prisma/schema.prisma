@@ -1,0 +1,1114 @@
+// AutoBureau data model — implements docs/architecture/02-data-model.md as amended by
+// the principal-panel review (A-F1 freshness, A-F2 obligation direction, A-F3 outcome
+// capture, A-B8 entitlements) and scoped to PRD v1.
+//
+// DELIBERATELY ABSENT (PRD v1 §9 postponements — do not add without a §21 amendment):
+//   conversations / messages  — no chat in v1 (search only)
+//   task_runs / approvals     — no agent execution in v1 (Action Kits are templates)
+// Their architecture is reviewed and parked in doc 04; empty tables are not free.
+
+// `binaryTargets` is a consequence of doc 09 §9's deployment topology, not a Prisma
+// preference. GitHub Actions is the only deployment authority — `vercel.json` sets
+// `github.enabled: false` — so `vercel build` runs on an Ubuntu runner and
+// `vercel deploy --prebuilt` uploads that output to Vercel's RHEL-based Node runtime.
+// `native` alone therefore bakes in `debian-openssl-3.0.x`, the runner's engine, and the
+// deployed function fails at Prisma initialisation with:
+//
+//     Prisma Client could not locate the Query Engine for runtime "rhel-openssl-3.0.x"
+//
+// It fails in a way nothing upstream can see. The engine never loads, so no connection is
+// ever attempted: `auth_rate_limits` stayed empty because the limiter caught this and
+// failed open, the database logged nothing because nothing reached it, and the smoke suite
+// scored 17/17 because no check it makes touches a database. Every symptom that looked like
+// a pooler or credential problem was this.
+//
+// `native` stays first so local development and the integration suites keep using the host's
+// own engine; `rhel-openssl-3.0.x` is the deployed one and is additive.
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+  binaryTargets   = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgcrypto, vector]
+}
+
+// ─────────────────────────── identity & tenancy ───────────────────────────
+
+enum UserStatus {
+  active
+  suspended
+  deletion_pending
+}
+
+model User {
+  id        String     @id @db.Uuid
+  email     String     @unique
+  status    UserStatus @default(active)
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  profile          UserProfile?
+  memberships      HouseholdUser[]
+  members          HouseholdMember[]
+  createdHouseholds Household[]      @relation("household_creator")
+  idempotencyKeys  IdempotencyKey[]
+  notifications Notification[]
+  notificationPreferences NotificationPreference[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  userId      String   @id @map("user_id") @db.Uuid
+  displayName String   @map("display_name")
+  locale      String   @default("en-US")
+  timezone    String   @default("America/New_York")
+  country     String   @default("US") @db.Char(2)
+  onboarding  Json     @default("{}")
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model Household {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String
+  createdBy  String   @map("created_by") @db.Uuid
+  emailAlias String?  @unique @map("email_alias")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  creator     User              @relation("household_creator", fields: [createdBy], references: [id])
+  users       HouseholdUser[]
+  members     HouseholdMember[]
+  documents   Document[]
+  items       Item[]
+  obligations Obligation[]
+  exportArtifacts LocalExportArtifact[]
+  entitlement Entitlement?
+  idempotencyKeys IdempotencyKey[]
+  notifications Notification[]
+
+  @@map("households")
+  jobDeliveries JobDelivery[]
+  accountChallenges AccountSecurityChallenge[]
+  stripeTestBinding StripeTestBinding?
+  stripeTestNotices StripeTestNotice[]
+  stripeTestStates StripeTestState[]
+
+ stripeTestIntents StripeTestIntent[]
+}
+
+/// Local account-security challenge consumption. No OTP, TOTP seed or token.
+model AccountSecurityChallenge {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  sessionId String @map("session_id") @db.Uuid
+  factorId String @map("factor_id") @db.Uuid
+  challengeId String @unique @map("challenge_id") @db.Uuid
+  createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(6)
+  household Household @relation(fields: [householdId], references: [id], onDelete: Restrict)
+  @@index([householdId])
+  @@map("account_security_challenges")
+}
+
+enum IdempotencyState {
+  in_flight
+  completed
+}
+
+/// Authentication rate-limit counters (ADR-013, blueprint P1-08).
+///
+/// GLOBAL AND ANONYMOUS BY CONSTRUCTION. The only table in this schema written by a
+/// request that has no principal and no household: a sign-in attempt is counted before
+/// any token is verified. It therefore carries no `household_id`, no `user_id`, and no
+/// foreign key to anything — a reference to `users` would turn "this address attempted a
+/// sign-in" into a joinable fact about a real account (ADR-013 D3).
+///
+/// `bucket` is a SHA-256 of the policy-domain-separated, normalized subject. That is NOT
+/// secrecy: an email's preimage space is small and enumerable, so the digest is reversible
+/// with a wordlist. It exists so this table never becomes a second plaintext corpus of
+/// addresses, not to keep a secret it cannot keep — see ADR-013 D3 for exactly what it
+/// does and does not protect against.
+///
+/// Reached only through `Database.withGlobalTable`, which establishes no tenant GUC at all.
+model AuthRateLimit {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Policy identifier, e.g. `sign_in.identifier_ip`. A class, never a subject.
+  policy String @db.VarChar(64)
+  /// SHA-256 hex of `policy \0 normalized-subject`. Never a raw email or IP.
+  bucket String @db.Char(64)
+  /// Request time floored to the policy's window length, so a window maps to one row.
+  windowStartedAt DateTime @map("window_started_at") @db.Timestamptz(6)
+  attempts        Int      @default(0)
+  /// Authoritative for expiry: a lapsed row is treated as absent whether or not it has
+  /// been swept (ADR-013 D11). Correctness never depends on a cleaner running.
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  /// What makes the increment atomic: one `INSERT … ON CONFLICT DO UPDATE` both records
+  /// the attempt and reports the running total, with no read-modify-write window.
+  @@unique([policy, bucket, windowStartedAt])
+  /// Serves the opportunistic expiry sweep.
+  @@index([expiresAt])
+  @@map("auth_rate_limits")
+}
+
+/// Server-side idempotency records (ADR-011 D13, ADR-012).
+///
+/// INFRASTRUCTURE, NOT DOMAIN DATA. Written only by the `/v1` request boundary and read
+/// only by it; no endpoint exposes these rows, and nothing joins to them. They are here
+/// rather than in Redis because Redis is provisioned in no deployed environment (ADR-012).
+///
+/// `response_body` holds a completed response verbatim, so a row can contain whatever
+/// household data that endpoint returned. It is therefore scoped by RLS to *both* the
+/// household and the principal that created it — stricter than every other table, because
+/// a replay is an answer to one person's request, not the household's shared state.
+model IdempotencyKey {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId     String           @map("household_id") @db.Uuid
+  userId          String           @map("user_id") @db.Uuid
+  /// Client-supplied and opaque; 1–255 characters (ADR-011 D13).
+  key             String           @db.VarChar(255)
+  method          String           @db.VarChar(16)
+  /// Request target: pathname plus query string.
+  path            String
+  /// SHA-256 hex of the canonical `idempotencyFingerprintInput` payload.
+  fingerprint     String           @db.Char(64)
+  state           IdempotencyState
+  responseStatus  Int?             @map("response_status")
+  responseBody    String?          @map("response_body")
+  responseHeaders Json?            @map("response_headers")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt     DateTime?        @map("completed_at") @db.Timestamptz(6)
+  expiresAt       DateTime         @map("expires_at") @db.Timestamptz(6)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The uniqueness that makes the claim atomic. Household and principal are part of the
+  /// key, so one principal's key can never collide with — or replay — another's.
+  @@unique([householdId, userId, key])
+  @@index([householdId, userId, expiresAt])
+  @@map("idempotency_keys")
+}
+
+enum HouseholdRole {
+  owner
+  member
+  viewer
+}
+
+/// Who may ACCESS a household (login accounts).
+model HouseholdUser {
+  householdId String        @map("household_id") @db.Uuid
+  userId      String        @map("user_id") @db.Uuid
+  role        HouseholdRole
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([householdId, userId])
+  @@index([userId])
+  @@map("household_users")
+}
+
+enum MemberKind {
+  adult
+  child
+  dependent
+  pet
+  entity
+}
+
+/// WHOSE paperwork this is. Distinct from HouseholdUser: a dependent parent is a
+/// member with no login. The caregiver wedge depends on this separation (PRD §4).
+model HouseholdMember {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String     @map("household_id") @db.Uuid
+  userId      String?    @map("user_id") @db.Uuid
+  displayName String     @map("display_name")
+  kind        MemberKind
+  dateOfBirth DateTime?  @map("date_of_birth") @db.Date
+  archivedAt  DateTime?  @map("archived_at") @db.Timestamptz(6)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  household   Household    @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items       Item[]
+  obligations Obligation[]
+
+  @@index([householdId])
+  @@map("household_members")
+}
+
+// ─────────────────────────── billing entitlements (A-B8) ───────────────────────────
+
+enum PlanTier {
+  free
+  premium
+}
+
+/// Free-tier caps are load-bearing for unit economics (doc 14 §4) — enforced in
+/// code against these rows, never assumed.
+model Entitlement {
+  householdId       String   @id @map("household_id") @db.Uuid
+  plan              PlanTier @default(free)
+  docsPerMonth      Int      @default(10) @map("docs_per_month")
+  membersMax        Int      @default(2) @map("members_max")
+  periodStart       DateTime @map("period_start") @db.Date
+  docsUsedThisPeriod Int     @default(0) @map("docs_used_this_period")
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@map("entitlements")
+}
+
+// ─────────────────────────── documents ───────────────────────────
+
+enum DocSource {
+  upload
+  email
+  api
+}
+
+enum DocStatus {
+  queued
+  received
+  scanning
+  processing
+  needs_review
+  processed
+  rejected
+  failed
+}
+
+model Document {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId  String     @map("household_id") @db.Uuid
+  uploadedBy   String?    @map("uploaded_by") @db.Uuid
+  source       DocSource
+  storagePath  String     @map("storage_path")
+  mimeType     String     @map("mime_type")
+  sizeBytes    BigInt     @map("size_bytes")
+  sha256       Bytes?     // Set only after hashing actual quarantined bytes.
+  status       DocStatus  @default(received)
+  docType      String?    @map("doc_type")
+  confidence   Decimal?   @db.Decimal(4, 3)
+  title        String?
+  docDate      DateTime?  @map("doc_date") @db.Date
+  extracted    Json?
+  review       Json?
+  error        Json?
+  processedAt  DateTime?  @map("processed_at") @db.Timestamptz(6)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  household Household       @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  upload    DocumentUpload?
+  chunks    DocumentChunk[]
+  items     Item[]
+
+  @@unique([householdId, sha256])
+  /// SQL-owned tenant-parity FKs prevent cross-household referential effects.
+  @@unique([id, householdId])
+  @@index([householdId, status])
+  @@index([householdId, docType, docDate])
+  @@map("documents")
+}
+
+/// Upload capability metadata is separate from trusted processed document metadata.
+/// Tenant access is derived through the parent document's forced-RLS policy.
+model DocumentUpload {
+  documentId  String    @id @map("document_id") @db.Uuid
+  objectKey   String    @unique @map("object_key") @db.VarChar(300)
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("document_uploads")
+}
+
+/// A3/F-05: NO vector index at launch. Retrieval is exact KNN inside one household
+/// (btree prefilter on household_id + ORDER BY embedding <=> $q). Revisit past
+/// ~50k chunks/household (doc 14).
+model DocumentChunk {
+  id          String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  documentId  String                       @map("document_id") @db.Uuid
+  householdId String                       @map("household_id") @db.Uuid
+  seq         Int
+  content     String
+  embedding   Unsupported("vector(1024)")?
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, seq])
+  @@index([householdId])
+  @@map("document_chunks")
+}
+
+// ─────────────────────────── registry ───────────────────────────
+
+enum VendorKind {
+  insurer
+  government
+  subscription
+  utility
+  retailer
+  other
+}
+
+/// The only global (non-household) table. Seed of the Ledger-B rulebook (A-B2/A-F4).
+model Vendor {
+  id       String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name     String
+  kind     VendorKind
+  country  String     @default("US") @db.Char(2)
+  region   String?
+  domains  String[]   @default([])
+  metadata Json       @default("{}")
+
+  items Item[]
+
+  @@index([name])
+  @@map("vendors")
+}
+
+enum ItemKind {
+  passport
+  drivers_license
+  vehicle_registration
+  vehicle
+  insurance_policy
+  subscription
+  warranty
+  membership
+  certification
+  lease
+  loan
+  utility_account
+  tax_year
+  benefit_plan
+  medical_account
+  other
+}
+
+enum ItemStatus {
+  active
+  expiring
+  expired
+  cancelled
+  archived
+}
+
+model Item {
+  id               String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId      String     @map("household_id") @db.Uuid
+  memberId         String?    @map("member_id") @db.Uuid
+  kind             ItemKind
+  name             String
+  status           ItemStatus @default(active)
+  vendorId         String?    @map("vendor_id") @db.Uuid
+  vendorName       String?    @map("vendor_name")
+  attrs            Json       @default("{}")
+  amountCents      BigInt?    @map("amount_cents")
+  currency         String?    @db.Char(3)
+  billingCycle     String?    @map("billing_cycle")
+  validFrom        DateTime?  @map("valid_from") @db.Date
+  expiresAt        DateTime?  @map("expires_at") @db.Date
+  /// A-F1 freshness doctrine: when a human last confirmed these facts.
+  verifiedAt       DateTime?  @map("verified_at") @db.Timestamptz(6)
+  sourceDocumentId String?    @map("source_document_id") @db.Uuid
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  household      Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  member         HouseholdMember? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  vendor         Vendor?          @relation(fields: [vendorId], references: [id])
+  sourceDocument Document?        @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+  secrets        ItemSecret[]
+  obligations    Obligation[]
+
+  /// SQL-owned tenant-parity FKs prevent cross-household referential effects.
+  @@unique([id, householdId])
+  @@index([householdId, kind])
+  @@index([householdId, expiresAt])
+  @@map("items")
+}
+
+/// ADR-007: identifier-grade PII quarantined here. Ciphertext only; the AI runtime
+/// holds no KMS decrypt grant and never reads this table.
+model ItemSecret {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itemId     String @map("item_id") @db.Uuid
+  field      String
+  ciphertext Bytes
+  keyVersion Int    @map("key_version")
+  last4      String?
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, field])
+  @@map("item_secrets")
+}
+
+// ─────────────────────────── obligations ───────────────────────────
+
+enum ObligationKind {
+  renewal
+  payment
+  cancellation_window
+  filing
+  claim
+  enrollment
+  appointment
+  custom
+}
+
+enum ObligationStatus {
+  upcoming
+  action_needed
+  in_progress
+  waiting
+  done
+  dismissed
+  missed
+}
+
+/// A-F2: the ledger runs both directions. `owed_to_household` is the entitlement
+/// half (warranties, deposits, unclaimed refunds) — the found-money loop.
+enum ObligationDirection {
+  owed_by_household
+  owed_to_household
+}
+
+enum ObligationSource {
+  ai
+  user
+  system
+}
+
+model Obligation {
+  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId      String              @map("household_id") @db.Uuid
+  itemId           String?             @map("item_id") @db.Uuid
+  memberId         String?             @map("member_id") @db.Uuid
+  title            String
+  kind             ObligationKind
+  direction        ObligationDirection @default(owed_by_household)
+  status           ObligationStatus    @default(upcoming)
+  priority         Int                 @default(2) @db.SmallInt
+  dueAt            DateTime            @map("due_at") @db.Timestamptz(6)
+  windowStart      DateTime?           @map("window_start") @db.Timestamptz(6)
+  graceUntil       DateTime?           @map("grace_until") @db.Timestamptz(6)
+  amountCents      BigInt?             @map("amount_cents")
+  currency         String?             @db.Char(3)
+  recurrence       String?
+  source           ObligationSource
+  sourceDocumentId String?             @map("source_document_id") @db.Uuid
+  aiConfidence     Decimal?            @map("ai_confidence") @db.Decimal(4, 3)
+  /// A-F3: Ledger B's feed — what actually happened when this closed.
+  outcome          Json?
+  verifiedAt       DateTime?           @map("verified_at") @db.Timestamptz(6)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  household Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  item      Item?            @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  member    HouseholdMember? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  reminders Reminder[]
+
+  /// SQL-owned tenant-parity FKs prevent cross-household referential effects.
+  @@unique([id, householdId])
+  @@index([householdId, status, dueAt])
+  @@map("obligations")
+}
+
+enum ReminderStatus {
+  scheduled
+  sent
+  skipped
+  cancelled
+}
+
+// ─────────────────────────── notification ledger ───────────────────────────
+
+enum NotificationChannel {
+  email
+  push
+  inapp
+}
+
+enum NotificationDeliveryStatus {
+  queued
+  sent
+  delivered
+  bounced
+  failed
+  suppressed
+}
+
+model Notification {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  userId      String @map("user_id") @db.Uuid
+  kind        String @db.VarChar(80)
+  title       String @db.VarChar(300)
+  body        String @db.VarChar(2000)
+  targetType  String? @map("target_type") @db.VarChar(32)
+  targetId    String? @map("target_id") @db.Uuid
+  dedupeKey   String @map("dedupe_key") @db.VarChar(200)
+  readAt      DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
+
+  @@unique([householdId, userId, dedupeKey])
+  @@index([householdId, userId, createdAt, id])
+  @@index([userId])
+  @@map("notifications")
+}
+
+model NotificationDelivery {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  notificationId String @map("notification_id") @db.Uuid
+  channel        NotificationChannel
+  status         NotificationDeliveryStatus @default(queued)
+  providerMessageId String? @map("provider_message_id") @db.VarChar(255)
+  availableAt    DateTime @default(now()) @map("available_at") @db.Timestamptz(6)
+  attempts       Int @default(0)
+  leaseToken     String? @map("lease_token") @db.Uuid
+  leaseUntil     DateTime? @map("lease_until") @db.Timestamptz(6)
+  sentAt         DateTime? @map("sent_at") @db.Timestamptz(6)
+  deliveredAt    DateTime? @map("delivered_at") @db.Timestamptz(6)
+  errorCode      String? @map("error_code") @db.VarChar(80)
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, channel])
+  @@index([status, availableAt])
+  @@map("notification_deliveries")
+}
+
+model NotificationPreference {
+  userId  String @map("user_id") @db.Uuid
+  kind    String @db.VarChar(80)
+  channel NotificationChannel
+  enabled Boolean @default(true)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, kind, channel])
+  @@map("notification_preferences")
+}
+
+/// Reminders are materialized rows so the scheduler is an indexed scan (doc 07 §5)
+/// and snoozing is a row update. They double as freshness probes (H11).
+model Reminder {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  obligationId String         @map("obligation_id") @db.Uuid
+  householdId  String         @map("household_id") @db.Uuid
+  remindAt     DateTime       @map("remind_at") @db.Timestamptz(6)
+  offsetLabel  String         @map("offset_label")
+  status       ReminderStatus @default(scheduled)
+  sentAt       DateTime?      @map("sent_at") @db.Timestamptz(6)
+
+  obligation Obligation @relation(fields: [obligationId], references: [id], onDelete: Cascade)
+
+  @@unique([obligationId, offsetLabel])
+  @@index([status, remindAt])
+  @@map("reminders")
+}
+
+// ─────────────────────────── platform ───────────────────────────
+
+/// ADR-005: the only bridge from transactions to async work. Written in the same
+/// transaction as the domain change; a dispatcher publishes it. Never dual-write.
+model OutboxEvent {
+  id            BigInt    @id @default(autoincrement())
+  eventType     String    @map("event_type")
+  aggregateType String    @map("aggregate_type")
+  aggregateId   String    @map("aggregate_id") @db.Uuid
+  householdId   String?   @map("household_id") @db.Uuid
+  payload       Json
+  traceparent   String?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+
+  /// Only explicitly configured staging producers enter ADR-017 transport. Legacy/null rows remain untouched.
+  transportScope String? @map("transport_scope") @db.VarChar(7)
+  routedAt DateTime? @map("routed_at") @db.Timestamptz(6)
+  deliveries JobDelivery[]
+
+  @@index([publishedAt])
+  @@index([transportScope, routedAt, id])
+  @@map("outbox_events")
+}
+
+enum ActorType {
+  user
+  agent
+  system
+}
+
+/// Append-only. No UPDATE/DELETE grants for any app role (doc 06 §5).
+model AuditLog {
+  id          BigInt    @id @default(autoincrement())
+  householdId String?   @map("household_id") @db.Uuid
+  actorType   ActorType @map("actor_type")
+  /// ADR-009 D5: stamped by the database from the principal setting when omitted, so a
+  /// user-attributed row cannot carry an actor the request did not authenticate as. A
+  /// CHECK constraint (see the principal-scope migration) rejects `user` rows without one.
+  actorId     String?   @default(dbgenerated("app.current_user_id()")) @map("actor_id") @db.Uuid
+  action      String
+  targetType  String    @map("target_type")
+  targetId    String?   @map("target_id") @db.Uuid
+  meta        Json      @default("{}")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([householdId, createdAt])
+  @@map("audit_log")
+}
+
+enum InboundStatus {
+  received
+  matched
+  quarantined
+  rejected
+}
+
+model InboundEmail {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  alias          String
+  fromAddress    String        @map("from_address")
+  subject        String?
+  rawStoragePath String        @map("raw_storage_path")
+  status         InboundStatus @default(received)
+  householdId    String?       @map("household_id") @db.Uuid
+  documentIds    String[]      @default([]) @map("document_ids") @db.Uuid
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([alias])
+  @@map("inbound_emails")
+}
+
+/// Per-consumer delivery authority. Broker success never stands in for domain completion.
+model JobDelivery {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId BigInt @map("event_id")
+  householdId String @map("household_id") @db.Uuid
+  transportScope String @map("transport_scope") @db.VarChar(7)
+  consumer String @db.VarChar(32)
+  state String @default("pending") @db.VarChar(12)
+  attempts Int @default(0)
+  availableAt DateTime @default(now()) @map("available_at") @db.Timestamptz(6)
+  leaseToken String? @map("lease_token") @db.Uuid
+  leaseUntil DateTime? @map("lease_until") @db.Timestamptz(6)
+  sentAt DateTime? @map("sent_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  event OutboxEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  inbox JobInbox[]
+  @@unique([eventId, consumer])
+  @@unique([id, householdId])
+  @@index([transportScope, state, availableAt])
+  @@index([householdId])
+  @@map("job_deliveries")
+}
+
+/// Committed only in the SAME transaction as domain writes and downstream outbox intents.
+model JobInbox {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deliveryId String @unique @map("delivery_id") @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  completedAt DateTime @default(now()) @map("completed_at") @db.Timestamptz(6)
+  delivery JobDelivery @relation(fields: [deliveryId, householdId], references: [id, householdId], onDelete: Cascade)
+  @@index([householdId])
+  @@map("job_inbox")
+}
+
+
+/// ADR-018: content-free immutable scan identity. No cascade can erase the scan
+/// history while a quarantined document still exists. Purging needs its own receipt.
+model DocumentScan {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  documentId String @map("document_id") @db.Uuid
+  sealId String @map("seal_id") @db.Uuid
+  sha256 Bytes
+  sizeBytes Int @map("size_bytes")
+  state String @default("queued") @db.VarChar(16)
+  attempts Int @default(0)
+  leaseToken String? @map("lease_token") @db.Uuid
+  leaseUntil DateTime? @map("lease_until") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  attemptRows DocumentScanAttempt[]
+  @@unique([documentId, sealId])
+  @@unique([id, householdId])
+  @@index([householdId, state])
+  @@map("document_scans")
+}
+model DocumentScanAttempt {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scanId String @map("scan_id") @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  attempt Int
+  nonce String @db.Uuid
+  engineDigest String @map("engine_digest") @db.Char(64)
+  signatureDigest String @map("signature_digest") @db.Char(64)
+  sandboxDigest String @map("sandbox_digest") @db.Char(64)
+  startedAt DateTime @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  verdict String? @db.VarChar(16)
+  failure String? @db.VarChar(16)
+  scan DocumentScan @relation(fields: [scanId, householdId], references: [id, householdId], onDelete: Restrict)
+  @@unique([scanId, attempt])
+  @@index([householdId])
+  @@map("document_scan_attempts")
+}
+/// Intentionally survives household deletion. Opaque evidence only; no personal
+/// content. Identity-link retention/purge remains separately gated, never indefinite.
+model HouseholdDeletion {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  requestedBy String @map("requested_by") @db.Uuid
+  requestedAt DateTime @default(now()) @map("requested_at") @db.Timestamptz(6)
+  undoUntil DateTime @map("undo_until") @db.Timestamptz(6)
+  state String @default("grace") @db.VarChar(16)
+  fencedAt DateTime? @map("fenced_at") @db.Timestamptz(6)
+  settleUntil DateTime? @map("settle_until") @db.Timestamptz(6)
+  manifestAt DateTime? @map("manifest_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  resources DeletionResource[]
+  @@unique([id, householdId])
+  @@index([householdId, state])
+  @@map("household_deletions")
+}
+model DeletionResource {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deletionId String @map("deletion_id") @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  component String @db.VarChar(32)
+  resourceRef String @map("resource_ref") @db.Uuid
+  inventoryCount Int @map("inventory_count")
+  inventorySource String? @map("inventory_source") @db.VarChar(32)
+  sourceKey String? @map("source_key") @db.VarChar(40)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletion HouseholdDeletion @relation(fields: [deletionId, householdId], references: [id, householdId], onDelete: Restrict)
+  attempts DeletionAttempt[]
+  observations DeletionObservation[]
+  @@unique([deletionId, component, resourceRef])
+  @@unique([deletionId, inventorySource, sourceKey], map: "deletion_resources_source_key_key")
+  @@unique([id, householdId])
+  @@index([householdId])
+  @@map("deletion_resources")
+}
+model DeletionAttempt {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  resourceId String @map("resource_id") @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  attempt Int
+  leaseToken String @map("lease_token") @db.Uuid
+  leaseUntil DateTime @map("lease_until") @db.Timestamptz(6)
+  startedAt DateTime @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  outcome String? @db.VarChar(16)
+  resource DeletionResource @relation(fields: [resourceId, householdId], references: [id, householdId], onDelete: Restrict)
+  @@unique([resourceId, attempt])
+  @@index([householdId])
+  @@map("deletion_attempts")
+}
+model DeletionObservation {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  resourceId String @map("resource_id") @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  evidenceId String @unique @map("evidence_id") @db.Uuid
+  source String @db.VarChar(24)
+  state String @db.VarChar(16)
+  remaining Int
+  retentionUntil DateTime? @map("retention_until") @db.Timestamptz(6)
+  observedAt DateTime @default(now()) @map("observed_at") @db.Timestamptz(6)
+  resource DeletionResource @relation(fields: [resourceId, householdId], references: [id, householdId], onDelete: Restrict)
+  @@index([resourceId, observedAt])
+  @@index([householdId])
+  @@map("deletion_observations")
+}
+
+/// TEST-only immutable custody mapping; not a payment/entitlement authority.
+model StripeTestBinding {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ householdId String @unique @map("household_id") @db.Uuid
+ ownerId String @map("owner_id") @db.Uuid
+ accountId String @map("account_id")
+ customerId String @map("customer_id")
+ subscriptionId String @map("subscription_id")
+ livemode Boolean @default(false)
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+ household Household @relation(fields:[householdId],references:[id],onDelete:Restrict)
+ notices StripeTestNotice[]
+ states StripeTestState[]
+ @@unique([accountId,customerId])
+ @@unique([accountId,subscriptionId])
+ @@unique([id,householdId,accountId])
+ @@map("stripe_test_bindings")
+ intents StripeTestIntent[]
+}
+model StripeTestNotice {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ bindingId String @map("binding_id") @db.Uuid
+ accountId String @map("account_id")
+ eventId String @map("event_id")
+ eventType String @map("event_type")
+ objectId String @map("object_id")
+ providerCreated BigInt @map("provider_created")
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+ state String @default("pending")
+ attempts Int @default(0)
+ leaseToken String? @map("lease_token") @db.Uuid
+ leaseUntil DateTime? @map("lease_until") @db.Timestamptz(6)
+ household Household @relation(fields:[householdId],references:[id],onDelete:Restrict)
+ binding StripeTestBinding @relation(fields:[bindingId,householdId,accountId],references:[id,householdId,accountId],onDelete:Restrict)
+ @@unique([accountId,eventId])
+ @@index([householdId],map:"stripe_test_notices_household_idx")
+ states StripeTestState[]
+ @@index([bindingId,householdId],map:"stripe_test_notices_binding_idx")
+ @@map("stripe_test_notices")
+ expectedRevision Int @default(0) @map("expected_revision")
+}
+
+/// Local synthetic publication and irrevocable download denial; never a final receipt.
+model LocalExportArtifact {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ requestId String @map("request_id") @db.Uuid
+ ownerId String @map("owner_id") @db.Uuid
+ ciphertextDigest String @map("ciphertext_digest")
+ sizeBytes Int @map("size_bytes")
+ snapshotAt DateTime @map("snapshot_at") @db.Timestamptz(6)
+ expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+ state String @default("partial")
+ household Household @relation(fields:[householdId],references:[id],onDelete:Restrict)
+ @@unique([householdId,requestId])
+ @@map("local_export_artifacts")
+}
+
+/// TEST-only refetched decision journal. Does not activate application caps.
+model StripeTestState {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ bindingId String @unique @map("binding_id") @db.Uuid
+ accountId String @map("account_id")
+ sourceNoticeId String? @map("source_notice_id") @db.Uuid
+ sourceLeaseToken String @map("source_lease_token") @db.Uuid
+  sourceLeaseUntil DateTime? @map("source_lease_until") @db.Timestamptz(6)
+ revision Int @default(1)
+ state String
+ plan String
+ paidThrough BigInt? @map("paid_through")
+ premiumUntil BigInt? @map("premium_until")
+ reconciledAt DateTime @default(dbgenerated("clock_timestamp()")) @map("reconciled_at") @db.Timestamptz(6)
+ household Household @relation(fields:[householdId],references:[id],onDelete:Restrict)
+ binding StripeTestBinding @relation(fields:[bindingId,householdId,accountId],references:[id,householdId,accountId],onDelete:Restrict)
+ notice StripeTestNotice? @relation(fields:[sourceNoticeId],references:[id],onDelete:Restrict)
+ @@index([householdId],map:"stripe_test_states_household_idx")
+ @@map("stripe_test_states")
+ sourceIntentId String? @map("source_intent_id") @db.Uuid
+ intent StripeTestIntent? @relation(fields:[sourceIntentId],references:[id],onDelete:Restrict)
+}
+
+/// Internal TEST reconciliation work, never a synthetic Stripe event.
+model StripeTestIntent {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ bindingId String @map("binding_id") @db.Uuid
+ accountId String @map("account_id")
+ requestKey String @map("request_key") @db.Uuid
+ reason String
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+ state String @default("pending")
+ attempts Int @default(0)
+ leaseToken String? @map("lease_token") @db.Uuid
+ leaseUntil DateTime? @map("lease_until") @db.Timestamptz(6)
+ expectedRevision Int @default(0) @map("expected_revision")
+ household Household @relation(fields:[householdId],references:[id],onDelete:Restrict)
+ binding StripeTestBinding @relation(fields:[bindingId,householdId,accountId],references:[id,householdId,accountId],onDelete:Restrict)
+ states StripeTestState[]
+ @@unique([bindingId,requestKey])
+ @@index([householdId,bindingId],map:"stripe_test_intents_scope_idx")
+ @@map("stripe_test_intents")
+}
+
+/// Global non-personal product configuration. Runtime roles are read-only.
+model PlanCatalog {
+ tier String @id
+ version Int
+ documentsPerMonth Int @map("documents_per_month")
+ documentWarning Int @map("document_warning")
+ managedHumans Int? @map("managed_humans")
+ @@map("plan_catalog")
+}
+model LocalPlanActivation {
+ singleton Boolean @id @default(true)
+ testEnabled Boolean @default(false) @map("test_enabled")
+ @@map("local_plan_activation")
+}
+
+/// ADR-021 local-only immutable clean custody; SQL owns scoped composite FKs/guards.
+model DocumentCustody {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ documentId String @unique @map("document_id") @db.Uuid
+ scanId String @map("scan_id") @db.Uuid
+ objectId String @unique @map("object_id") @db.Uuid
+ sha256 Bytes
+ sizeBytes Int @map("size_bytes")
+ state String @default("copying")
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz
+ reviewAt DateTime @map("review_at") @db.Timestamptz
+ @@unique([id,householdId])
+ @@unique([householdId,sha256])
+ @@index([householdId,state,createdAt,id],map:"custody_household_state")
+ @@map("document_custodies")
+}
+/// A completed reservation is the exact-once usage ledger, never a resettable counter.
+model DocumentProcessing {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ custodyId String @unique @map("custody_id") @db.Uuid
+ state String @default("waiting")
+ attempts Int @default(0)
+ periodStart DateTime? @map("period_start") @db.Timestamptz
+ periodEnd DateTime? @map("period_end") @db.Timestamptz
+ tier String?
+ catalogVersion Int? @map("catalog_version")
+ entitlementRevision Int? @map("entitlement_revision")
+ limitSnapshot Int? @map("limit_snapshot")
+ leaseToken String? @map("lease_token") @db.Uuid
+ leaseUntil DateTime? @map("lease_until") @db.Timestamptz
+ resultRef String? @map("result_ref") @db.Uuid
+ chargedAt DateTime? @map("charged_at") @db.Timestamptz
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz
+ updatedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz
+ @@index([householdId,periodStart,state],map:"processing_household_period")
+ @@map("document_processing")
+}
+
+// ADR-021 immutable local synthetic provenance. Composite FKs/guards are SQL-owned.
+model DocumentResult {
+  id String @id @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  processingId String @unique @map("processing_id") @db.Uuid
+  custodyId String @map("custody_id") @db.Uuid
+  documentId String @map("document_id") @db.Uuid
+  scanId String @map("scan_id") @db.Uuid
+  scanAttemptId String @map("scan_attempt_id") @db.Uuid
+  objectId String @map("object_id") @db.Uuid
+  sourceSha256 Bytes @map("source_sha256")
+  engineDigest String @map("engine_digest")
+  signatureDigest String @map("signature_digest")
+  sandboxDigest String @map("sandbox_digest")
+  schemaVersion Int @default(1) @map("schema_version")
+  parserVersion String @default("canonical-public-deadline-pdf-v1") @map("parser_version")
+  redactorVersion String @default("closed-enums-v1") @map("redactor_version")
+  reviewState String @default("requires-human-review") @map("review_state")
+  page Int @default(1)
+  citationStart Int @map("citation_start")
+  citationEnd Int @map("citation_end")
+  dueDate DateTime @map("due_date") @db.Date
+  leaseToken String @map("lease_token") @db.Uuid
+  periodStart DateTime @map("period_start") @db.Timestamptz
+  periodEnd DateTime @map("period_end") @db.Timestamptz
+  originalTier String @map("original_tier")
+  originalCatalogVersion Int @map("original_catalog_version")
+  originalRevision Int @map("original_revision")
+  createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz
+  @@unique([id,householdId])
+  @@index([householdId,createdAt,id], map:"results_household")
+  @@map("document_results")
+}
+model DocumentResultReview {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  resultId String @unique @map("result_id") @db.Uuid
+  ownerId String @map("owner_id") @db.Uuid
+  itemId String @map("item_id") @db.Uuid
+  obligationId String @map("obligation_id") @db.Uuid
+  reviewedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("reviewed_at") @db.Timestamptz
+  @@unique([id,householdId])
+  @@index([householdId,id],map:"reviews_household")
+  @@map("document_result_reviews")
+}
+
+// ADR-022 local-only journals. SQL owns composite FKs, guards and column grants.
+model PlaidLocalSubject {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ householdId String @unique @map("household_id") @db.Uuid
+ ownerId String @map("owner_id") @db.Uuid
+ incarnationId String @default(dbgenerated("gen_random_uuid()")) @map("incarnation_id") @db.Uuid
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz
+ @@unique([id,householdId])
+ @@unique([householdId,incarnationId])
+ @@map("plaid_local_subjects")
+}
+model PlaidLocalExchange {
+ id String @id @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ subjectId String @map("subject_id") @db.Uuid
+ ownerId String @map("owner_id") @db.Uuid
+ consentVersion Int @map("consent_version")
+ state String @default("pending")
+ leaseToken String? @map("lease_token") @db.Uuid
+ leaseUntil DateTime? @map("lease_until") @db.Timestamptz
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz
+ @@unique([id,householdId])
+ @@index([householdId,id],map:"plaid_exchange_scope")
+ @@map("plaid_local_exchanges")
+}
+model PlaidLocalItem {
+ id String @id @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ exchangeId String @unique @map("exchange_id") @db.Uuid
+ subjectId String @map("subject_id") @db.Uuid
+ ownerId String @map("owner_id") @db.Uuid
+ incarnationId String @map("incarnation_id") @db.Uuid
+ environment String @default("local-synthetic-sandbox")
+ providerItemId String @unique @map("provider_item_id")
+ credentialRevision Int @default(1) @map("credential_revision")
+ state String @default("active")
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz
+ @@unique([id,householdId])
+ @@index([householdId,id],map:"plaid_item_scope")
+ @@map("plaid_local_items")
+}
+model PlaidLocalCredential {
+ id String @id @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ version Int
+ keyVersion Int @map("key_version")
+ nonce String
+ wrapNonce String @map("wrap_nonce")
+ wrappedKey String @map("wrapped_key")
+ ciphertext String
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz
+ @@index([householdId,id],map:"plaid_credential_scope")
+ @@map("plaid_local_credentials")
+}

@@ -1,0 +1,503 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-09-21T00:13:47.387147+00:00",
+  "classification": "LOCAL_SYNTHETIC_DEVELOPMENT_ONLY",
+  "production_preflight": "NO-GO",
+  "branch": "codex/review-pellum-hardening-v2",
+  "worktree": "/private/tmp/pellum-native-review-20260920",
+  "base_sha": "cab6c494af6a26e11d864f9ede2e3c8035bb97a6",
+  "tested_implementation_sha": "40d0c78e0b728acf56fb670da1dd935bf6a31f25",
+  "final_documentation_sha": "Resolve the subsequent evidence-only commit from Git; excluded to avoid a self-referential hash.",
+  "implementation_commits": [
+    {
+      "sha": "43ce5e3c99da450f5f163d4c7934f4c88ba77082",
+      "subject": "feat: reconcile bounded privacy inventories and deletion progress"
+    },
+    {
+      "sha": "88a484c39b68f50b1fcf74db9372e5261999b538",
+      "subject": "feat: prototype independently signed restore reconciliation"
+    },
+    {
+      "sha": "810cd345b4589a2b218eb26bc286a3be7e18c864",
+      "subject": "feat: require signed recent authentication evidence for privacy seams"
+    },
+    {
+      "sha": "4f02ff30a9b3b848013b74bb833fd3ba4aae44d1",
+      "subject": "feat: persist owner-scoped partial export intents through outbox"
+    },
+    {
+      "sha": "e6093f4d956a712d8be021d396056a4c2df58282",
+      "subject": "fix: reject restore resurrection and normalize privacy request keys"
+    },
+    {
+      "sha": "3b13b6d6d921359d0a7dd6c3d48a6342db4acc92",
+      "subject": "fix: bound independent checkpoint calls and reject late decisions"
+    },
+    {
+      "sha": "8b304fe046924eff10e18066a5a3bc56acf3cc90",
+      "subject": "fix: keep malformed restore challenges out of diagnostic errors"
+    },
+    {
+      "sha": "40d0c78e0b728acf56fb670da1dd935bf6a31f25",
+      "subject": "fix: bound restore subject collections before schema traversal"
+    }
+  ],
+  "versions": {
+    "node": "v22.16.0",
+    "pnpm": "10.34.5",
+    "next": "15.5.22",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7",
+    "prisma": "6.19.3",
+    "stripe": "22.6.2",
+    "postgresql": "18.3 (Postgres.app)",
+    "pgvector": "0.8.1"
+  },
+  "validation": {
+    "frozen_install": "PASS",
+    "build": "PASS",
+    "typecheck": "PASS",
+    "lint": {
+      "errors": 0,
+      "existing_warnings": 13
+    },
+    "unit": {
+      "ops": 8,
+      "ai-boundary": 89,
+      "contracts": 152,
+      "db": 40,
+      "web": 1328
+    },
+    "unit_total": 1617,
+    "integration": {
+      "db": 156,
+      "web": 377
+    },
+    "integration_total": 533,
+    "local_controls": 192,
+    "architecture_guards": 7,
+    "real_local_clamav_synthetic_lifecycle": 1,
+    "deliberate_security_weakenings_detected": 9,
+    "hosted_or_production_evidence": false
+  },
+  "database": {
+    "port": null,
+    "roles": [
+      {
+        "role": "app_job_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_user",
+        "login": true,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_document_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_retention_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_deletion_verifier",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_dispatcher",
+        "login": false,
+        "createdb": false,
+        "bypassrls": true,
+        "superuser": false,
+        "createrole": false
+      }
+    ],
+    "vector": "0.8.1",
+    "database": "pellum_adr018_final",
+    "policies": 37,
+    "forced_rls": 27,
+    "journal_rls": [
+      {
+        "table": "deletion_attempts",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "deletion_observations",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "deletion_resources",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "document_scan_attempts",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "document_scans",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "household_deletions",
+        "forced": true,
+        "enabled": true
+      }
+    ],
+    "privacy_fences": 18,
+    "server_version": "18.3 (Postgres.app)",
+    "inventory_columns": [
+      {
+        "name": "inventory_source",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "name": "source_key",
+        "type": "character varying",
+        "nullable": "YES"
+      }
+    ],
+    "remaining_journals": {
+      "scans": 0,
+      "attempts": 0,
+      "deletions": 0,
+      "resources": 0,
+      "observations": 0,
+      "scan_attempts": 0
+    },
+    "ensure_rls_triggers": 0,
+    "migration_checksums": {
+      "20260728000001_rls": "88773bb83beb8729fff185e2e06953c64d39abe7e8114372cb313671472eb8c2",
+      "20260728000000_init": "ce990d3117f49b6f5d3d9f473b62f1d2bcf7eeed9a466fc3546ae2ff6c517aee",
+      "20260823000000_idempotency_keys": "e823ded41ae885b113523d6e310e121c72027a92ba90cc801a3dce5dcabab01d",
+      "20260825000000_auth_rate_limits": "a4f472eb96c5df6ea575a7bc00d4182f31243fcbdb4a3b241c53bb13fe339ffa",
+      "20260814000001_self_audit_insert": "36599c66d8fdc229e64de8accb00ce048670869d29704fda0aaf1dc03a7edb89",
+      "20260913000000_job_delivery_inbox": "821c3cc51edc4956b409600408afea3cc2d21e693267d75527abda779f4bc641",
+      "20260912000000_notification_ledger": "7c78a5df525a5bba008ca87ab0635a45f49d0eb4aab854de80378f9b9608ec02",
+      "20260921000001_local_online_erasure": "101ba6c706505e63bc972516eb26eeda499f74a67f52cdff9ff087dc1393148a",
+      "20260913000001_job_worker_scope_read": "fd7aa69db34551af95c598ec33a63ddf546f90030d3406e83098fde08d8323bc",
+      "20260912000002_document_upload_ledger": "bbd230504ed051b08862014e6f2e0bfc2eb4c4e4f14a6bede7c4a88dc8cb7cdf",
+      "20260921000002_erasure_notification_rls": "c8fc66925ab950dade5b20ecb753a431a19573029a99e19a960115d5eee1297f",
+      "20260913000002_api_role_table_privileges": "bd2e43764c69be3770b6c159e8e0723083c71d21604ff8e9bb35564d9422b125",
+      "20260922000000_privacy_inventory_sources": "c94fca681c1c5bc1343f7d2e582d82ac33a5858baeb4d4db5ba325f39cf25ae8",
+      "20260920000000_document_security_journals": "3eb411ac77b00e23edc059ea696a2fc308f19367648ea5b7d784f6243160c203",
+      "20260921000000_local_scan_execution_budget": "4fa516669cec1874c9056be72762a8b0859a1219ab9d7df4aa9d45524b489b75",
+      "20260921000004_local_erasure_lease_binding": "97d69be81c8f28ae88d0623273eec9b41f8027c0e116a13ac5416693b08c2aee",
+      "20260906000000_restore_intended_rls_posture": "eceed5a27d9de4269b3c503d2c25a555880a29b3a9ad1b96d36d272a4508de47",
+      "20260912000001_notification_recipient_index": "5b38c48c5e2e1fd8829aab286c4d69d1bb160ab96623bb37bc90a73207add8fe",
+      "20260814000000_principal_scope_and_audit_actor": "c1fe37b667eed2855f4a0bd8d30ff1d53ea69e5bfb2bbc403f0d20992a4ef0f2",
+      "20260921000003_document_tenant_reference_parity": "a4d2a483af3ce90f4c2ca9cfb87839a5022809299d3d79cff8d6e721851f6d94"
+    },
+    "remaining_job_inbox": 0,
+    "migrations_completed": 20,
+    "new_role_memberships": 0,
+    "runtime_owned_tables": 0,
+    "inventory_role_grants": [
+      {
+        "table": "job_deliveries",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "job_inbox",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "outbox_events",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "job_deliveries",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "job_inbox",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "outbox_events",
+        "column": "id",
+        "privilege": "SELECT"
+      }
+    ],
+    "migrations_unfinished": 0,
+    "provider_table_grants": 0,
+    "inventory_unique_index": true,
+    "journal_audit_triggers": 6,
+    "migrations_rolled_back": 0,
+    "remaining_job_deliveries": 0,
+    "tenant_reference_indexes": 3,
+    "inventory_pair_constraint": {
+      "validated": true,
+      "definition": "CHECK ((((inventory_source IS NULL) AND (source_key IS NULL)) OR ((inventory_source IS NOT NULL) AND ((inventory_source)::text = ANY ((ARRAY['documents'::character varying, 'uploads'::character varying, 'chunks'::character varying, 'items'::character varying, 'secrets'::character varying, 'obligations'::character varying, 'reminders'::character varying, 'notifications'::character varying, 'notification-deliveries'::character varying, 'outbox'::character varying, 'deliveries'::character varying, 'inbox'::character varying, 'scans'::character varying, 'scan-attempts'::character varying])::text[])) AND (source_key IS NOT NULL) AND ((source_key)::text ~ '^[a-f0-9-]{1,40}$'::text) AND (inventory_count = 1))))"
+    },
+    "tenant_reference_constraints": [
+      {
+        "name": "obligations_tenant_item_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (item_id, household_id) REFERENCES items(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      },
+      {
+        "name": "reminders_tenant_obligation_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (obligation_id, household_id) REFERENCES obligations(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      },
+      {
+        "name": "document_chunks_tenant_document_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (document_id, household_id) REFERENCES documents(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      },
+      {
+        "name": "items_tenant_source_document_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (source_document_id, household_id) REFERENCES documents(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      }
+    ],
+    "new_runtime_passwords_cleared": true,
+    "new_security_definer_functions": 0
+  },
+  "security_mutations": [
+    {
+      "name": "privacy-mutation-coarse-error",
+      "exit": 1,
+      "failure": "Tests  1 failed | 23 skipped (24)",
+      "log_sha256": "920e0ff2bf95659f060dcbc0c92a94fce4e4ed17a6989bd8cb43a7ac8c8a3fe7"
+    },
+    {
+      "name": "privacy-mutation-checkpoint-abort",
+      "exit": 1,
+      "failure": "Tests  1 failed | 23 skipped (24)",
+      "log_sha256": "36a173413b08e99f5dd2707d6d686c10770de11d195235445ad3bb5256ba485d"
+    },
+    {
+      "name": "privacy-mutation-signature",
+      "exit": 1,
+      "failure": "Tests  2 failed | 22 passed (24)",
+      "log_sha256": "46ae426b704d04b996b7a6b984a095ad1d798cc7d7fb2a85f1611c3c1d06a14e"
+    },
+    {
+      "name": "privacy-mutation-challenge",
+      "exit": 1,
+      "failure": "Tests  1 failed | 23 skipped (24)",
+      "log_sha256": "36c5f0a754092422be3a4e9cd6cf9b91638d7dc5eac31b1e8e69822008060f93"
+    },
+    {
+      "name": "privacy-mutation-checkpoint",
+      "exit": 1,
+      "failure": "Tests  1 failed | 23 skipped (24)",
+      "log_sha256": "6b700d1da1eadf549d70d4ff6a5c5a414447f3d4165265a69aba2d26620a82e1"
+    },
+    {
+      "name": "privacy-mutation-recent-auth",
+      "exit": 1,
+      "failure": "Tests  1 failed | 24 skipped (25)",
+      "log_sha256": "62c09987cae8fbea7e7488a74e962fb5ccfbc10733d350e4eca18909065be3be"
+    },
+    {
+      "name": "integration-privacy-mutation-owner",
+      "exit": 1,
+      "failure": "Tests  1 failed | 6 skipped (7)",
+      "log_sha256": "8d6e03d14d5ef99bdd04d96e4cb65301c3bf65bba31a8df7a86922b46686c5c8"
+    },
+    {
+      "name": "integration-privacy-mutation-fence",
+      "exit": 1,
+      "failure": "Tests  1 failed | 6 skipped (7)",
+      "log_sha256": "528c5901bbde875f3354a1060d396e54ead78d3384e0b145f2fc762e44607a0a"
+    },
+    {
+      "name": "integration-privacy-mutation-expiry",
+      "exit": 1,
+      "failure": "Tests  1 failed | 6 skipped (7)",
+      "log_sha256": "5bf7fac452310e3c378310caf7fa05531cc6b16eb4f1896174ff3b4b21bdd394"
+    }
+  ],
+  "guards": [
+    {
+      "name": "No direct LLM provider SDK imports outside services/ai",
+      "exit": 0
+    },
+    {
+      "name": "Dispatcher escape hatch stays allow-listed",
+      "exit": 0
+    },
+    {
+      "name": "Anonymous global-table access stays allow-listed",
+      "exit": 0
+    },
+    {
+      "name": "Global-table union membership is pinned",
+      "exit": 0
+    },
+    {
+      "name": "Rate-limit thresholds are not runtime-configurable",
+      "exit": 0
+    },
+    {
+      "name": "Sentry integration introduces no OpenTelemetry runtime",
+      "exit": 0
+    },
+    {
+      "name": "PRD scope fence",
+      "exit": 0
+    }
+  ],
+  "original_work_preservation": {
+    "inventoried": 386,
+    "unchanged": 386,
+    "manifest_sha256": "ed672d9090b5903f7626cf1b101108345cc32a960951c596407d271bad7043e5"
+  },
+  "logs": {
+    "privacy-native-final-install": {
+      "path": "/private/tmp/pellum-v2-review-20260920/privacy-native-final-install.log",
+      "sha256": "08d6296f98fb9be59934d897b83eb056f93e9f6bfee4f15542d33f92ca3e1f20",
+      "exit": 0
+    },
+    "privacy-native-final-build": {
+      "path": "/private/tmp/pellum-v2-review-20260920/privacy-native-final-build.log",
+      "sha256": "b805765eff48aa84e191b42cbf55dc2b4c6ef029abb6793dfa598848667c6677",
+      "exit": 0
+    },
+    "privacy-native-final-typecheck": {
+      "path": "/private/tmp/pellum-v2-review-20260920/privacy-native-final-typecheck.log",
+      "sha256": "2370dcec74d3466b2fbe4f46af74fa81d2361ac68f141ca8f96e57c401f3b91e",
+      "exit": 0
+    },
+    "privacy-native-final-lint": {
+      "path": "/private/tmp/pellum-v2-review-20260920/privacy-native-final-lint.log",
+      "sha256": "ffb00d50730c5999cc7fa10f1f288eb495a3b77ecddd12dc87641761981ab9c9",
+      "exit": 0
+    },
+    "privacy-native-final-unit": {
+      "path": "/private/tmp/pellum-v2-review-20260920/privacy-native-final-unit.log",
+      "sha256": "70cdc788b097b8148e4e213e15f7dba53cafca2459b1df1e91fec7ab06417da8",
+      "exit": 0
+    },
+    "privacy-native-final-controls": {
+      "path": "/private/tmp/pellum-v2-review-20260920/privacy-native-final-controls.log",
+      "sha256": "e3adcfa84e4c8ae4c9a1b51f6df6f34135378f6acf1065d7aa18e32960490fdb",
+      "exit": 0
+    },
+    "privacy-native-final-guards": {
+      "path": "/private/tmp/pellum-v2-review-20260920/privacy-native-final-guards.log",
+      "sha256": "3f4cbc0632cbc9f168c2236e9955a37d255e391c867c0e612f6fa5f35eb0752c",
+      "exit": 0
+    },
+    "integration-privacy-native-final": {
+      "path": "/private/tmp/pellum-v2-review-20260920/integration-privacy-native-final.log",
+      "sha256": "58876f06b8701d1f72a904ed62b8fd3f8021f4ae0f9df137a3090b0e77231325",
+      "exit": 0
+    },
+    "integration-local-privacy-native-final-lifecycle": {
+      "path": "/private/tmp/pellum-v2-review-20260920/integration-local-privacy-native-final-lifecycle.log",
+      "sha256": "3c227737511e5576d0ac76352c50798f608d79cdc9a1f63bdaf2bb3d8c5bf17d",
+      "exit": 0
+    }
+  },
+  "auxiliary_evidence": {
+    "readback.sql": {
+      "path": "/private/tmp/pellum-privacy-review-20260920/readback.sql",
+      "sha256": "3a7a3b2117293648945e839e6ddfb87105f2cd7e04dfd27517be433c583d035a"
+    },
+    "readback.json": {
+      "path": "/private/tmp/pellum-privacy-review-20260920/readback.json",
+      "sha256": "9372b1789558813fc163b46d00c34fb04096a0a19b905269178555f771a7ad44"
+    },
+    "mutations.py": {
+      "path": "/private/tmp/pellum-privacy-review-20260920/mutations.py",
+      "sha256": "9d9ffe8d36c099076182221d51f2490f5b64d0dc9315965b2025a149ba6a33cf"
+    },
+    "mutations.json": {
+      "path": "/private/tmp/pellum-privacy-review-20260920/mutations.json",
+      "sha256": "625b8e7af9bdb73a4e951382b7a52b4aa830213172d31f31b3cbd0ab4434e0ea"
+    },
+    "guards.mjs": {
+      "path": "/private/tmp/pellum-privacy-review-20260920/guards.mjs",
+      "sha256": "ca011d5b38278fba1bead6f4f3e0c0c2afe6223fd895df5160342148b1082a4b"
+    },
+    "guards.json": {
+      "path": "/private/tmp/pellum-privacy-review-20260920/guards.json",
+      "sha256": "3f4cbc0632cbc9f168c2236e9955a37d255e391c867c0e612f6fa5f35eb0752c"
+    },
+    "original-preservation.json": {
+      "path": "/private/tmp/pellum-privacy-review-20260920/original-preservation.json",
+      "sha256": "1769fe13458a0196fffd3f7fd6bd64f6bb7096f9670db28adac54f208252a6b2"
+    }
+  },
+  "scanner_release": {
+    "image": "sha256:6fd4a9a21f9a143db97e50b7d212187b67c7b004097d5f0469ddebef6341d4bf",
+    "engine": "sha256:68791dcfb6b7822a70578b3b797b84227142f0018460fed22c7c818f5f26d54b",
+    "signatures": "sha256:20db5c4ea99545311d1081ca0944eb701701686e9e3d7670e9974bc8d0374986"
+  },
+  "initial_failures_fixed": [
+    "one unused-assignment lint error",
+    "nullable source-pair SQL constraint",
+    "export UUID case deduplication",
+    "checkpoint resurrection/deadline/input mutation/error projection/work bound"
+  ],
+  "gates": {
+    "adr019": "PROPOSED; no hosted authority, automatic journal purge or restore activation",
+    "final_deletion_receipts": false,
+    "complete_export": false,
+    "generated_artifact": false,
+    "recovery_mfa_flows": false,
+    "stripe_test_durable_lifecycle": false,
+    "plaid_sandbox_durable_lifecycle": false,
+    "supabase_504": "Confirmed gateway 504; deeper hop unproven",
+    "management_token_invalidation": "Unproven",
+    "supabase_support_packet": "PREPARED BUT UNSENT",
+    "production": "UNTOUCHED / UNAUTHORIZED",
+    "push_deploy_merge": false
+  },
+  "cleanup": {
+    "task_development_cluster_stopped": true,
+    "task_final_cluster_stopped": true,
+    "synthetic_scanner_containers_remaining": 0,
+    "original_docker_containers": [
+      "autobureau-redis-1 (unchanged, stopped)",
+      "autobureau-postgres-1 (unchanged, stopped)"
+    ],
+    "original_clusters_preserved": true
+  }
+}

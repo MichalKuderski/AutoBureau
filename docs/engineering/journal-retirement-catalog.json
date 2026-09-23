@@ -1,0 +1,263 @@
+{
+  "version": 1,
+  "status": "local-dependency-contract-not-purge-authority",
+  "classes": [
+    {
+      "id": "scan",
+      "models": [
+        "DocumentScan",
+        "DocumentScanAttempt"
+      ],
+      "purpose": "Verdict/release binding and bounded retries",
+      "personalData": true,
+      "content": "Hashes, release IDs, nonces and times; no document text",
+      "minimumReplayHorizon": "All work terminal, leases settled, diagnostic interval independently approved",
+      "minimumFraudAccountingHorizon": "No active result/custody references",
+      "deletionRestoreDependency": "Independent ADR-019 completeness/restore suppression; database-local flags are not proof",
+      "incidentHold": "Explicit authorized hold with a review deadline; expiry becomes unknown until independently cleared, never automatic purge",
+      "retirementEligibility": "All class dependencies closed, current independent hold clearance, stable scope/operation, no live lease; local readiness is not operational authority",
+      "pseudonymization": "Remove content/identifiers where possible; opaque references/hash relationships remain personal data",
+      "finalRemovalCondition": "All dependent copies/replay/restore/accounting/provider/audit purposes independently closed; no fixed permanent period",
+      "dependencies": [
+        "replay",
+        "content",
+        "restore"
+      ]
+    },
+    {
+      "id": "custody",
+      "models": [
+        "DocumentCustody"
+      ],
+      "purpose": "Immutable byte location and verified copy/absence",
+      "personalData": true,
+      "content": "Opaque object and source hash; no filename/text",
+      "minimumReplayHorizon": "Object absence independently observed; no active copy/processing",
+      "minimumFraudAccountingHorizon": "No quota or result dependency",
+      "deletionRestoreDependency": "Independent ADR-019 completeness/restore suppression; database-local flags are not proof",
+      "incidentHold": "Explicit authorized hold with a review deadline; expiry becomes unknown until independently cleared, never automatic purge",
+      "retirementEligibility": "All class dependencies closed, current independent hold clearance, stable scope/operation, no live lease; local readiness is not operational authority",
+      "pseudonymization": "Remove content/identifiers where possible; opaque references/hash relationships remain personal data",
+      "finalRemovalCondition": "All dependent copies/replay/restore/accounting/provider/audit purposes independently closed; no fixed permanent period",
+      "dependencies": [
+        "replay",
+        "accounting",
+        "content",
+        "restore"
+      ]
+    },
+    {
+      "id": "processing",
+      "models": [
+        "DocumentProcessing"
+      ],
+      "purpose": "Reservation and exactly-once charge",
+      "personalData": true,
+      "content": "Opaque IDs, original period/revision, result/lease IDs",
+      "minimumReplayHorizon": "All starts resolved; no ambiguous provider outcome",
+      "minimumFraudAccountingHorizon": "Charge transferred atomically to non-resettable suppression evidence before deletion",
+      "deletionRestoreDependency": "Independent ADR-019 completeness/restore suppression; database-local flags are not proof",
+      "incidentHold": "Explicit authorized hold with a review deadline; expiry becomes unknown until independently cleared, never automatic purge",
+      "retirementEligibility": "All class dependencies closed, current independent hold clearance, stable scope/operation, no live lease; local readiness is not operational authority",
+      "pseudonymization": "Remove content/identifiers where possible; opaque references/hash relationships remain personal data",
+      "finalRemovalCondition": "All dependent copies/replay/restore/accounting/provider/audit purposes independently closed; no fixed permanent period",
+      "dependencies": [
+        "replay",
+        "accounting",
+        "provider",
+        "restore"
+      ]
+    },
+    {
+      "id": "results",
+      "models": [
+        "DocumentResult",
+        "DocumentResultReview"
+      ],
+      "purpose": "Cited provenance and owner approval",
+      "personalData": true,
+      "content": "Public synthetic date/citation now; future results can be personal content",
+      "minimumReplayHorizon": "Publication/review/replay and domain provenance dependency closed",
+      "minimumFraudAccountingHorizon": "Accounting/domain replay suppression must survive",
+      "deletionRestoreDependency": "Independent ADR-019 completeness/restore suppression; database-local flags are not proof",
+      "incidentHold": "Explicit authorized hold with a review deadline; expiry becomes unknown until independently cleared, never automatic purge",
+      "retirementEligibility": "All class dependencies closed, current independent hold clearance, stable scope/operation, no live lease; local readiness is not operational authority",
+      "pseudonymization": "Remove content/identifiers where possible; opaque references/hash relationships remain personal data",
+      "finalRemovalCondition": "All dependent copies/replay/restore/accounting/provider/audit purposes independently closed; no fixed permanent period",
+      "dependencies": [
+        "replay",
+        "accounting",
+        "content",
+        "restore"
+      ]
+    },
+    {
+      "id": "outbox",
+      "models": [
+        "OutboxEvent",
+        "JobDelivery",
+        "JobInbox"
+      ],
+      "purpose": "Domain intent, fan-out and durable duplicate effects",
+      "personalData": true,
+      "content": "Opaque links and closed payloads; legacy payloads may be personal content",
+      "minimumReplayHorizon": "Every producer, lease, queue, DLQ, redrive and manual republication path closed",
+      "minimumFraudAccountingHorizon": "Completed effects remain deduplicated; age alone is insufficient",
+      "deletionRestoreDependency": "Independent ADR-019 completeness/restore suppression; database-local flags are not proof",
+      "incidentHold": "Explicit authorized hold with a review deadline; expiry becomes unknown until independently cleared, never automatic purge",
+      "retirementEligibility": "All class dependencies closed, current independent hold clearance, stable scope/operation, no live lease; local readiness is not operational authority",
+      "pseudonymization": "Remove content/identifiers where possible; opaque references/hash relationships remain personal data",
+      "finalRemovalCondition": "All dependent copies/replay/restore/accounting/provider/audit purposes independently closed; no fixed permanent period",
+      "dependencies": [
+        "replay",
+        "provider",
+        "restore",
+        "content"
+      ]
+    },
+    {
+      "id": "account-security",
+      "models": [
+        "AccountSecurityChallenge"
+      ],
+      "purpose": "One-use recent-auth/MFA/recovery proof",
+      "personalData": true,
+      "content": "Pseudonymous owner/session/factor IDs and proof metadata",
+      "minimumReplayHorizon": "Expired/consumed plus no accepted replay or incident need",
+      "minimumFraudAccountingHorizon": "No invented fraud-retention interval; independently approved evidence closure",
+      "deletionRestoreDependency": "Independent ADR-019 completeness/restore suppression; database-local flags are not proof",
+      "incidentHold": "Explicit authorized hold with a review deadline; expiry becomes unknown until independently cleared, never automatic purge",
+      "retirementEligibility": "All class dependencies closed, current independent hold clearance, stable scope/operation, no live lease; local readiness is not operational authority",
+      "pseudonymization": "Remove content/identifiers where possible; opaque references/hash relationships remain personal data",
+      "finalRemovalCondition": "All dependent copies/replay/restore/accounting/provider/audit purposes independently closed; no fixed permanent period",
+      "dependencies": [
+        "replay",
+        "restore"
+      ]
+    },
+    {
+      "id": "exports",
+      "models": [
+        "LocalExportArtifact"
+      ],
+      "purpose": "Immutable encrypted artifact authority and expiry/revocation",
+      "personalData": true,
+      "content": "Owner and ciphertext hashes; encrypted artifact can contain personal content",
+      "minimumReplayHorizon": "Revoked/expired, all download capabilities settled and bytes independently absent",
+      "minimumFraudAccountingHorizon": "Journal revocation/replay and backup dependency closed",
+      "deletionRestoreDependency": "Independent ADR-019 completeness/restore suppression; database-local flags are not proof",
+      "incidentHold": "Explicit authorized hold with a review deadline; expiry becomes unknown until independently cleared, never automatic purge",
+      "retirementEligibility": "All class dependencies closed, current independent hold clearance, stable scope/operation, no live lease; local readiness is not operational authority",
+      "pseudonymization": "Remove content/identifiers where possible; opaque references/hash relationships remain personal data",
+      "finalRemovalCondition": "All dependent copies/replay/restore/accounting/provider/audit purposes independently closed; no fixed permanent period",
+      "dependencies": [
+        "replay",
+        "content",
+        "restore"
+      ]
+    },
+    {
+      "id": "stripe",
+      "models": [
+        "StripeTestBinding",
+        "StripeTestNotice",
+        "StripeTestState",
+        "StripeTestIntent"
+      ],
+      "purpose": "TEST provider ownership, dedupe and entitlement reconciliation",
+      "personalData": true,
+      "content": "Provider references and subscription state, no card data",
+      "minimumReplayHorizon": "Every provider retry/redelivery/reconciliation resolved independently",
+      "minimumFraudAccountingHorizon": "Usage and payment/accounting horizon needs explicit purpose-bound approval",
+      "deletionRestoreDependency": "Independent ADR-019 completeness/restore suppression; database-local flags are not proof",
+      "incidentHold": "Explicit authorized hold with a review deadline; expiry becomes unknown until independently cleared, never automatic purge",
+      "retirementEligibility": "All class dependencies closed, current independent hold clearance, stable scope/operation, no live lease; local readiness is not operational authority",
+      "pseudonymization": "Remove content/identifiers where possible; opaque references/hash relationships remain personal data",
+      "finalRemovalCondition": "All dependent copies/replay/restore/accounting/provider/audit purposes independently closed; no fixed permanent period",
+      "dependencies": [
+        "replay",
+        "accounting",
+        "provider",
+        "restore"
+      ]
+    },
+    {
+      "id": "plaid",
+      "models": [
+        "PlaidLocalSubject",
+        "PlaidLocalExchange",
+        "PlaidLocalItem",
+        "PlaidLocalCredential"
+      ],
+      "purpose": "Future token/Item/consent/inbox/cursor and unlink reconciliation",
+      "personalData": true,
+      "content": "Ciphertext and financial records are personal data; credentials never exported",
+      "minimumReplayHorizon": "Unlink and provider state independently settled, no sync or credential replay",
+      "minimumFraudAccountingHorizon": "Derived-record retention after unlink requires product decision",
+      "deletionRestoreDependency": "Independent ADR-019 completeness/restore suppression; database-local flags are not proof",
+      "incidentHold": "Explicit authorized hold with a review deadline; expiry becomes unknown until independently cleared, never automatic purge",
+      "retirementEligibility": "All class dependencies closed, current independent hold clearance, stable scope/operation, no live lease; local readiness is not operational authority",
+      "pseudonymization": "Remove content/identifiers where possible; opaque references/hash relationships remain personal data",
+      "finalRemovalCondition": "All dependent copies/replay/restore/accounting/provider/audit purposes independently closed; no fixed permanent period",
+      "dependencies": [
+        "replay",
+        "accounting",
+        "provider",
+        "content",
+        "restore"
+      ]
+    },
+    {
+      "id": "deletion",
+      "models": [
+        "HouseholdDeletion",
+        "DeletionResource",
+        "DeletionAttempt",
+        "DeletionObservation"
+      ],
+      "purpose": "Scope, fence, attempted erasure and independent evidence",
+      "personalData": true,
+      "content": "Opaque relationships are still personal data; no source content",
+      "minimumReplayHorizon": "All dependent copies/replays and admissions independently retired",
+      "minimumFraudAccountingHorizon": "Do not remove suppression lineage or clear old tombstones",
+      "deletionRestoreDependency": "Independent ADR-019 completeness/restore suppression; database-local flags are not proof",
+      "incidentHold": "Explicit authorized hold with a review deadline; expiry becomes unknown until independently cleared, never automatic purge",
+      "retirementEligibility": "All class dependencies closed, current independent hold clearance, stable scope/operation, no live lease; local readiness is not operational authority",
+      "pseudonymization": "Remove content/identifiers where possible; opaque references/hash relationships remain personal data",
+      "finalRemovalCondition": "All dependent copies/replay/restore/accounting/provider/audit purposes independently closed; no fixed permanent period",
+      "dependencies": [
+        "replay",
+        "provider",
+        "restore",
+        "audit"
+      ]
+    },
+    {
+      "id": "audit",
+      "models": [
+        "AuditLog"
+      ],
+      "purpose": "Append-only mutation/security evidence",
+      "personalData": true,
+      "content": "Actor/target/meta can remain personal data or legacy content",
+      "minimumReplayHorizon": "Each purpose independently closed; bounded authorized holds override",
+      "minimumFraudAccountingHorizon": "No permanent exemption or generic runtime audit-delete grant",
+      "deletionRestoreDependency": "Independent ADR-019 completeness/restore suppression; database-local flags are not proof",
+      "incidentHold": "Explicit authorized hold with a review deadline; expiry becomes unknown until independently cleared, never automatic purge",
+      "retirementEligibility": "All class dependencies closed, current independent hold clearance, stable scope/operation, no live lease; local readiness is not operational authority",
+      "pseudonymization": "Remove content/identifiers where possible; opaque references/hash relationships remain personal data",
+      "finalRemovalCondition": "All dependent copies/replay/restore/accounting/provider/audit purposes independently closed; no fixed permanent period",
+      "dependencies": [
+        "replay",
+        "accounting",
+        "restore",
+        "audit",
+        "content"
+      ]
+    }
+  ],
+  "unclassifiedMeans": "blocked",
+  "maximumBatch": 100,
+  "finalReceiptIssuable": false,
+  "operationalRetirementAuthorized": false
+}

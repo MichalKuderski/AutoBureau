@@ -1,0 +1,2950 @@
+{
+  "scope": "LOCAL ONLY; not hosted or full-stack evidence",
+  "baseSha": "05bf782d6bfa82283f4c52f296b3d22b62a31dbc",
+  "testedImplementationSha": "a88ace349e259ece92ba2cfc1720c2fc1d15962f",
+  "architectureCommit": "3c2bb8b",
+  "counts": {
+    "unit": 1929,
+    "databaseIntegration": 254,
+    "httpIntegration": 479,
+    "integrationTotal": 733,
+    "localControls": 199,
+    "architectureGuards": 7,
+    "realIsolatedClamavLifecycle": 1,
+    "quotaCustodyTargeted": 24,
+    "mutationsDetectedRestored": 5
+  },
+  "versions": {
+    "node": "v22.16.0",
+    "pnpm": "10.34.5",
+    "next": "15.5.22",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7",
+    "prisma": "6.19.3",
+    "zxcvbn": "4.4.2",
+    "scannerRelease": {
+      "image": "sha256:6fd4a9a21f9a143db97e50b7d212187b67c7b004097d5f0469ddebef6341d4bf",
+      "engine": "sha256:68791dcfb6b7822a70578b3b797b84227142f0018460fed22c7c818f5f26d54b",
+      "signatures": "sha256:20db5c4ea99545311d1081ca0944eb701701686e9e3d7670e9974bc8d0374986"
+    },
+    "stripe": "22.6.2"
+  },
+  "databaseReadback": {
+    "port": 55544,
+    "roles": [
+      {
+        "role": "app_deletion_verifier",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_dispatcher",
+        "login": false,
+        "createdb": false,
+        "bypassrls": true,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_job_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_billing_test",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_user",
+        "login": true,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_document_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_retention_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      }
+    ],
+    "vector": "0.8.1",
+    "database": "pellum_custody_final_20260921",
+    "policies": 48,
+    "forced_rls": 35,
+    "journal_rls": [
+      {
+        "table": "deletion_attempts",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "deletion_observations",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "household_deletions",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "deletion_resources",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "document_scans",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "document_scan_attempts",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "account_security_challenges",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "stripe_test_notices",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "stripe_test_bindings",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "local_export_artifacts",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "stripe_test_states",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "document_custodies",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "document_processing",
+        "forced": true,
+        "enabled": true
+      }
+    ],
+    "custody_grants": [
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "attempts",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "catalog_version",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "charged_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_custodies",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "custody_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_custodies",
+        "column": "document_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "plan_catalog",
+        "column": "document_warning",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "plan_catalog",
+        "column": "documents_per_month",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "billing_test_eligibility",
+        "column": "eligible",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "entitlement_revision",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "billing_test_eligibility",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_custodies",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_custodies",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "lease_token",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "lease_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "limit_snapshot",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "plan_catalog",
+        "column": "managed_humans",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_custodies",
+        "column": "object_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "billing_test_eligibility",
+        "column": "paid_through",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "paid_through",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "period_end",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "period_start",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "billing_test_eligibility",
+        "column": "plan",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "plan",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "billing_test_eligibility",
+        "column": "premium_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "premium_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "reconciled_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "result_ref",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_custodies",
+        "column": "review_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "billing_test_eligibility",
+        "column": "revision",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "revision",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_custodies",
+        "column": "scan_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_custodies",
+        "column": "sha256",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_plan_activation",
+        "column": "singleton",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_custodies",
+        "column": "size_bytes",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "billing_test_eligibility",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_custodies",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_plan_activation",
+        "column": "test_enabled",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "tier",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "plan_catalog",
+        "column": "tier",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "document_processing",
+        "column": "updated_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "plan_catalog",
+        "column": "version",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "attempts",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "catalog_version",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "charged_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "custody_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "custody_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "document_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "document_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "plan_catalog",
+        "column": "document_warning",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "plan_catalog",
+        "column": "documents_per_month",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "billing_test_eligibility",
+        "column": "eligible",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "entitlement_revision",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "billing_test_eligibility",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "household_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "household_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "stripe_test_states",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "lease_token",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "lease_token",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "lease_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "limit_snapshot",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "plan_catalog",
+        "column": "managed_humans",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "object_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "object_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "billing_test_eligibility",
+        "column": "paid_through",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "stripe_test_states",
+        "column": "paid_through",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "period_end",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "period_start",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "billing_test_eligibility",
+        "column": "plan",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "stripe_test_states",
+        "column": "plan",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "billing_test_eligibility",
+        "column": "premium_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "stripe_test_states",
+        "column": "premium_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "result_ref",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "result_ref",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "review_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "billing_test_eligibility",
+        "column": "revision",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "stripe_test_states",
+        "column": "revision",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "scan_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "scan_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "sha256",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "sha256",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "local_plan_activation",
+        "column": "singleton",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "size_bytes",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "size_bytes",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "billing_test_eligibility",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_custodies",
+        "column": "state",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "state",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "stripe_test_states",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "local_plan_activation",
+        "column": "test_enabled",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "tier",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "plan_catalog",
+        "column": "tier",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "document_processing",
+        "column": "updated_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_document_worker",
+        "table": "plan_catalog",
+        "column": "version",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "document_custodies",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "document_processing",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "stripe_test_states",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "document_custodies",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "document_processing",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "stripe_test_states",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "document_custodies",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "document_processing",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "stripe_test_states",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "document_custodies",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "document_processing",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "stripe_test_states",
+        "column": "id",
+        "privilege": "SELECT"
+      }
+    ],
+    "privacy_fences": 26,
+    "server_version": "18.3 (Postgres.app)",
+    "custody_guard_md5": "9dc5f3de5e3ea1e304e3a5480c99dcb5",
+    "inventory_columns": [
+      {
+        "name": "inventory_source",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "name": "source_key",
+        "type": "character varying",
+        "nullable": "YES"
+      }
+    ],
+    "remaining_journals": {
+      "scans": 0,
+      "attempts": 0,
+      "deletions": 0,
+      "resources": 0,
+      "observations": 0,
+      "scan_attempts": 0
+    },
+    "billing_memberships": 0,
+    "custody_constraints": [
+      {
+        "name": "document_custodies_size_bytes_check",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "CHECK (((size_bytes >= 1) AND (size_bytes <= 26214400)))"
+      },
+      {
+        "name": "document_custodies_state_check",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "CHECK ((state = ANY (ARRAY['copying'::text, 'ready'::text, 'held'::text, 'cancelled'::text, 'absent'::text])))"
+      },
+      {
+        "name": "document_custodies_id_not_null",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "NOT NULL id"
+      },
+      {
+        "name": "document_custodies_household_id_not_null",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "NOT NULL household_id"
+      },
+      {
+        "name": "document_custodies_document_id_not_null",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "NOT NULL document_id"
+      },
+      {
+        "name": "document_custodies_scan_id_not_null",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "NOT NULL scan_id"
+      },
+      {
+        "name": "document_custodies_object_id_not_null",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "NOT NULL object_id"
+      },
+      {
+        "name": "document_custodies_sha256_not_null",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "NOT NULL sha256"
+      },
+      {
+        "name": "document_custodies_size_bytes_not_null",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "NOT NULL size_bytes"
+      },
+      {
+        "name": "document_custodies_state_not_null",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "NOT NULL state"
+      },
+      {
+        "name": "document_custodies_created_at_not_null",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "NOT NULL created_at"
+      },
+      {
+        "name": "document_custodies_review_at_not_null",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "NOT NULL review_at"
+      },
+      {
+        "name": "document_custodies_pkey",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "name": "document_custodies_object_id_key",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "UNIQUE (object_id)"
+      },
+      {
+        "name": "document_custodies_document_id_key",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "UNIQUE (document_id)"
+      },
+      {
+        "name": "document_custodies_id_household_id_key",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "UNIQUE (id, household_id)"
+      },
+      {
+        "name": "document_custodies_household_id_sha256_key",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "UNIQUE (household_id, sha256)"
+      },
+      {
+        "name": "document_custodies_document_id_household_id_fkey",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "FOREIGN KEY (document_id, household_id) REFERENCES documents(id, household_id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "document_custodies_scan_id_household_id_fkey",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "FOREIGN KEY (scan_id, household_id) REFERENCES document_scans(id, household_id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "document_processing_state_check",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "CHECK ((state = ANY (ARRAY['waiting'::text, 'reserved'::text, 'started'::text, 'completed'::text, 'failed'::text, 'indeterminate'::text, 'cancelled'::text])))"
+      },
+      {
+        "name": "document_processing_attempts_check",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "CHECK (((attempts >= 0) AND (attempts <= 3)))"
+      },
+      {
+        "name": "document_custodies_sha256_check",
+        "table": "document_custodies",
+        "validated": true,
+        "definition": "CHECK ((octet_length(sha256) = 32))"
+      },
+      {
+        "name": "document_processing_check",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "CHECK (((state = 'completed'::text) = (charged_at IS NOT NULL)))"
+      },
+      {
+        "name": "document_processing_check1",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "CHECK (((state = 'completed'::text) = (result_ref IS NOT NULL)))"
+      },
+      {
+        "name": "document_processing_check2",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "CHECK (((state <> ALL (ARRAY['reserved'::text, 'started'::text, 'completed'::text, 'indeterminate'::text])) OR ((period_start IS NOT NULL) AND (period_end > period_start) AND (tier = ANY (ARRAY['free'::text, 'premium'::text])) AND (catalog_version > 0) AND (entitlement_revision >= 0) AND (limit_snapshot > 0) AND (lease_token IS NOT NULL) AND (lease_until IS NOT NULL))))"
+      },
+      {
+        "name": "document_processing_id_not_null",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "NOT NULL id"
+      },
+      {
+        "name": "document_processing_household_id_not_null",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "NOT NULL household_id"
+      },
+      {
+        "name": "document_processing_custody_id_not_null",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "NOT NULL custody_id"
+      },
+      {
+        "name": "document_processing_state_not_null",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "NOT NULL state"
+      },
+      {
+        "name": "document_processing_attempts_not_null",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "NOT NULL attempts"
+      },
+      {
+        "name": "document_processing_created_at_not_null",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "NOT NULL created_at"
+      },
+      {
+        "name": "document_processing_updated_at_not_null",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "NOT NULL updated_at"
+      },
+      {
+        "name": "document_processing_pkey",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "name": "document_processing_custody_id_household_id_fkey",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "FOREIGN KEY (custody_id, household_id) REFERENCES document_custodies(id, household_id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "processing_commit",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+      },
+      {
+        "name": "document_processing_custody_id_key",
+        "table": "document_processing",
+        "validated": true,
+        "definition": "UNIQUE (custody_id)"
+      }
+    ],
+    "ensure_rls_triggers": 0,
+    "migration_checksums": {
+      "20260728000001_rls": "88773bb83beb8729fff185e2e06953c64d39abe7e8114372cb313671472eb8c2",
+      "20260728000000_init": "ce990d3117f49b6f5d3d9f473b62f1d2bcf7eeed9a466fc3546ae2ff6c517aee",
+      "20260924000001_plan_catalog": "032cfc1bb37bc5a3c50e5fcd229a0103bbc301ea909e1dac47de1b3d42102d43",
+      "20260823000000_idempotency_keys": "e823ded41ae885b113523d6e310e121c72027a92ba90cc801a3dce5dcabab01d",
+      "20260825000000_auth_rate_limits": "a4f472eb96c5df6ea575a7bc00d4182f31243fcbdb4a3b241c53bb13fe339ffa",
+      "20260814000001_self_audit_insert": "36599c66d8fdc229e64de8accb00ce048670869d29704fda0aaf1dc03a7edb89",
+      "20260913000000_job_delivery_inbox": "821c3cc51edc4956b409600408afea3cc2d21e693267d75527abda779f4bc641",
+      "20260925000000_processing_custody": "c3d1e0a1dcd02988bb4dea976de4b02285c2264814d2a93696c39711e15373ef",
+      "20260912000000_notification_ledger": "7c78a5df525a5bba008ca87ab0635a45f49d0eb4aab854de80378f9b9608ec02",
+      "20260921000001_local_online_erasure": "101ba6c706505e63bc972516eb26eeda499f74a67f52cdff9ff087dc1393148a",
+      "20260913000001_job_worker_scope_read": "fd7aa69db34551af95c598ec33a63ddf546f90030d3406e83098fde08d8323bc",
+      "20260912000002_document_upload_ledger": "bbd230504ed051b08862014e6f2e0bfc2eb4c4e4f14a6bede7c4a88dc8cb7cdf",
+      "20260924000000_dedicated_test_billing": "f220e2b3709091da654771211653c97a801540bac4f6b5b3a0fa45d67272e6b2",
+      "20260925000001_queued_document_status": "c270a4ece4b444795ff5dd9c61c6379f21a7c50dee19270b6f165db715756b0a",
+      "20260921000002_erasure_notification_rls": "c8fc66925ab950dade5b20ecb753a431a19573029a99e19a960115d5eee1297f",
+      "20260913000002_api_role_table_privileges": "bd2e43764c69be3770b6c159e8e0723083c71d21604ff8e9bb35564d9422b125",
+      "20260922000000_privacy_inventory_sources": "c94fca681c1c5bc1343f7d2e582d82ac33a5858baeb4d4db5ba325f39cf25ae8",
+      "20260924000002_billing_audit_cardinality": "b179be63682b9a0b862e4c3c7734c4f3ac9f9068ceeaa2ca2cf0bb7fb6f72306",
+      "20260920000000_document_security_journals": "3eb411ac77b00e23edc059ea696a2fc308f19367648ea5b7d784f6243160c203",
+      "20260923000001_stripe_test_notice_journal": "a9f40b9a96555ddcf8efafaf2ccacd7db4b5cbcae6bac2abc0d191f67a8b31f8",
+      "20260921000000_local_scan_execution_budget": "4fa516669cec1874c9056be72762a8b0859a1219ab9d7df4aa9d45524b489b75",
+      "20260921000004_local_erasure_lease_binding": "97d69be81c8f28ae88d0623273eec9b41f8027c0e116a13ac5416693b08c2aee",
+      "20260923000000_account_security_challenges": "1b9335ec8009f029d2300afca3d46b2b100b5e53b6a0ccb92a4efc2f05982ef1",
+      "20260906000000_restore_intended_rls_posture": "eceed5a27d9de4269b3c503d2c25a555880a29b3a9ad1b96d36d272a4508de47",
+      "20260912000001_notification_recipient_index": "5b38c48c5e2e1fd8829aab286c4d69d1bb160ab96623bb37bc90a73207add8fe",
+      "20260923000002_local_export_artifact_journal": "570dbffa5d9bab9e5abd2a2cf7717d263c00c81d1f38c854d368d43bdcb2e79d",
+      "20260923000003_local_test_subscription_state": "024a735344ce7abc32222b33b37edeb4bf84e43f26e3ae90c762b83838dd08b7",
+      "20260814000000_principal_scope_and_audit_actor": "c1fe37b667eed2855f4a0bd8d30ff1d53ea69e5bfb2bbc403f0d20992a4ef0f2",
+      "20260921000003_document_tenant_reference_parity": "a4d2a483af3ce90f4c2ca9cfb87839a5022809299d3d79cff8d6e721851f6d94"
+    },
+    "remaining_custodies": 0,
+    "remaining_job_inbox": 0,
+    "migrations_completed": 29,
+    "new_role_memberships": 0,
+    "processing_guard_md5": "cfc6865c994c7199ffc13cc57dce91b2",
+    "remaining_processing": 0,
+    "runtime_owned_tables": 0,
+    "inventory_role_grants": [
+      {
+        "table": "job_deliveries",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "job_inbox",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "outbox_events",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "job_deliveries",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "job_inbox",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "outbox_events",
+        "column": "id",
+        "privilege": "SELECT"
+      }
+    ],
+    "local_test_activation": false,
+    "migrations_unfinished": 0,
+    "processing_commit_md5": "bad5f351f9e8203a8445cf5aba4aa6fe",
+    "provider_table_grants": 0,
+    "disabled_user_triggers": 0,
+    "inventory_unique_index": true,
+    "journal_audit_triggers": 14,
+    "migrations_rolled_back": 0,
+    "remaining_stripe_states": 0,
+    "billing_guard_definition": "47e1f7134ba9ba535cff49ee56a8f6fa",
+    "remaining_job_deliveries": 0,
+    "remaining_stripe_intents": 0,
+    "remaining_stripe_notices": 0,
+    "tenant_reference_indexes": 3,
+    "inventory_pair_constraint": {
+      "validated": true,
+      "definition": "CHECK ((((inventory_source IS NULL) AND (source_key IS NULL)) OR ((inventory_source IS NOT NULL) AND ((inventory_source)::text = ANY ((ARRAY['documents'::character varying, 'uploads'::character varying, 'chunks'::character varying, 'items'::character varying, 'secrets'::character varying, 'obligations'::character varying, 'reminders'::character varying, 'notifications'::character varying, 'notification-deliveries'::character varying, 'outbox'::character varying, 'deliveries'::character varying, 'inbox'::character varying, 'scans'::character varying, 'scan-attempts'::character varying, 'auth-challenges'::character varying, 'stripe-bindings'::character varying, 'stripe-notices'::character varying, 'stripe-states'::character varying, 'stripe-intents'::character varying, 'export-artifacts'::character varying, 'custodies'::character varying, 'processing'::character varying])::text[])) AND (source_key IS NOT NULL) AND ((source_key)::text ~ '^[a-f0-9-]{1,40}$'::text) AND (inventory_count = 1))))"
+    },
+    "old_worker_billing_grants": 0,
+    "remaining_stripe_bindings": 0,
+    "remaining_export_artifacts": 0,
+    "account_billing_constraints": [
+      {
+        "name": "account_challenge_time",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "CHECK (((expires_at > created_at) AND (expires_at <= (created_at + '00:05:00'::interval)) AND ((consumed_at IS NULL) OR (consumed_at >= created_at))))"
+      },
+      {
+        "name": "account_security_challenges_id_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL id"
+      },
+      {
+        "name": "account_security_challenges_household_id_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL household_id"
+      },
+      {
+        "name": "account_security_challenges_user_id_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL user_id"
+      },
+      {
+        "name": "account_security_challenges_session_id_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL session_id"
+      },
+      {
+        "name": "account_security_challenges_factor_id_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL factor_id"
+      },
+      {
+        "name": "account_security_challenges_challenge_id_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL challenge_id"
+      },
+      {
+        "name": "account_security_challenges_created_at_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL created_at"
+      },
+      {
+        "name": "account_security_challenges_expires_at_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL expires_at"
+      },
+      {
+        "name": "account_security_challenges_pkey",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "name": "account_security_challenges_challenge_id_key",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "UNIQUE (challenge_id)"
+      },
+      {
+        "name": "account_security_challenges_household_id_fkey",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "stripe_test_bindings_account_id_check",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "CHECK ((account_id ~ '^acct_[A-Za-z0-9]{1,240}$'::text))"
+      },
+      {
+        "name": "stripe_test_bindings_customer_id_check",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "CHECK ((customer_id ~ '^cus_[A-Za-z0-9]{1,240}$'::text))"
+      },
+      {
+        "name": "stripe_test_states_household_id_fkey",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "stripe_test_states_source_notice_id_fkey",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "FOREIGN KEY (source_notice_id) REFERENCES stripe_test_notices(id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "stripe_test_states_binding_id_household_id_account_id_fkey",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "FOREIGN KEY (binding_id, household_id, account_id) REFERENCES stripe_test_bindings(id, household_id, account_id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "stripe_test_notices_expected_revision_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL expected_revision"
+      },
+      {
+        "name": "stripe_test_notices_expected_revision_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK ((expected_revision >= 0))"
+      },
+      {
+        "name": "billing_one_source",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "CHECK ((num_nonnulls(source_notice_id, source_intent_id) = 1))"
+      },
+      {
+        "name": "billing_atomic_commit",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+      },
+      {
+        "name": "stripe_test_bindings_subscription_id_check",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "CHECK ((subscription_id ~ '^sub_[A-Za-z0-9]{1,240}$'::text))"
+      },
+      {
+        "name": "stripe_test_bindings_livemode_check",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "CHECK ((livemode = false))"
+      },
+      {
+        "name": "stripe_test_bindings_id_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL id"
+      },
+      {
+        "name": "stripe_test_bindings_household_id_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL household_id"
+      },
+      {
+        "name": "stripe_test_bindings_owner_id_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL owner_id"
+      },
+      {
+        "name": "stripe_test_bindings_account_id_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL account_id"
+      },
+      {
+        "name": "stripe_test_bindings_customer_id_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL customer_id"
+      },
+      {
+        "name": "stripe_test_bindings_subscription_id_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL subscription_id"
+      },
+      {
+        "name": "stripe_test_bindings_livemode_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL livemode"
+      },
+      {
+        "name": "stripe_test_bindings_created_at_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL created_at"
+      },
+      {
+        "name": "stripe_test_bindings_pkey",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "name": "stripe_test_bindings_household_id_key",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "UNIQUE (household_id)"
+      },
+      {
+        "name": "stripe_test_bindings_account_id_customer_id_key",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "UNIQUE (account_id, customer_id)"
+      },
+      {
+        "name": "stripe_test_bindings_account_id_subscription_id_key",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "UNIQUE (account_id, subscription_id)"
+      },
+      {
+        "name": "stripe_test_bindings_id_household_id_account_id_key",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "UNIQUE (id, household_id, account_id)"
+      },
+      {
+        "name": "stripe_test_bindings_household_id_fkey",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "stripe_test_notices_event_id_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK ((event_id ~ '^evt_[A-Za-z0-9]{1,240}$'::text))"
+      },
+      {
+        "name": "stripe_test_notices_event_type_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK ((event_type = ANY (ARRAY['customer.subscription.created'::text, 'customer.subscription.updated'::text, 'customer.subscription.deleted'::text, 'invoice.paid'::text, 'invoice.payment_failed'::text])))"
+      },
+      {
+        "name": "stripe_test_notices_object_id_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK ((object_id ~ '^(sub|in)_[A-Za-z0-9]{1,240}$'::text))"
+      },
+      {
+        "name": "stripe_test_notices_provider_created_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK (((provider_created >= 0) AND (provider_created <= '8640000000000'::bigint)))"
+      },
+      {
+        "name": "stripe_test_notices_attempts_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK (((attempts >= 0) AND (attempts <= 3)))"
+      },
+      {
+        "name": "stripe_test_notices_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK ((((state = 'leased'::text) AND (lease_token IS NOT NULL) AND (lease_until IS NOT NULL)) OR ((state <> 'leased'::text) AND (lease_token IS NULL) AND (lease_until IS NULL))))"
+      },
+      {
+        "name": "stripe_test_notices_id_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL id"
+      },
+      {
+        "name": "stripe_test_notices_household_id_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL household_id"
+      },
+      {
+        "name": "stripe_test_notices_binding_id_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL binding_id"
+      },
+      {
+        "name": "stripe_test_notices_account_id_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL account_id"
+      },
+      {
+        "name": "stripe_test_notices_event_id_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL event_id"
+      },
+      {
+        "name": "stripe_test_notices_event_type_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL event_type"
+      },
+      {
+        "name": "stripe_test_notices_object_id_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL object_id"
+      },
+      {
+        "name": "stripe_test_notices_provider_created_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL provider_created"
+      },
+      {
+        "name": "stripe_test_notices_created_at_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL created_at"
+      },
+      {
+        "name": "stripe_test_notices_state_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL state"
+      },
+      {
+        "name": "stripe_test_notices_attempts_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL attempts"
+      },
+      {
+        "name": "stripe_test_notices_pkey",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "name": "stripe_test_notices_account_id_event_id_key",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "UNIQUE (account_id, event_id)"
+      },
+      {
+        "name": "stripe_test_notices_household_id_fkey",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "stripe_test_notices_binding_id_household_id_account_id_fkey",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "FOREIGN KEY (binding_id, household_id, account_id) REFERENCES stripe_test_bindings(id, household_id, account_id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "local_export_artifacts_ciphertext_digest_check",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "CHECK ((ciphertext_digest ~ '^[a-f0-9]{64}$'::text))"
+      },
+      {
+        "name": "local_export_artifacts_size_bytes_check",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "CHECK (((size_bytes >= 1) AND (size_bytes <= 4194304)))"
+      },
+      {
+        "name": "local_export_artifacts_state_check",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "CHECK ((state = ANY (ARRAY['partial'::text, 'revoked'::text])))"
+      },
+      {
+        "name": "local_export_artifacts_check",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "CHECK (((expires_at > snapshot_at) AND (expires_at <= (snapshot_at + '72:00:00'::interval))))"
+      },
+      {
+        "name": "local_export_artifacts_id_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL id"
+      },
+      {
+        "name": "local_export_artifacts_household_id_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL household_id"
+      },
+      {
+        "name": "local_export_artifacts_request_id_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL request_id"
+      },
+      {
+        "name": "local_export_artifacts_owner_id_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL owner_id"
+      },
+      {
+        "name": "local_export_artifacts_ciphertext_digest_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL ciphertext_digest"
+      },
+      {
+        "name": "local_export_artifacts_size_bytes_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL size_bytes"
+      },
+      {
+        "name": "local_export_artifacts_snapshot_at_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL snapshot_at"
+      },
+      {
+        "name": "local_export_artifacts_expires_at_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL expires_at"
+      },
+      {
+        "name": "local_export_artifacts_created_at_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL created_at"
+      },
+      {
+        "name": "local_export_artifacts_state_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL state"
+      },
+      {
+        "name": "local_export_artifacts_pkey",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "name": "local_export_artifacts_household_id_request_id_key",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "UNIQUE (household_id, request_id)"
+      },
+      {
+        "name": "local_export_artifacts_household_id_fkey",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "stripe_test_notices_state_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK ((state = ANY (ARRAY['pending'::text, 'leased'::text, 'refused'::text, 'reconciled'::text])))"
+      },
+      {
+        "name": "stripe_test_states_revision_check",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "CHECK (((revision >= 1) AND (revision <= 2147483647)))"
+      },
+      {
+        "name": "stripe_test_states_state_check",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "CHECK ((state = ANY (ARRAY['inactive'::text, 'active'::text, 'canceling'::text, 'grace'::text, 'past_due'::text, 'canceled'::text, 'blocked'::text])))"
+      },
+      {
+        "name": "stripe_test_states_plan_check",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "CHECK ((plan = ANY (ARRAY['monthly'::text, 'annual'::text])))"
+      },
+      {
+        "name": "stripe_test_states_paid_through_check",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "CHECK (((paid_through >= 0) AND (paid_through <= '8640000000000'::bigint)))"
+      },
+      {
+        "name": "stripe_test_states_premium_until_check",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "CHECK (((premium_until >= 0) AND (premium_until <= '8640000000000'::bigint)))"
+      },
+      {
+        "name": "stripe_test_states_check",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "CHECK ((((state = ANY (ARRAY['active'::text, 'canceling'::text, 'grace'::text])) AND (premium_until IS NOT NULL) AND (paid_through IS NOT NULL) AND (premium_until <= (paid_through +\nCASE\n    WHEN (state = 'grace'::text) THEN 604800\n    ELSE 0\nEND))) OR ((state <> ALL (ARRAY['active'::text, 'canceling'::text, 'grace'::text])) AND (premium_until IS NULL))))"
+      },
+      {
+        "name": "stripe_test_states_id_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL id"
+      },
+      {
+        "name": "stripe_test_states_household_id_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL household_id"
+      },
+      {
+        "name": "stripe_test_states_binding_id_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL binding_id"
+      },
+      {
+        "name": "stripe_test_states_account_id_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL account_id"
+      },
+      {
+        "name": "stripe_test_states_source_lease_token_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL source_lease_token"
+      },
+      {
+        "name": "stripe_test_states_revision_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL revision"
+      },
+      {
+        "name": "stripe_test_states_state_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL state"
+      },
+      {
+        "name": "stripe_test_states_plan_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL plan"
+      },
+      {
+        "name": "stripe_test_states_reconciled_at_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL reconciled_at"
+      },
+      {
+        "name": "stripe_test_states_pkey",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "name": "stripe_test_states_binding_id_key",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "UNIQUE (binding_id)"
+      },
+      {
+        "name": "stripe_test_states_source_intent_id_fkey",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "FOREIGN KEY (source_intent_id) REFERENCES stripe_test_intents(id) ON DELETE RESTRICT"
+      }
+    ],
+    "account_billing_role_grants": [
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "account_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "account_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "account_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "attempts",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "binding_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "challenge_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "challenge_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "ciphertext_digest",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "ciphertext_digest",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "consumed_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "consumed_at",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "customer_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "customer_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "event_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "event_type",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "expected_revision",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "expires_at",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "expires_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "expires_at",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "expires_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "factor_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "factor_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "household_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "household_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "household_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "lease_token",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "lease_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "livemode",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "object_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "owner_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "owner_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "owner_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "owner_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "paid_through",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "plan",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "premium_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "provider_created",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "reconciled_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "request_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "request_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "revision",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "session_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "session_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "size_bytes",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "size_bytes",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "snapshot_at",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "snapshot_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "state",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "subscription_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "subscription_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "user_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "user_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "account_security_challenges",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "local_export_artifacts",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "stripe_test_bindings",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "stripe_test_notices",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "stripe_test_states",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "account_security_challenges",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "local_export_artifacts",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "stripe_test_bindings",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "stripe_test_notices",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "stripe_test_states",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "account_security_challenges",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "local_export_artifacts",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "stripe_test_bindings",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "stripe_test_notices",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "stripe_test_states",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "account_security_challenges",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "local_export_artifacts",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "stripe_test_bindings",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "stripe_test_notices",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "stripe_test_states",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_bindings",
+        "column": "account_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "account_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "account_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "account_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "account_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "attempts",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "attempts",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "binding_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "binding_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "binding_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "binding_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_bindings",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_bindings",
+        "column": "customer_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "event_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "event_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "event_type",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "event_type",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "expected_revision",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_bindings",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "household_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "household_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_bindings",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "lease_token",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "lease_token",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "lease_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "lease_until",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_bindings",
+        "column": "livemode",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "object_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "object_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_bindings",
+        "column": "owner_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "paid_through",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "paid_through",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "paid_through",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "plan",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "plan",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "plan",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "premium_until",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "premium_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "premium_until",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "provider_created",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "provider_created",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "reconciled_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "revision",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "source_intent_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "source_intent_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "source_intent_id",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "source_lease_token",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "source_lease_token",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "source_lease_token",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "source_lease_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "source_notice_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "source_notice_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "source_notice_id",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_notices",
+        "column": "state",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "state",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_states",
+        "column": "state",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_billing_test",
+        "table": "stripe_test_bindings",
+        "column": "subscription_id",
+        "privilege": "SELECT"
+      }
+    ],
+    "remaining_account_challenges": 0,
+    "tenant_reference_constraints": [
+      {
+        "name": "obligations_tenant_item_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (item_id, household_id) REFERENCES items(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      },
+      {
+        "name": "reminders_tenant_obligation_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (obligation_id, household_id) REFERENCES obligations(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      },
+      {
+        "name": "document_chunks_tenant_document_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (document_id, household_id) REFERENCES documents(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      },
+      {
+        "name": "items_tenant_source_document_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (source_document_id, household_id) REFERENCES documents(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      }
+    ],
+    "new_runtime_passwords_cleared": true,
+    "billing_state_guard_definition": "b46dfc5a608723fdd219f7691ddb8831",
+    "new_security_definer_functions": 0
+  },
+  "mutations": [
+    {
+      "name": "admission-serialization",
+      "detected": true,
+      "expectedNonzeroExit": 1,
+      "logSha256": "0564a3f6979e90c6c249a72e37e912bc2694ee00b20d4dfbb0b8eacb2f28a7c3",
+      "restored": true
+    },
+    {
+      "name": "capacity-admission",
+      "detected": true,
+      "expectedNonzeroExit": 1,
+      "logSha256": "5a6615cb382aca20b258688239bfd60ff7197d65592a5a7f3033444da42cd7e4",
+      "restored": true
+    },
+    {
+      "name": "exact-once-identity",
+      "detected": true,
+      "expectedNonzeroExit": 1,
+      "logSha256": "4036b88c8d6c11bdab637407daf08de179f78cbe9b0cc25b84b4d99fa95089cd",
+      "restored": true
+    },
+    {
+      "name": "period-binding",
+      "detected": true,
+      "expectedNonzeroExit": 1,
+      "logSha256": "98dec707495afc1611ccabc40cdc7f7d23e9e476272399f161f6388714f68e64",
+      "restored": true
+    },
+    {
+      "name": "deletion-fence",
+      "detected": true,
+      "expectedNonzeroExit": 1,
+      "logSha256": "472e91cd36a23efab05db9c353fa479b01d172900d44108bfdf9b7ddfafe7013",
+      "restored": true
+    }
+  ],
+  "historicalCutoverRegression": {
+    "historicalImplementation": "94a157477caf793e0dc16072b5f2cb02fc952ff8",
+    "legacyUsageGuardRegressionDetected": true,
+    "observed": "historical gate reaches DDL with nonzero legacy usage; current gate refuses before DDL",
+    "historicalMigrationSha256": "2e1dc9e5b26160ce3a37ee20f8bf129651daebcf561e7bf9f0d19974df41d043",
+    "repositorySourceModified": false,
+    "fixtureTransactionRolledBack": true
+  },
+  "cutoverGate": {
+    "cases": [
+      {
+        "case": "document-inventory",
+        "refused": true
+      },
+      {
+        "case": "legacy-usage-without-documents",
+        "refused": true
+      }
+    ],
+    "migrationSourceSha256": "c3d1e0a1dcd02988bb4dea976de4b02285c2264814d2a93696c39711e15373ef",
+    "transactionRolledBackOnConnectionClose": true
+  },
+  "rowSize": {
+    "method": "pg_column_size of fully populated synthetic composite rows; excludes heap/index/page/WAL/backup overhead; no persisted fixture",
+    "custody_indexes": 6,
+    "processing_indexes": 3,
+    "custody_tuple_bytes": 168,
+    "processing_tuple_bytes": 192
+  },
+  "costScenarios": {
+    "source": {
+      "source": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/us-east-2/index.json",
+      "publicationDate": "2026-09-18T17:47:47Z",
+      "sourceSha256": "5f59fb690b2cabb25076254e611686b415a3adb66ef7fda60e398f7f16f14e33",
+      "dimensions": [
+        {
+          "sku": "YPGKVRB2EKTVDJDT",
+          "unit": "GB-Mo",
+          "begin": "0",
+          "end": "51200",
+          "usd": "0.0230000000",
+          "description": "$0.023 per GB - first 50 TB / month of storage used"
+        },
+        {
+          "sku": "YPGKVRB2EKTVDJDT",
+          "unit": "GB-Mo",
+          "begin": "51200",
+          "end": "512000",
+          "usd": "0.0220000000",
+          "description": "$0.022 per GB - next 450 TB / month of storage used"
+        },
+        {
+          "sku": "YPGKVRB2EKTVDJDT",
+          "unit": "GB-Mo",
+          "begin": "512000",
+          "end": "Inf",
+          "usd": "0.0210000000",
+          "description": "$0.021 per GB - storage used / month over 500 TB"
+        }
+      ]
+    },
+    "method": "Arithmetic only: one copy retained one full month, 100k identical households; binary GB per AWS S3 units. Not workload measurement or capacity evidence. No credits/free tier assumed.",
+    "scenarios": [
+      {
+        "scenario": "Free full allowance held one month",
+        "documents": 10,
+        "inputMiB": 25,
+        "GiBPerHousehold": "0.244140625",
+        "GiBAt100k": "24414.062500000",
+        "storageUSDAt100k": "561.52",
+        "storageUSDPerHousehold": "0.00562"
+      },
+      {
+        "scenario": "Premium full allowance held one month",
+        "documents": 50,
+        "inputMiB": 25,
+        "GiBPerHousehold": "1.220703125",
+        "GiBAt100k": "122070.312500000",
+        "storageUSDAt100k": "2736.75",
+        "storageUSDPerHousehold": "0.02737"
+      },
+      {
+        "scenario": "Maximum local pending custody held one month",
+        "documents": 20,
+        "inputMiB": 25,
+        "GiBPerHousehold": "0.48828125",
+        "GiBAt100k": "48828.12500000",
+        "storageUSDAt100k": "1123.05",
+        "storageUSDPerHousehold": "0.01123"
+      }
+    ],
+    "maximumAllInCostPerDocBeforeOtherCOGS": {
+      "freeTarget": "0.11",
+      "premiumTarget": "0.022",
+      "freeRedline": "0.16",
+      "premiumRedline": "0.032"
+    },
+    "unpriced": [
+      "PUT/COPY/GET and scan retry requests",
+      "scanner/parse/worker CPU and memory",
+      "model provider (disabled; no measured unit economics)",
+      "logs/CloudTrail/metrics",
+      "database/journals/backups",
+      "network/egress",
+      "support and existing infrastructure"
+    ],
+    "quarantineAdditionalCopyFactorForSteadyUploads": "7/30 month, plus selected/unselected copies where applicable",
+    "longTermWarning": "Completed archive accumulation and action-required holds beyond review deadline are not bounded by monthly allowance. Published retention/product approval and measured cost required."
+  },
+  "originalUserFiles": {
+    "inventoried": 386,
+    "unchanged": 386,
+    "changed": []
+  },
+  "preview": {
+    "url": "http://127.0.0.1:4317/",
+    "status": 200,
+    "pellumPresent": true,
+    "authenticatedE2E": false
+  },
+  "privateEvidenceDirectory": "/private/tmp/pellum-custody-review-20260921",
+  "hashes": {
+    "candidate-frozen.log": "08d38896567197d844c2996624b89ea64969710efb9b5c1a277a02a22adf3a7a",
+    "candidate-build.log": "ab6c5e0800564b6c605b8afad1a52aeb1a036e7b716a0b138bfb8de4bef4bd9e",
+    "candidate-typecheck.log": "5dcf4a9f933d14a51bfc172a3b3009ee262faff9546866c1f52a2134b3ae2a54",
+    "candidate-lint.log": "ffb00d50730c5999cc7fa10f1f288eb495a3b77ecddd12dc87641761981ab9c9",
+    "candidate-unit.log": "3389772a8113d5515960c1643eabfdbd8f5936ba9725b88a30f3ead9d4b89297",
+    "candidate-controls.log": "e1ef7282472d0f0728cac9c86097b3a1d35526307ead38410c0e14573bea680a",
+    "candidate-guards.log": "3f4cbc0632cbc9f168c2236e9955a37d255e391c867c0e612f6fa5f35eb0752c",
+    "candidate-versions.log": "e8ad96702cd57ad4c02ca74f4f8e56ba8ab89443f0e4fd86fe326a087c75473e",
+    "integration-candidate-db.log": "e866ff2c8e7e2030debd8f1c0e4fb0fd9b9c0b98e8221923d2365ecdbbfcd44e",
+    "integration-candidate-web.log": "31494033426fc66ded02c6d86fad29bf6f8970fd2dc955dc47df7b8946b2736e",
+    "integration-admin-candidate-mutations.log": "51c3efcba71ba6568cd4c8dde92ad459845d457c7f13d05ca88e1ada005341c1",
+    "integration-restored-processing.log": "915336ee07525143016135a20c797a15a3d494f5227682759e369dc6c85c580a",
+    "integration-admin-cutover-gate.log": "243a648217d6e187ba21dda1ede35a3bb623db3f4d409d3b45d462ce34c81842",
+    "integration-admin-size-proof.log": "5b1d58b93baa25c0e9d74cfed1ac1fc4fcb4e99b3cc0b5a89360a814db424c4d",
+    "integration-admin-candidate-readback.log": "fe033c5387ebdc0e62abf800258b73f9be84973d170c0b2a6eefb22e52f312e0",
+    "integration-local-candidate-scanner.log": "3b39bb5acb499ceff4a8e114690dbf803e88b9c4f220ced10d0ea8ba81f1491e",
+    "integration-admin-release-readback.log": "fe033c5387ebdc0e62abf800258b73f9be84973d170c0b2a6eefb22e52f312e0",
+    "integration-admin-historical-cutover.log": "d012e4cbf4dfcff1140820b25786ddd04629dd269a26da0da09893092beb1f58",
+    "integration-admin-last-readback.log": "fe033c5387ebdc0e62abf800258b73f9be84973d170c0b2a6eefb22e52f312e0",
+    "integration-mutation-admission-serialization.log": "0564a3f6979e90c6c249a72e37e912bc2694ee00b20d4dfbb0b8eacb2f28a7c3",
+    "integration-mutation-capacity-admission.log": "5a6615cb382aca20b258688239bfd60ff7197d65592a5a7f3033444da42cd7e4",
+    "integration-mutation-exact-once-identity.log": "4036b88c8d6c11bdab637407daf08de179f78cbe9b0cc25b84b4d99fa95089cd",
+    "integration-mutation-period-binding.log": "98dec707495afc1611ccabc40cdc7f7d23e9e476272399f161f6388714f68e64",
+    "integration-mutation-deletion-fence.log": "472e91cd36a23efab05db9c353fa479b01d172900d44108bfdf9b7ddfafe7013",
+    "readback-final.json": "af39e96795b25c6db6af9331aaa0a6f8d57e5168d8bd119f047215167396ed20",
+    "mutations.json": "f243217e0cc5e694a4fde9c93b7ff90d662ca2a5c554ccea0a100dc6ccfb295f",
+    "cost-scenarios.json": "6ca37a0a6456acdba0912ac33db1e56adfb7b37fec4fd2e615540501298bc984",
+    "cutover-gate.json": "fb687bf7823405de4d08318bae4f148af255b9969ee9ec0893195c41a4edc9dc",
+    "historical-cutover-proof.json": "2dd258c039992e1ef09c00841fe42e1bc2ddd45e158a6f2ebc4c375ad5c355f8",
+    "size-proof.json": "9afde0aeaa1eedc639a70c7345a24113d1d740678831fb138ce22a6e16a08c4a",
+    "original-preservation-final.json": "035944ab1e776162b2e6c29c3bceba20e1cf5872904acfabcd3708d9297cf08d",
+    "preview-readback.json": "1654861bbdf43907098b44571cdc8f0f595b0ae00d095334fa55588cfcd2617f"
+  },
+  "notPerformed": [
+    "push",
+    "PR mutation",
+    "CI dispatch",
+    "deployment",
+    "hosted migration",
+    "Production access",
+    "Live Stripe",
+    "real Plaid",
+    "real sensitive document processing",
+    "external model calls",
+    "support submission"
+  ],
+  "decision": "NO-GO for Production preflight"
+}

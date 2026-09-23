@@ -1,0 +1,220 @@
+<title>AutoBureau — Assumption Dashboard</title>
+<style>
+  :root {
+    --ground: #F7F8F7; --surface: #FFFFFF; --ink: #1C2426; --muted: #5C6B6E;
+    --line: #DFE5E2; --accent: #0F6B5C; --accent-soft: #E3EFEB;
+    --risk: #B3372E; --risk-soft: #F7E9E7; --warn: #9A6A00; --warn-soft: #F6EEDC;
+    --info: #2F5D8A; --info-soft: #E5EDF5;
+    --serif: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #121716; --surface: #1A211F; --ink: #E6ECEA; --muted: #93A3A0;
+      --line: #2A3330; --accent: #4FB39F; --accent-soft: #1E2E2A;
+      --risk: #E06B5E; --risk-soft: #33221F; --warn: #D9A441; --warn-soft: #322A1A;
+      --info: #7FA8D0; --info-soft: #1E2733;
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #F7F8F7; --surface: #FFFFFF; --ink: #1C2426; --muted: #5C6B6E;
+    --line: #DFE5E2; --accent: #0F6B5C; --accent-soft: #E3EFEB;
+    --risk: #B3372E; --risk-soft: #F7E9E7; --warn: #9A6A00; --warn-soft: #F6EEDC;
+    --info: #2F5D8A; --info-soft: #E5EDF5;
+  }
+  :root[data-theme="dark"] {
+    --ground: #121716; --surface: #1A211F; --ink: #E6ECEA; --muted: #93A3A0;
+    --line: #2A3330; --accent: #4FB39F; --accent-soft: #1E2E2A;
+    --risk: #E06B5E; --risk-soft: #33221F; --warn: #D9A441; --warn-soft: #322A1A;
+    --info: #7FA8D0; --info-soft: #1E2733;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 15px; line-height: 1.5;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 64px; display: grid; gap: 28px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 6px;
+  }
+  h1 { font-family: var(--serif); font-size: 34px; font-weight: 600; margin: 0; text-wrap: balance; }
+  .masthead p.sub { margin: 8px 0 0; color: var(--muted); max-width: 62ch; }
+
+  .status {
+    display: flex; flex-wrap: wrap; gap: 0; border: 1px solid var(--line);
+    border-radius: 10px; background: var(--surface); overflow: hidden;
+  }
+  .status > div { padding: 14px 20px; border-right: 1px solid var(--line); flex: 1 1 160px; }
+  .status > div:last-child { border-right: none; }
+  .status .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .status .v { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .status .v small { font-size: 12px; font-weight: 400; color: var(--muted); }
+
+  .panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 18px 10px; }
+  .panel h2 { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; font-family: var(--mono); margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .panel p.note { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .panel.risk h2 { color: var(--risk); } .panel.risk .dot { background: var(--risk); }
+  .panel.weak h2 { color: var(--warn); } .panel.weak .dot { background: var(--warn); }
+  .panel.moved h2 { color: var(--info); } .panel.moved .dot { background: var(--info); }
+  .rank { list-style: none; margin: 0; padding: 0; }
+  .rank li { display: grid; grid-template-columns: 44px 1fr; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .rank .hid {
+    font-family: var(--mono); font-size: 12px; font-weight: 700; align-self: start;
+    padding: 2px 0; text-align: center; border-radius: 6px; border: 1px solid var(--line);
+  }
+  .panel.risk .hid { background: var(--risk-soft); color: var(--risk); border-color: transparent; }
+  .panel.weak .hid { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+  .panel.moved .hid { background: var(--info-soft); color: var(--info); border-color: transparent; }
+  .rank .t { font-weight: 600; font-size: 13.5px; }
+  .rank .why { font-size: 12.5px; color: var(--muted); }
+  .arrow { font-weight: 700; }
+  .up { color: var(--accent); } .down { color: var(--risk); }
+
+  .tablecard { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  .tablecard header { padding: 16px 20px 0; }
+  .tablecard h2 { font-family: var(--serif); font-size: 20px; margin: 0; }
+  .tablecard p { color: var(--muted); font-size: 13px; margin: 4px 0 0; }
+  .scroller { overflow-x: auto; padding: 8px 8px 12px; }
+  table { border-collapse: collapse; width: 100%; min-width: 940px; font-size: 13px; }
+  th { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+       color: var(--muted); text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.hid { font-family: var(--mono); font-weight: 700; white-space: nowrap; }
+  td.date, td.next { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+  td.date b, td.next b { color: var(--ink); font-weight: 600; }
+  .chip { display: inline-block; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em;
+          padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+  .chip.exist { background: var(--risk); color: var(--surface); border-color: transparent; font-weight: 700; }
+  .chip.strat { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .chip.prod  { background: var(--info-soft); color: var(--info); border-color: transparent; }
+  .chip.ops   { color: var(--muted); }
+  .cost-existential { color: var(--risk); font-weight: 700; }
+  .cost-high { color: var(--warn); font-weight: 600; }
+  .cost-medium, .cost-low { color: var(--muted); }
+  .conf { font-family: var(--mono); letter-spacing: 2px; white-space: nowrap; }
+  .conf .on { color: var(--accent); } .conf .off { color: var(--line); }
+  tr.hot td { background: color-mix(in srgb, var(--risk-soft) 45%, transparent); }
+
+  .ritual { background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+            border-radius: 10px; padding: 20px 24px; }
+  .ritual h2 { font-family: var(--serif); font-size: 19px; margin: 0 0 10px; color: var(--accent); }
+  .ritual ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 72ch; }
+  .ritual li::marker { font-family: var(--mono); font-weight: 700; color: var(--accent); }
+
+  footer { color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 16px; }
+  footer code { font-family: var(--mono); font-size: 12px; }
+  a { color: var(--accent); }
+</style>
+
+<div class="wrap">
+  <div class="masthead">
+    <p class="eyebrow">AutoBureau · Governing document · Read before every planning meeting</p>
+    <h1>Assumption Dashboard</h1>
+    <p class="sub">Fifteen numbered hypotheses carry the company. This page shows where the risk is, where the evidence is thin, and what moved.</p>
+    <p class="sub"><strong>Hand-maintained snapshot as of 2026-07-28.</strong> The source of truth is <code>ops/assumptions.yaml</code> (schema-validated in CI). Until the generator ships, this page is updated by hand alongside the registry — if the two disagree, the YAML is correct.</p>
+  </div>
+
+  <div class="status">
+    <div><div class="k">Ledger updated</div><div class="v">2026-07-28</div></div>
+    <div><div class="k">Next gate</div><div class="v">G1 <small>validation verdict</small></div></div>
+    <div><div class="k">G1 expected</div><div class="v">Aug 25 <small id="countdown"></small></div></div>
+    <div><div class="k">Evidence drops</div><div class="v">1 <small>since inception</small></div></div>
+    <div><div class="k">Current focus</div><div class="v"><small>All top risks resolve at G1 — recruit the 25 households</small></div></div>
+  </div>
+
+  <div class="panels">
+    <section class="panel risk">
+      <h2><span class="dot"></span>Highest risk</h2>
+      <p class="note">Cost of being wrong × weakness of evidence</p>
+      <ol class="rank">
+        <li><span class="hid">H1</span><div><div class="t">Users will feed the ledger</div><div class="why">Existential cost, zero primary evidence — the assumption that killed every ancestor</div></div></li>
+        <li><span class="hid">H2</span><div><div class="t">$8–12/mo willingness to pay</div><div class="why">Existential cost; precedent negative; tested only by proxy</div></div></li>
+        <li><span class="hid">H7</span><div><div class="t">Forwarding is a workable channel</div><div class="why">Weakened twice by analysis already; G1-testable</div></div></li>
+        <li><span class="hid">H8</span><div><div class="t">Rulebook is tractable content</div><div class="why">The moat thesis rests on it; spike not yet run</div></div></li>
+        <li><span class="hid">H11</span><div><div class="t">Reminders keep the ledger fresh</div><div class="why">If wrong, we die the PKM entropy death regardless of all else</div></div></li>
+      </ol>
+    </section>
+
+    <section class="panel weak">
+      <h2><span class="dot"></span>Weakest evidence</h2>
+      <p class="note">No primary data yet — all waiting on the P0 sprint</p>
+      <ol class="rank">
+        <li><span class="hid">H1</span><div><div class="t">Ingestion behavior</div><div class="why">Analogy + graveyard only</div></div></li>
+        <li><span class="hid">H2</span><div><div class="t">Willingness to pay</div><div class="why">Precedent + one adjacent price anchor (Ohai $9.99)</div></div></li>
+        <li><span class="hid">H5</span><div><div class="t">20 docs/household/mo</div><div class="why">A panel estimate contradicting our own model</div></div></li>
+        <li><span class="hid">H7</span><div><div class="t">Forwarding channel</div><div class="why">Analysis only; friction test pending</div></div></li>
+        <li><span class="hid">H3</span><div><div class="t">Caregiver wedge</div><div class="why">Expert preference; zero of 75 interviews done</div></div></li>
+      </ol>
+    </section>
+
+    <section class="panel moved">
+      <h2><span class="dot"></span>Most moved</h2>
+      <p class="note">Since inception priors (2026-07-22) — analysis-driven so far; G1 brings user data</p>
+      <ol class="rank">
+        <li><span class="hid">H10</span><div><div class="t">Bank/advisor B2B2C channel <span class="arrow up">↑↑</span></div><div class="why">Live-verified: Trustworthy on Q2, Carefull via banks</div></div></li>
+        <li><span class="hid">H7</span><div><div class="t">Forwarding-primary <span class="arrow down">↓↓</span></div><div class="why">Red-team A-B1 + ancestor ingestion failures</div></div></li>
+        <li><span class="hid">H5</span><div><div class="t">Doc volume <span class="arrow down">↓</span></div><div class="why">Panel re-estimate: 3–8/mo realistic</div></div></li>
+        <li><span class="hid">H9</span><div><div class="t">Found-money shareability <span class="arrow up">↑</span></div><div class="why">Rocket precedent + entitlements reframe</div></div></li>
+        <li><span class="hid">H2</span><div><div class="t">WTP — re-anchored <span class="arrow">→</span></div><div class="why">First adjacent real price point found</div></div></li>
+      </ol>
+    </section>
+  </div>
+
+  <section class="tablecard">
+    <header>
+      <h2>Full register</h2>
+      <p>Confidence: filled dots. Rows tinted red are existential. Owners: F = Founder · CTO = Founding CTO · OPS = concierge operator.</p>
+    </header>
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Hypothesis</th><th>Category</th><th>Cost if wrong</th><th>Confidence</th><th>Owner</th><th>Next evidence</th><th>Validates at</th></tr>
+        </thead>
+        <tbody>
+          <tr class="hot"><td class="hid">H1</td><td>Users will continuously feed the ledger</td><td><span class="chip exist">EXIST</span></td><td class="cost-existential">Existential</td><td class="conf"><span class="on">●</span><span class="off">●●</span></td><td>OPS / F</td><td class="next">Wk-1 forwarding, <b>Aug 8</b></td><td class="date"><b>G1</b> · Aug 25</td></tr>
+          <tr class="hot"><td class="hid">H2</td><td>$8–12/mo standalone willingness to pay</td><td><span class="chip exist">EXIST</span></td><td class="cost-existential">Existential</td><td class="conf"><span class="on">●</span><span class="off">●●</span></td><td>F</td><td class="next">LP conversion, <b>Aug 11</b></td><td class="date">G1 read · <b>G3</b> Feb 27</td></tr>
+          <tr><td class="hid">H3</td><td>Caregiver is the right entry wedge</td><td><span class="chip strat">STRAT</span></td><td class="cost-high">High</td><td class="conf"><span class="on">●●</span><span class="off">●</span></td><td>F</td><td class="next">25 interviews, <b>Aug 11</b></td><td class="date"><b>G1</b> · Aug 25</td></tr>
+          <tr><td class="hid">H4</td><td>≥85% AI accept rate achievable on 8 doc types</td><td><span class="chip prod">PROD</span></td><td class="cost-high">High</td><td class="conf"><span class="on">●●</span><span class="off">●</span></td><td>CTO</td><td class="next">First evals, <b>Oct</b></td><td class="date"><b>G2</b> · Dec 26</td></tr>
+          <tr><td class="hid">H5</td><td>~20 docs/household/mo (COGS input)</td><td><span class="chip ops">OPS</span></td><td class="cost-medium">Medium</td><td class="conf"><span class="on">●</span><span class="off">●●</span></td><td>OPS</td><td class="next">Weekly counts, <b>Aug 4</b></td><td class="date">G1 → G2</td></tr>
+          <tr><td class="hid">H6</td><td>Chat unnecessary in v1 (search suffices)</td><td><span class="chip prod">PROD</span></td><td class="cost-low">Low</td><td class="conf"><span class="on">●●</span><span class="off">●</span></td><td>CTO</td><td class="next">Beta telemetry, <b>Jan 27</b></td><td class="date"><b>G3</b> · Feb 27</td></tr>
+          <tr><td class="hid">H7</td><td>Forwarding is a workable fallback channel</td><td><span class="chip strat">STRAT</span></td><td class="cost-high">High</td><td class="conf"><span class="on">●</span><span class="off">●●</span></td><td>OPS</td><td class="next">Friction test, <b>Aug 15</b></td><td class="date"><b>G1</b>; split at G3</td></tr>
+          <tr><td class="hid">H8</td><td>Vendor rulebook is tractable content work</td><td><span class="chip strat">STRAT</span></td><td class="cost-high">High</td><td class="conf"><span class="on">●●</span><span class="off">●</span></td><td>CTO + OPS</td><td class="next">Spike report, <b>Aug 22</b></td><td class="date"><b>G1</b> · Aug 25</td></tr>
+          <tr><td class="hid">H9</td><td>Found-money moments drive sharing + conversion</td><td><span class="chip strat">STRAT</span></td><td class="cost-medium">Medium</td><td class="conf"><span class="on">●●</span><span class="off">●</span></td><td>F</td><td class="next">LP variant B, <b>Aug 11</b></td><td class="date">G1 → G3</td></tr>
+          <tr><td class="hid">H10</td><td>B2B2C via banks/advisors viable later</td><td><span class="chip strat">STRAT</span></td><td class="cost-medium">Medium</td><td class="conf"><span class="on">●●●</span></td><td>F</td><td class="next">LOI talks, Act II</td><td class="date">2027-H2</td></tr>
+          <tr><td class="hid">H11</td><td>Reminders act as freshness probes (self-maintaining ledger)</td><td><span class="chip prod">PROD</span></td><td class="cost-high">High</td><td class="conf"><span class="on">●●</span><span class="off">●</span></td><td>CTO / OPS</td><td class="next">Probe responses, <b>Aug 10</b></td><td class="date"><b>G2</b> · Dec 26</td></tr>
+          <tr><td class="hid">H12</td><td>Multi-member, single login covers caregivers in v1</td><td><span class="chip prod">PROD</span></td><td class="cost-medium">Medium</td><td class="conf"><span class="on">●●</span><span class="off">●</span></td><td>F</td><td class="next">Interviews, <b>Aug 11</b></td><td class="date">G1 → G3</td></tr>
+          <tr><td class="hid">H13</td><td>US-only launch is right</td><td><span class="chip strat">STRAT</span></td><td class="cost-low">Low</td><td class="conf"><span class="on">●●●</span></td><td>F</td><td class="next">—</td><td class="date">2027+</td></tr>
+          <tr><td class="hid">H14</td><td>COGS ≈ $1.10/household/mo holds at real usage</td><td><span class="chip ops">OPS</span></td><td class="cost-high">High</td><td class="conf"><span class="on">●●</span><span class="off">●</span></td><td>CTO</td><td class="next">Alpha COGS, <b>Nov</b></td><td class="date"><b>G2</b> · Dec 26</td></tr>
+          <tr><td class="hid">H15</td><td>Rocket Money enters standing plane in 18–24 mo (threat)</td><td><span class="chip strat">STRAT</span></td><td class="cost-high">High</td><td class="conf"><span class="on">●●</span><span class="off">●</span></td><td>CTO</td><td class="next">Monthly scan, <b>Aug 28</b></td><td class="date">Rolling</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="ritual">
+    <h2>Before this planning meeting</h2>
+    <ol>
+      <li>Did anything this week produce evidence on H1, H2, H7, H8, or H11? If not — why did the week's work not touch a top-risk assumption?</li>
+      <li>Is any hypothesis stale beyond 60 days? (Clock started Jul 22 — first possible staleness: late September.)</li>
+      <li>Are we shipping features, or retiring risks?</li>
+    </ol>
+  </section>
+
+  <footer>
+    Source of truth: <code>autobureau/ops/assumption-ledger.md</code> · Updating rules: behavior &gt; paid &gt; stated &gt; expert &gt; priors; disconfirming outweighs confirming; n travels with every update; evidence opens amendment doors (PRD §21, ADRs, gates) — it never silently edits frozen documents.
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var g1 = new Date("2026-08-25T00:00:00");
+    var days = Math.max(0, Math.ceil((g1 - new Date()) / 86400000));
+    var el = document.getElementById("countdown");
+    if (el) el.textContent = days > 0 ? "in " + days + " days" : "today";
+  })();
+</script>

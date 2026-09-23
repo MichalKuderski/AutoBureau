@@ -1,0 +1,253 @@
+// Subpath imports, not the barrel. `jose`'s index re-exports JWE decryption, which pulls
+// in `CompressionStream` — a Node API the Edge Runtime does not support, and which this
+// module never uses. Importing only the JWS pieces keeps that dead code out of the
+// middleware bundle instead of shipping a build warning about it. Types come from the
+// barrel because type-only imports are erased and carry no runtime weight.
+import { createLocalJWKSet } from "jose/jwks/local";
+import { createRemoteJWKSet } from "jose/jwks/remote";
+import { jwtVerify } from "jose/jwt/verify";
+import * as errors from "jose/errors";
+import type { JSONWebKeySet, JWTVerifyGetKey } from "jose";
+import { projectAccountAssurance, type AccountAssurance } from "./recent-auth";
+import { UUID_RE } from "@autobureau/contracts";
+
+/**
+ * Access-token verification (ADR-009 D3/D7).
+ *
+ * Provider-agnostic on purpose. Doc 14 commits to keeping auth JWT-compatible so a
+ * migration to a dedicated GoTrue deployment or a WorkOS-style provider is possible
+ * "without token-format change" — that promise is only real if the verifier names no
+ * provider. Supabase populates the configuration; it does not appear in this file.
+ *
+ * Everything is checked explicitly rather than trusted from the token:
+ *   signature   — against a key resolved from the JWKS, never from the token itself
+ *   algorithm   — against a caller-supplied allowlist, never `alg` from the header
+ *   issuer      — exact match
+ *   audience    — exact match
+ *   expiry      — and `exp` is *required*, because jose only validates a claim it finds
+ *   subject     — must be a UUID, because it becomes `users.id`
+ *
+ * Invalid credentials produce `TokenError`; a key-service failure produces
+ * `VerificationUnavailableError` without declaring the credential invalid. Reasons are
+ * coarse and the message never contains the token, a claim value, or a key: an auth
+ * error that explains precisely why it failed is an oracle.
+ */
+
+export type TokenRejection =
+  | "malformed"
+  | "signature"
+  | "expired"
+  | "issuer"
+  | "audience"
+  | "algorithm"
+  | "claims";
+
+export class TokenError extends Error {
+  override readonly name = "TokenError";
+  constructor(
+    readonly reason: TokenRejection,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/** Thrown at construction, not at verification: misconfiguration must fail at boot. */
+export class VerifierConfigError extends Error {
+  override readonly name = "VerifierConfigError";
+}
+
+/** Verification failed closed, but signing the user out would misdiagnose an outage. */
+export class VerificationUnavailableError extends Error {
+  override readonly name = "VerificationUnavailableError";
+  readonly reason = "key-service-unavailable";
+  constructor() {
+    super("The signing-key service is temporarily unavailable.");
+  }
+}
+
+/**
+ * Asymmetric only. A JWKS-backed verifier that also accepted HMAC would be vulnerable
+ * to the classic algorithm-confusion attack — an attacker signs `HS256` using the
+ * published public key as the shared secret, and a naive verifier accepts it. Excluding
+ * symmetric algorithms at the type level removes the attack rather than documenting it.
+ */
+const ASYMMETRIC_ALGORITHMS: ReadonlySet<string> = new Set([
+  "RS256",
+  "RS384",
+  "RS512",
+  "PS256",
+  "PS384",
+  "PS512",
+  "ES256",
+  "ES384",
+  "ES512",
+  "EdDSA",
+]);
+
+/** Where signing keys come from: a JWKS endpoint in production, a literal set in tests. */
+export type JwksSource = { readonly uri: string } | { readonly keys: JSONWebKeySet };
+
+export interface JwtVerifierConfig {
+  readonly jwks: JwksSource;
+  readonly issuer: string;
+  readonly audience: string;
+  /** Pinned allowlist. Must be non-empty and asymmetric. */
+  readonly algorithms: readonly string[];
+  /** Seconds of clock skew tolerated. Defaults to 0 — strict until proven otherwise. */
+  readonly clockToleranceSec?: number;
+}
+
+/** What a caller is allowed to learn from a token. Not the raw claims. */
+export interface VerifiedPrincipal {
+  /** `sub`, lowercased and validated as a UUID — this is `users.id`. */
+  readonly userId: string;
+  /**
+   * The `email` claim, when the token carries a usable one.
+   *
+   * Exposed because `users.email` is `NOT NULL` and identity mirroring has no other
+   * source for it: the address must come from the signed token, never from request
+   * input. Optional rather than required — a token without it is still a valid session,
+   * and it is the mirror's job to refuse rather than the verifier's to invent.
+   */
+  readonly email: string | undefined;
+  /** Seconds since the epoch. */
+  readonly expiresAt: number;
+  readonly issuedAt: number | undefined;
+  /** Signed, bounded provider claims only; never user/app metadata. */
+  readonly assurance?: AccountAssurance;
+}
+
+export interface JwtVerifier {
+  verify(token: string): Promise<VerifiedPrincipal>;
+}
+
+function assertConfig(config: JwtVerifierConfig): void {
+  if (!config.issuer) throw new VerifierConfigError("issuer is required");
+  if (!config.audience) throw new VerifierConfigError("audience is required");
+  if (config.algorithms.length === 0) {
+    throw new VerifierConfigError("at least one algorithm must be pinned");
+  }
+  for (const alg of config.algorithms) {
+    if (!ASYMMETRIC_ALGORITHMS.has(alg)) {
+      throw new VerifierConfigError(
+        `${alg} is not an accepted algorithm; only asymmetric algorithms may verify against a JWKS`,
+      );
+    }
+  }
+  if ("uri" in config.jwks) {
+    if (!config.jwks.uri) throw new VerifierConfigError("jwks.uri is required");
+  } else if (!config.jwks.keys?.keys?.length) {
+    throw new VerifierConfigError("jwks.keys must contain at least one key");
+  }
+}
+
+// Shared across verifier construction in this runtime, never across configured URLs.
+// jose still owns key expiry (10 minutes), rotation and unknown-kid cooldown (30s).
+// Only trusted configuration supplies URLs; bound memory in tests/multi-config runtimes.
+const remoteResolvers = new Map<string, JWTVerifyGetKey>();
+
+function resolveKeys(source: JwksSource): JWTVerifyGetKey {
+  if ("keys" in source) return createLocalJWKSet(source.keys);
+  const uri = new URL(source.uri).href;
+  const existing = remoteResolvers.get(uri);
+  if (existing) return existing;
+  const remote = createRemoteJWKSet(new URL(uri));
+  const resolver: JWTVerifyGetKey = async (header, token) => {
+    // A single retry of a read-only key lookup tolerates a transient fetch failure.
+    // Each fetch remains bounded by jose's 5s timeout. No credentials are redeemed,
+    // no stale keys are used after expiry and no signature/claim checks are bypassed.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await remote(header, token);
+      } catch (cause) {
+        if (cause instanceof errors.JWKSNoMatchingKey ||
+            cause instanceof errors.JWKSMultipleMatchingKeys) throw cause;
+        if (attempt === 1) throw new VerificationUnavailableError();
+      }
+    }
+    throw new VerificationUnavailableError();
+  };
+  if (remoteResolvers.size >= 8) remoteResolvers.delete(remoteResolvers.keys().next().value!);
+  remoteResolvers.set(uri, resolver);
+  return resolver;
+}
+
+/** jose's error taxonomy → our coarse reasons. Anything unrecognised fails closed. */
+function translate(cause: unknown): TokenError | VerificationUnavailableError {
+  if (cause instanceof VerificationUnavailableError) return cause;
+  if (cause instanceof errors.JWTExpired) {
+    return new TokenError("expired", "token has expired");
+  }
+  if (cause instanceof errors.JOSEAlgNotAllowed) {
+    return new TokenError("algorithm", "token algorithm is not accepted");
+  }
+  if (cause instanceof errors.JWSSignatureVerificationFailed) {
+    return new TokenError("signature", "token signature is not valid");
+  }
+  if (cause instanceof errors.JWKSNoMatchingKey || cause instanceof errors.JWKSMultipleMatchingKeys) {
+    return new TokenError("signature", "no usable signing key for this token");
+  }
+  if (cause instanceof errors.JWTClaimValidationFailed) {
+    if (cause.claim === "iss") return new TokenError("issuer", "token issuer is not accepted");
+    if (cause.claim === "aud") return new TokenError("audience", "token audience is not accepted");
+    return new TokenError("claims", "token claims are not acceptable");
+  }
+  if (cause instanceof errors.JWSInvalid || cause instanceof errors.JWTInvalid) {
+    return new TokenError("malformed", "token is not a well-formed JWT");
+  }
+  return new TokenError("malformed", "token could not be verified");
+}
+
+export function createJwtVerifier(config: JwtVerifierConfig): JwtVerifier {
+  assertConfig(config);
+  // Resolved once: createRemoteJWKSet caches keys and coalesces concurrent fetches, so
+  // rebuilding it per request would turn every verification into a network call.
+  const keys = resolveKeys(config.jwks);
+  const algorithms = [...config.algorithms];
+
+  return {
+    async verify(token: string): Promise<VerifiedPrincipal> {
+      if (typeof token !== "string" || token.length === 0) {
+        throw new TokenError("malformed", "no token supplied");
+      }
+
+      let payload;
+      try {
+        ({ payload } = await jwtVerify(token, keys, {
+          issuer: config.issuer,
+          audience: config.audience,
+          algorithms,
+          clockTolerance: config.clockToleranceSec ?? 0,
+        }));
+      } catch (cause) {
+        throw translate(cause);
+      }
+
+      // jose validates `exp` only when the claim exists, so a token that simply omits it
+      // would otherwise verify and never expire.
+      if (typeof payload.exp !== "number") {
+        throw new TokenError("claims", "token has no expiry");
+      }
+
+      const subject = typeof payload.sub === "string" ? payload.sub.toLowerCase() : "";
+      if (!UUID_RE.test(subject)) {
+        throw new TokenError("claims", "token subject is not a user id");
+      }
+
+      const email =
+        typeof payload["email"] === "string" && payload["email"].length > 0 &&
+        payload["email"].length <= 320
+          ? payload["email"]
+          : undefined;
+
+      return {
+        userId: subject,
+        email,
+        expiresAt: payload.exp,
+        issuedAt: typeof payload.iat === "number" ? payload.iat : undefined,
+        ...projectAccountAssurance(payload),
+      };
+    },
+  };
+}

@@ -1,0 +1,125 @@
+name: Staging ADR-017 jobs
+on:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+concurrency:
+  group: adr017-staging-jobs
+  cancel-in-progress: false
+jobs:
+  migrate:
+    if: >-
+      github.repository == 'MichalKuderski/AutoBureau'
+      && github.event.pull_request.number == 5
+      && github.event.label.name == 'adr017-jobs-migrate'
+      && contains(github.event.pull_request.labels.*.name, 'staging-schema-pending')
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.head_ref == 'codex/launch-foundations'
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Generate client for read-only migration inventory
+        run: pnpm --filter @autobureau/db exec prisma generate
+        env:
+          # Generation is local and never connects. Hosted credentials enter only below.
+          DATABASE_URL: postgresql://unused:unused@127.0.0.1:5432/unused
+      - name: Reverify target, schema, privileges and row fingerprints
+        run: node scripts/staging-jobs-migration.mjs before
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}
+      - name: Apply only additive schema and reviewed API-role privilege revocation
+        run: |
+          node scripts/verify-staging-migration-target.mjs
+          pnpm --filter @autobureau/db exec prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}
+      - name: Verify schema and unchanged application rows
+        run: node scripts/staging-jobs-migration.mjs after
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: adr017-migration-evidence
+          path: staging-jobs-migration-*.json
+          retention-days: 7
+
+  plan:
+    if: >-
+      github.repository == 'MichalKuderski/AutoBureau'
+      && github.event.pull_request.number == 5
+      && github.event.label.name == 'adr017-jobs-plan'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.head_ref == 'codex/launch-foundations'
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: us-east-2
+      AWS_DEFAULT_REGION: us-east-2
+      AWS_ROLE_ARN: arn:aws:iam::792394000571:role/pellum-stg-jobs-terraform-deploy
+      AWS_WEB_IDENTITY_TOKEN_FILE: /tmp/pellum-adr017-github-oidc.jwt
+      AWS_ROLE_SESSION_NAME: pellum-adr017-plan
+      AWS_EC2_METADATA_DISABLED: "true"
+      TF_IN_AUTOMATION: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.2
+          terraform_wrapper: false
+      - name: Install isolated signature verifier
+        run: npm install --prefix "$RUNNER_TEMP/pellum-oidc" --ignore-scripts --no-audit --no-fund jose@6.2.8
+      - name: Verify signed staging workflow claims
+        run: node scripts/staging-jobs-oidc.mjs
+        env:
+          PELLUM_OIDC_DEPENDENCIES: ${{ runner.temp }}/pellum-oidc
+      - name: Verify separate deployment identity
+        run: |
+          python3 -c 'import json,subprocess; p=json.loads(subprocess.check_output(["aws","sts","get-caller-identity","--output","json"])); assert p["Account"]=="792394000571" and p["Arn"].startswith("arn:aws:sts::792394000571:assumed-role/pellum-stg-jobs-terraform-deploy/"); print("Verified bounded staging jobs deployment role")'
+      - name: Initialize separate encrypted remote state
+        working-directory: infra/terraform/envs/staging/jobs
+        run: terraform init -input=false -lockfile=readonly -backend-config=backend.staging.hcl
+      - name: Refresh runner-local identity before plan
+        run: node scripts/staging-jobs-oidc.mjs
+        env:
+          PELLUM_OIDC_DEPENDENCIES: ${{ runner.temp }}/pellum-oidc
+      - name: Save and review additions-only job plan
+        working-directory: infra/terraform/envs/staging/jobs
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/adr017-plan"
+          terraform plan -input=false -lock-timeout=30s -var=preapply_verified=true -out="$RUNNER_TEMP/adr017-plan/jobs.tfplan"
+          terraform show -json "$RUNNER_TEMP/adr017-plan/jobs.tfplan" > "$RUNNER_TEMP/adr017-plan/jobs-plan.json"
+          node ../../../../../scripts/adr017-plan-review.mjs "$RUNNER_TEMP/adr017-plan/jobs-plan.json" > "$RUNNER_TEMP/adr017-plan/review.json"
+          sha256sum "$RUNNER_TEMP/adr017-plan/jobs.tfplan" > "$RUNNER_TEMP/adr017-plan/jobs-plan.sha256"
+          git rev-parse HEAD > "$RUNNER_TEMP/adr017-plan/source-sha.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adr017-saved-plan
+          path: |
+            ${{ runner.temp }}/adr017-plan/
+            staging-jobs-oidc-proof.json
+          retention-days: 7
+      - name: Remove runner-local token
+        if: always()
+        run: rm -f /tmp/pellum-adr017-github-oidc.jwt

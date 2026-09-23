@@ -1,0 +1,2010 @@
+{
+  "status": "PASS_LOCAL_INCREMENT_NOT_FULL_STACK_OR_LAUNCH_READY",
+  "date": "2026-09-21",
+  "recorded_at_utc": "2026-09-21T05:25:10.433948+00:00",
+  "base_sha": "4278a15bb1e2fea530ef2b029ff114e184ce624c",
+  "branch": "codex/review-pellum-hardening-v2",
+  "tested_implementation_sha": "af570debe2298b2045c34abf39066ee972979a71",
+  "tested_tree": "2abe723c11eff491ecd07567d2c3dbe7596cb3f4",
+  "evidence_root": "/private/tmp/pellum-sensitive-lifecycle-20260920",
+  "versions": {
+    "node": "v22.16.0",
+    "pnpm": "10.34.5",
+    "next": "15.5.22",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7",
+    "prisma": "6.19.3",
+    "zxcvbn": "4.4.2",
+    "scannerRelease": {
+      "image": "sha256:6fd4a9a21f9a143db97e50b7d212187b67c7b004097d5f0469ddebef6341d4bf",
+      "engine": "sha256:68791dcfb6b7822a70578b3b797b84227142f0018460fed22c7c818f5f26d54b",
+      "signatures": "sha256:20db5c4ea99545311d1081ca0944eb701701686e9e3d7670e9974bc8d0374986"
+    },
+    "postgresql": "18.3 (Postgres.app)",
+    "pgvector": "0.8.1",
+    "stripe": "22.6.2",
+    "clamav": "1.4.6"
+  },
+  "validation": {
+    "frozen_install": true,
+    "build": true,
+    "typecheck": true,
+    "lint_errors": 0,
+    "preexisting_lint_warnings": 13,
+    "unit_total": 1874,
+    "units_by_package": {
+      "ai-boundary": 89,
+      "ops": 8,
+      "contracts": 152,
+      "db": 40,
+      "web": 1585
+    },
+    "postgres_rls_total": 657,
+    "integrations_by_package": {
+      "db": 223,
+      "web": 434
+    },
+    "local_controls": 195,
+    "architecture_guards": [
+      {
+        "name": "No direct LLM provider SDK imports outside services/ai",
+        "exit": 0
+      },
+      {
+        "name": "Dispatcher escape hatch stays allow-listed",
+        "exit": 0
+      },
+      {
+        "name": "Anonymous global-table access stays allow-listed",
+        "exit": 0
+      },
+      {
+        "name": "Global-table union membership is pinned",
+        "exit": 0
+      },
+      {
+        "name": "Rate-limit thresholds are not runtime-configurable",
+        "exit": 0
+      },
+      {
+        "name": "Sentry integration introduces no OpenTelemetry runtime",
+        "exit": 0
+      },
+      {
+        "name": "PRD scope fence",
+        "exit": 0
+      }
+    ],
+    "isolated_real_clamav_lifecycle": 1,
+    "isolated_clamav_lifecycle_ms": 26232,
+    "security_mutations": [
+      {
+        "name": "factor-read-freshness",
+        "caught": true,
+        "exit": 1,
+        "log": "mutation-factor-read-freshness.log",
+        "sourceBefore": "60d4e2ed9c98cf8add4990515b615ff04f30d5dad01560602551f393435da644",
+        "restored": true
+      },
+      {
+        "name": "mfa-post-audit",
+        "caught": true,
+        "exit": 1,
+        "log": "mutation-mfa-post-audit.log",
+        "sourceBefore": "e615511576fdc2ce904cea586573f39ce535c35921a63c850160763df63c03f4",
+        "restored": true
+      },
+      {
+        "name": "recovery-post-audit",
+        "caught": true,
+        "exit": 1,
+        "log": "mutation-recovery-post-audit.log",
+        "sourceBefore": "c971416d4358e32919b8d5ae61a80e65c351b548557e7ce42f199cd9085e6c8a",
+        "restored": true
+      },
+      {
+        "name": "scope-household",
+        "caught": true,
+        "exit": 1,
+        "log": "integration-mutation-scope-household.log",
+        "sourceBefore": "a4a9ae0b466883323721d635ca31a325ca498946eebfd038a7ea17313e3e3cf1",
+        "restored": true
+      },
+      {
+        "name": "scope-lifetime",
+        "caught": true,
+        "exit": 1,
+        "log": "integration-mutation-scope-lifetime.log",
+        "sourceBefore": "a4a9ae0b466883323721d635ca31a325ca498946eebfd038a7ea17313e3e3cf1",
+        "restored": true
+      },
+      {
+        "name": "scope-async",
+        "caught": true,
+        "exit": 1,
+        "log": "integration-mutation-scope-async.log",
+        "sourceBefore": "a4a9ae0b466883323721d635ca31a325ca498946eebfd038a7ea17313e3e3cf1",
+        "restored": true
+      },
+      {
+        "name": "scope-commit",
+        "caught": true,
+        "exit": 1,
+        "log": "integration-mutation-scope-commit.log",
+        "sourceBefore": "7bab5902348f30becea6b1dabe356ff7013c390ac9df9517bf1a9387bc0c0a61",
+        "restored": true
+      },
+      {
+        "name": "export-active",
+        "caught": true,
+        "exit": 1,
+        "log": "integration-mutation-export-active.log",
+        "sourceBefore": "84ea505e0482da7bd50d7a570ea792e0cbf57e514b7de1d534ed5d713fd98fdb",
+        "restored": true
+      },
+      {
+        "name": "historical-member-cap-lock",
+        "caught": true,
+        "exit": 1,
+        "historicalSource": "513226090eb6097235a2e0408a0343f4cc257eab",
+        "log": "integration-mutation-historical-member-cap-lock.log",
+        "sourceBefore": "ea0015287d2b81dc16542bad0002b4e6bd27977d9842ab74db988dbdda5ab79e",
+        "restored": true
+      },
+      {
+        "name": "historical-upload-clock",
+        "caught": true,
+        "exit": 1,
+        "historicalSource": "513226090eb6097235a2e0408a0343f4cc257eab",
+        "log": "integration-mutation-historical-upload-clock.log",
+        "sourceBefore": "389805f22eed616014630dabdf978a225f17d98d7956f6ba52fe2c68c46f53ea",
+        "restored": true
+      },
+      {
+        "name": "historical-restore-clock",
+        "caught": true,
+        "exit": 1,
+        "historicalSource": "513226090eb6097235a2e0408a0343f4cc257eab",
+        "log": "integration-mutation-historical-restore-clock.log",
+        "sourceBefore": "bacd04fd75ed0fc0d4a0f85c1220e8fc6436b605404906930d2c07e91a0961c7",
+        "restored": true
+      }
+    ],
+    "route_ast_negative_controls": 6,
+    "all_migration_checksums_match": true
+  },
+  "database_readback": {
+    "port": 55540,
+    "roles": [
+      {
+        "role": "app_job_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_user",
+        "login": true,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_document_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_retention_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_deletion_verifier",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_dispatcher",
+        "login": false,
+        "createdb": false,
+        "bypassrls": true,
+        "superuser": false,
+        "createrole": false
+      }
+    ],
+    "vector": "0.8.1",
+    "database": "pellum_adr018_final",
+    "policies": 42,
+    "forced_rls": 32,
+    "journal_rls": [
+      {
+        "table": "deletion_attempts",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "deletion_observations",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "household_deletions",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "deletion_resources",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "document_scans",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "document_scan_attempts",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "account_security_challenges",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "stripe_test_notices",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "stripe_test_bindings",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "local_export_artifacts",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "stripe_test_states",
+        "forced": true,
+        "enabled": true
+      }
+    ],
+    "privacy_fences": 23,
+    "server_version": "18.3 (Postgres.app)",
+    "inventory_columns": [
+      {
+        "name": "inventory_source",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "name": "source_key",
+        "type": "character varying",
+        "nullable": "YES"
+      }
+    ],
+    "remaining_journals": {
+      "scans": 0,
+      "attempts": 0,
+      "deletions": 0,
+      "resources": 0,
+      "observations": 0,
+      "scan_attempts": 0
+    },
+    "ensure_rls_triggers": 0,
+    "migration_checksums": {
+      "20260728000001_rls": "88773bb83beb8729fff185e2e06953c64d39abe7e8114372cb313671472eb8c2",
+      "20260728000000_init": "ce990d3117f49b6f5d3d9f473b62f1d2bcf7eeed9a466fc3546ae2ff6c517aee",
+      "20260823000000_idempotency_keys": "e823ded41ae885b113523d6e310e121c72027a92ba90cc801a3dce5dcabab01d",
+      "20260825000000_auth_rate_limits": "a4f472eb96c5df6ea575a7bc00d4182f31243fcbdb4a3b241c53bb13fe339ffa",
+      "20260814000001_self_audit_insert": "36599c66d8fdc229e64de8accb00ce048670869d29704fda0aaf1dc03a7edb89",
+      "20260913000000_job_delivery_inbox": "821c3cc51edc4956b409600408afea3cc2d21e693267d75527abda779f4bc641",
+      "20260912000000_notification_ledger": "7c78a5df525a5bba008ca87ab0635a45f49d0eb4aab854de80378f9b9608ec02",
+      "20260921000001_local_online_erasure": "101ba6c706505e63bc972516eb26eeda499f74a67f52cdff9ff087dc1393148a",
+      "20260913000001_job_worker_scope_read": "fd7aa69db34551af95c598ec33a63ddf546f90030d3406e83098fde08d8323bc",
+      "20260912000002_document_upload_ledger": "bbd230504ed051b08862014e6f2e0bfc2eb4c4e4f14a6bede7c4a88dc8cb7cdf",
+      "20260921000002_erasure_notification_rls": "c8fc66925ab950dade5b20ecb753a431a19573029a99e19a960115d5eee1297f",
+      "20260913000002_api_role_table_privileges": "bd2e43764c69be3770b6c159e8e0723083c71d21604ff8e9bb35564d9422b125",
+      "20260922000000_privacy_inventory_sources": "c94fca681c1c5bc1343f7d2e582d82ac33a5858baeb4d4db5ba325f39cf25ae8",
+      "20260920000000_document_security_journals": "3eb411ac77b00e23edc059ea696a2fc308f19367648ea5b7d784f6243160c203",
+      "20260923000001_stripe_test_notice_journal": "a9f40b9a96555ddcf8efafaf2ccacd7db4b5cbcae6bac2abc0d191f67a8b31f8",
+      "20260921000000_local_scan_execution_budget": "4fa516669cec1874c9056be72762a8b0859a1219ab9d7df4aa9d45524b489b75",
+      "20260921000004_local_erasure_lease_binding": "97d69be81c8f28ae88d0623273eec9b41f8027c0e116a13ac5416693b08c2aee",
+      "20260923000000_account_security_challenges": "1b9335ec8009f029d2300afca3d46b2b100b5e53b6a0ccb92a4efc2f05982ef1",
+      "20260906000000_restore_intended_rls_posture": "eceed5a27d9de4269b3c503d2c25a555880a29b3a9ad1b96d36d272a4508de47",
+      "20260912000001_notification_recipient_index": "5b38c48c5e2e1fd8829aab286c4d69d1bb160ab96623bb37bc90a73207add8fe",
+      "20260923000002_local_export_artifact_journal": "570dbffa5d9bab9e5abd2a2cf7717d263c00c81d1f38c854d368d43bdcb2e79d",
+      "20260923000003_local_test_subscription_state": "024a735344ce7abc32222b33b37edeb4bf84e43f26e3ae90c762b83838dd08b7",
+      "20260814000000_principal_scope_and_audit_actor": "c1fe37b667eed2855f4a0bd8d30ff1d53ea69e5bfb2bbc403f0d20992a4ef0f2",
+      "20260921000003_document_tenant_reference_parity": "a4d2a483af3ce90f4c2ca9cfb87839a5022809299d3d79cff8d6e721851f6d94"
+    },
+    "remaining_job_inbox": 0,
+    "migrations_completed": 24,
+    "new_role_memberships": 0,
+    "runtime_owned_tables": 0,
+    "inventory_role_grants": [
+      {
+        "table": "job_deliveries",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "job_inbox",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "outbox_events",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "job_deliveries",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "job_inbox",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "table": "outbox_events",
+        "column": "id",
+        "privilege": "SELECT"
+      }
+    ],
+    "migrations_unfinished": 0,
+    "provider_table_grants": 0,
+    "inventory_unique_index": true,
+    "journal_audit_triggers": 11,
+    "migrations_rolled_back": 0,
+    "remaining_stripe_states": 0,
+    "billing_guard_definition": "8ebc3e9b4cda97f5fedd846b8f850511",
+    "remaining_job_deliveries": 0,
+    "remaining_stripe_notices": 0,
+    "tenant_reference_indexes": 3,
+    "inventory_pair_constraint": {
+      "validated": true,
+      "definition": "CHECK ((((inventory_source IS NULL) AND (source_key IS NULL)) OR ((inventory_source IS NOT NULL) AND ((inventory_source)::text = ANY ((ARRAY['documents'::character varying, 'uploads'::character varying, 'chunks'::character varying, 'items'::character varying, 'secrets'::character varying, 'obligations'::character varying, 'reminders'::character varying, 'notifications'::character varying, 'notification-deliveries'::character varying, 'outbox'::character varying, 'deliveries'::character varying, 'inbox'::character varying, 'scans'::character varying, 'scan-attempts'::character varying, 'auth-challenges'::character varying, 'stripe-bindings'::character varying, 'stripe-notices'::character varying, 'stripe-states'::character varying, 'export-artifacts'::character varying])::text[])) AND (source_key IS NOT NULL) AND ((source_key)::text ~ '^[a-f0-9-]{1,40}$'::text) AND (inventory_count = 1))))"
+    },
+    "remaining_stripe_bindings": 0,
+    "remaining_export_artifacts": 0,
+    "account_billing_constraints": [
+      {
+        "name": "account_challenge_time",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "CHECK (((expires_at > created_at) AND (expires_at <= (created_at + '00:05:00'::interval)) AND ((consumed_at IS NULL) OR (consumed_at >= created_at))))"
+      },
+      {
+        "name": "account_security_challenges_id_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL id"
+      },
+      {
+        "name": "account_security_challenges_household_id_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL household_id"
+      },
+      {
+        "name": "account_security_challenges_user_id_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL user_id"
+      },
+      {
+        "name": "account_security_challenges_session_id_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL session_id"
+      },
+      {
+        "name": "account_security_challenges_factor_id_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL factor_id"
+      },
+      {
+        "name": "account_security_challenges_challenge_id_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL challenge_id"
+      },
+      {
+        "name": "account_security_challenges_created_at_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL created_at"
+      },
+      {
+        "name": "account_security_challenges_expires_at_not_null",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "NOT NULL expires_at"
+      },
+      {
+        "name": "account_security_challenges_pkey",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "name": "account_security_challenges_challenge_id_key",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "UNIQUE (challenge_id)"
+      },
+      {
+        "name": "account_security_challenges_household_id_fkey",
+        "table": "account_security_challenges",
+        "validated": true,
+        "definition": "FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "stripe_test_bindings_account_id_check",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "CHECK ((account_id ~ '^acct_[A-Za-z0-9]{1,240}$'::text))"
+      },
+      {
+        "name": "stripe_test_bindings_customer_id_check",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "CHECK ((customer_id ~ '^cus_[A-Za-z0-9]{1,240}$'::text))"
+      },
+      {
+        "name": "stripe_test_states_household_id_fkey",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "stripe_test_states_source_notice_id_fkey",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "FOREIGN KEY (source_notice_id) REFERENCES stripe_test_notices(id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "stripe_test_states_binding_id_household_id_account_id_fkey",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "FOREIGN KEY (binding_id, household_id, account_id) REFERENCES stripe_test_bindings(id, household_id, account_id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "stripe_test_bindings_subscription_id_check",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "CHECK ((subscription_id ~ '^sub_[A-Za-z0-9]{1,240}$'::text))"
+      },
+      {
+        "name": "stripe_test_bindings_livemode_check",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "CHECK ((livemode = false))"
+      },
+      {
+        "name": "stripe_test_bindings_id_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL id"
+      },
+      {
+        "name": "stripe_test_bindings_household_id_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL household_id"
+      },
+      {
+        "name": "stripe_test_bindings_owner_id_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL owner_id"
+      },
+      {
+        "name": "stripe_test_bindings_account_id_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL account_id"
+      },
+      {
+        "name": "stripe_test_bindings_customer_id_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL customer_id"
+      },
+      {
+        "name": "stripe_test_bindings_subscription_id_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL subscription_id"
+      },
+      {
+        "name": "stripe_test_bindings_livemode_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL livemode"
+      },
+      {
+        "name": "stripe_test_bindings_created_at_not_null",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "NOT NULL created_at"
+      },
+      {
+        "name": "stripe_test_bindings_pkey",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "name": "stripe_test_bindings_household_id_key",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "UNIQUE (household_id)"
+      },
+      {
+        "name": "stripe_test_bindings_account_id_customer_id_key",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "UNIQUE (account_id, customer_id)"
+      },
+      {
+        "name": "stripe_test_bindings_account_id_subscription_id_key",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "UNIQUE (account_id, subscription_id)"
+      },
+      {
+        "name": "stripe_test_bindings_id_household_id_account_id_key",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "UNIQUE (id, household_id, account_id)"
+      },
+      {
+        "name": "stripe_test_bindings_household_id_fkey",
+        "table": "stripe_test_bindings",
+        "validated": true,
+        "definition": "FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "stripe_test_notices_event_id_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK ((event_id ~ '^evt_[A-Za-z0-9]{1,240}$'::text))"
+      },
+      {
+        "name": "stripe_test_notices_event_type_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK ((event_type = ANY (ARRAY['customer.subscription.created'::text, 'customer.subscription.updated'::text, 'customer.subscription.deleted'::text, 'invoice.paid'::text, 'invoice.payment_failed'::text])))"
+      },
+      {
+        "name": "stripe_test_notices_object_id_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK ((object_id ~ '^(sub|in)_[A-Za-z0-9]{1,240}$'::text))"
+      },
+      {
+        "name": "stripe_test_notices_provider_created_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK (((provider_created >= 0) AND (provider_created <= '8640000000000'::bigint)))"
+      },
+      {
+        "name": "stripe_test_notices_attempts_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK (((attempts >= 0) AND (attempts <= 3)))"
+      },
+      {
+        "name": "stripe_test_notices_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK ((((state = 'leased'::text) AND (lease_token IS NOT NULL) AND (lease_until IS NOT NULL)) OR ((state <> 'leased'::text) AND (lease_token IS NULL) AND (lease_until IS NULL))))"
+      },
+      {
+        "name": "stripe_test_notices_id_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL id"
+      },
+      {
+        "name": "stripe_test_notices_household_id_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL household_id"
+      },
+      {
+        "name": "stripe_test_notices_binding_id_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL binding_id"
+      },
+      {
+        "name": "stripe_test_notices_account_id_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL account_id"
+      },
+      {
+        "name": "stripe_test_notices_event_id_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL event_id"
+      },
+      {
+        "name": "stripe_test_notices_event_type_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL event_type"
+      },
+      {
+        "name": "stripe_test_notices_object_id_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL object_id"
+      },
+      {
+        "name": "stripe_test_notices_provider_created_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL provider_created"
+      },
+      {
+        "name": "stripe_test_notices_created_at_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL created_at"
+      },
+      {
+        "name": "stripe_test_notices_state_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL state"
+      },
+      {
+        "name": "stripe_test_notices_attempts_not_null",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "NOT NULL attempts"
+      },
+      {
+        "name": "stripe_test_notices_pkey",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "name": "stripe_test_notices_account_id_event_id_key",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "UNIQUE (account_id, event_id)"
+      },
+      {
+        "name": "stripe_test_notices_household_id_fkey",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "stripe_test_notices_binding_id_household_id_account_id_fkey",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "FOREIGN KEY (binding_id, household_id, account_id) REFERENCES stripe_test_bindings(id, household_id, account_id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "local_export_artifacts_ciphertext_digest_check",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "CHECK ((ciphertext_digest ~ '^[a-f0-9]{64}$'::text))"
+      },
+      {
+        "name": "local_export_artifacts_size_bytes_check",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "CHECK (((size_bytes >= 1) AND (size_bytes <= 4194304)))"
+      },
+      {
+        "name": "local_export_artifacts_state_check",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "CHECK ((state = ANY (ARRAY['partial'::text, 'revoked'::text])))"
+      },
+      {
+        "name": "local_export_artifacts_check",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "CHECK (((expires_at > snapshot_at) AND (expires_at <= (snapshot_at + '72:00:00'::interval))))"
+      },
+      {
+        "name": "local_export_artifacts_id_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL id"
+      },
+      {
+        "name": "local_export_artifacts_household_id_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL household_id"
+      },
+      {
+        "name": "local_export_artifacts_request_id_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL request_id"
+      },
+      {
+        "name": "local_export_artifacts_owner_id_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL owner_id"
+      },
+      {
+        "name": "local_export_artifacts_ciphertext_digest_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL ciphertext_digest"
+      },
+      {
+        "name": "local_export_artifacts_size_bytes_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL size_bytes"
+      },
+      {
+        "name": "local_export_artifacts_snapshot_at_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL snapshot_at"
+      },
+      {
+        "name": "local_export_artifacts_expires_at_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL expires_at"
+      },
+      {
+        "name": "local_export_artifacts_created_at_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL created_at"
+      },
+      {
+        "name": "local_export_artifacts_state_not_null",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "NOT NULL state"
+      },
+      {
+        "name": "local_export_artifacts_pkey",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "name": "local_export_artifacts_household_id_request_id_key",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "UNIQUE (household_id, request_id)"
+      },
+      {
+        "name": "local_export_artifacts_household_id_fkey",
+        "table": "local_export_artifacts",
+        "validated": true,
+        "definition": "FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE RESTRICT"
+      },
+      {
+        "name": "stripe_test_notices_state_check",
+        "table": "stripe_test_notices",
+        "validated": true,
+        "definition": "CHECK ((state = ANY (ARRAY['pending'::text, 'leased'::text, 'refused'::text, 'reconciled'::text])))"
+      },
+      {
+        "name": "stripe_test_states_revision_check",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "CHECK (((revision >= 1) AND (revision <= 2147483647)))"
+      },
+      {
+        "name": "stripe_test_states_state_check",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "CHECK ((state = ANY (ARRAY['inactive'::text, 'active'::text, 'canceling'::text, 'grace'::text, 'past_due'::text, 'canceled'::text, 'blocked'::text])))"
+      },
+      {
+        "name": "stripe_test_states_plan_check",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "CHECK ((plan = ANY (ARRAY['monthly'::text, 'annual'::text])))"
+      },
+      {
+        "name": "stripe_test_states_paid_through_check",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "CHECK (((paid_through >= 0) AND (paid_through <= '8640000000000'::bigint)))"
+      },
+      {
+        "name": "stripe_test_states_premium_until_check",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "CHECK (((premium_until >= 0) AND (premium_until <= '8640000000000'::bigint)))"
+      },
+      {
+        "name": "stripe_test_states_check",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "CHECK ((((state = ANY (ARRAY['active'::text, 'canceling'::text, 'grace'::text])) AND (premium_until IS NOT NULL) AND (paid_through IS NOT NULL) AND (premium_until <= (paid_through +\nCASE\n    WHEN (state = 'grace'::text) THEN 604800\n    ELSE 0\nEND))) OR ((state <> ALL (ARRAY['active'::text, 'canceling'::text, 'grace'::text])) AND (premium_until IS NULL))))"
+      },
+      {
+        "name": "stripe_test_states_id_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL id"
+      },
+      {
+        "name": "stripe_test_states_household_id_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL household_id"
+      },
+      {
+        "name": "stripe_test_states_binding_id_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL binding_id"
+      },
+      {
+        "name": "stripe_test_states_account_id_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL account_id"
+      },
+      {
+        "name": "stripe_test_states_source_notice_id_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL source_notice_id"
+      },
+      {
+        "name": "stripe_test_states_source_lease_token_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL source_lease_token"
+      },
+      {
+        "name": "stripe_test_states_revision_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL revision"
+      },
+      {
+        "name": "stripe_test_states_state_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL state"
+      },
+      {
+        "name": "stripe_test_states_plan_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL plan"
+      },
+      {
+        "name": "stripe_test_states_reconciled_at_not_null",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "NOT NULL reconciled_at"
+      },
+      {
+        "name": "stripe_test_states_pkey",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "name": "stripe_test_states_binding_id_key",
+        "table": "stripe_test_states",
+        "validated": true,
+        "definition": "UNIQUE (binding_id)"
+      }
+    ],
+    "account_billing_role_grants": [
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "account_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "account_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "account_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "attempts",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "binding_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "challenge_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "challenge_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "ciphertext_digest",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "ciphertext_digest",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "consumed_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "consumed_at",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "customer_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "customer_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "event_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "event_type",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "expires_at",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "expires_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "expires_at",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "expires_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "factor_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "factor_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "household_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "household_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "household_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "lease_token",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "lease_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "livemode",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "object_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "owner_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "owner_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "owner_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "owner_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "paid_through",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "plan",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "premium_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "provider_created",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "reconciled_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "request_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "request_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "revision",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "session_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "session_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "size_bytes",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "size_bytes",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "snapshot_at",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "snapshot_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "local_export_artifacts",
+        "column": "state",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_notices",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_states",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "subscription_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "stripe_test_bindings",
+        "column": "subscription_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "user_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_user",
+        "table": "account_security_challenges",
+        "column": "user_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_bindings",
+        "column": "account_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "account_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "account_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "account_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "account_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "attempts",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "attempts",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "binding_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "binding_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "binding_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "binding_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_bindings",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "created_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_bindings",
+        "column": "customer_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "event_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "event_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "event_type",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "event_type",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_bindings",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "household_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "household_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_bindings",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "lease_token",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "lease_token",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "lease_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "lease_until",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_bindings",
+        "column": "livemode",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "object_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "object_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_bindings",
+        "column": "owner_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "paid_through",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "paid_through",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "paid_through",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "plan",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "plan",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "plan",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "premium_until",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "premium_until",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "premium_until",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "provider_created",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "provider_created",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "reconciled_at",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "revision",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "revision",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "source_lease_token",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "source_lease_token",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "source_lease_token",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "source_notice_id",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "source_notice_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "source_notice_id",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_notices",
+        "column": "state",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "state",
+        "privilege": "INSERT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "state",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_states",
+        "column": "state",
+        "privilege": "UPDATE"
+      },
+      {
+        "role": "app_job_worker",
+        "table": "stripe_test_bindings",
+        "column": "subscription_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "account_security_challenges",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "local_export_artifacts",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "stripe_test_bindings",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "stripe_test_notices",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "stripe_test_states",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "account_security_challenges",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "local_export_artifacts",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "stripe_test_bindings",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "stripe_test_notices",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_retention_worker",
+        "table": "stripe_test_states",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "account_security_challenges",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "local_export_artifacts",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "stripe_test_bindings",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "stripe_test_notices",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "stripe_test_states",
+        "column": "household_id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "account_security_challenges",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "local_export_artifacts",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "stripe_test_bindings",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "stripe_test_notices",
+        "column": "id",
+        "privilege": "SELECT"
+      },
+      {
+        "role": "app_deletion_verifier",
+        "table": "stripe_test_states",
+        "column": "id",
+        "privilege": "SELECT"
+      }
+    ],
+    "remaining_account_challenges": 0,
+    "tenant_reference_constraints": [
+      {
+        "name": "obligations_tenant_item_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (item_id, household_id) REFERENCES items(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      },
+      {
+        "name": "reminders_tenant_obligation_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (obligation_id, household_id) REFERENCES obligations(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      },
+      {
+        "name": "document_chunks_tenant_document_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (document_id, household_id) REFERENCES documents(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      },
+      {
+        "name": "items_tenant_source_document_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (source_document_id, household_id) REFERENCES documents(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      }
+    ],
+    "new_runtime_passwords_cleared": true,
+    "billing_state_guard_definition": "d99d7bc737e7d0e1c17a650f94426f69",
+    "new_security_definer_functions": 0
+  },
+  "original_user_work": {
+    "inventoried": 386,
+    "unchanged": 386,
+    "changed": []
+  },
+  "scanner_contention": {
+    "scope": "local Docker Desktop ARM64 emulating pinned amd64 ClamAV; synthetic canonical PDF only",
+    "limits": {
+      "scannerCpu": 1,
+      "memoryMiB": 3072,
+      "wallMs": 40000,
+      "cleanupMs": 5000
+    },
+    "coldImageCache": "not established; image pre-existing; no cache eviction or image changes",
+    "results": [
+      {
+        "case": "capacity",
+        "capacity": "8 CPUs; 4106604544 bytes; linux/aarch64",
+        "otherContainersRunning": 0
+      },
+      {
+        "case": "first-new-container-cached-image",
+        "elapsedMs": 23729,
+        "verdict": "clean"
+      },
+      {
+        "case": "second-new-container-warm-image",
+        "elapsedMs": 19699,
+        "verdict": "clean"
+      },
+      {
+        "case": "concurrent-b",
+        "elapsedMs": 29359,
+        "verdict": "clean"
+      },
+      {
+        "case": "concurrent-a",
+        "elapsedMs": 29645,
+        "verdict": "clean"
+      },
+      {
+        "case": "cpu-load-start",
+        "resource": "6 CPUs, 64MiB, <=50s"
+      },
+      {
+        "case": "cpu-contention",
+        "elapsedMs": 40729,
+        "failure": "scanner deadline"
+      },
+      {
+        "case": "memory-load-start",
+        "resource": "360MiB synthetic tmpfs, 512MiB cap, <=50s"
+      },
+      {
+        "case": "memory-contention",
+        "elapsedMs": 22191,
+        "verdict": "clean"
+      },
+      {
+        "case": "caller-cancellation",
+        "elapsedMs": 184,
+        "failure": "scanner runtime failed"
+      },
+      {
+        "case": "exact-fixture-cleanup",
+        "remaining": "",
+        "loadRemaining": ""
+      }
+    ]
+  },
+  "retained_limits": {
+    "whole_app_mfa": false,
+    "complete_export": false,
+    "final_deletion_receipt": false,
+    "adr019_operational_authority": false,
+    "application_premium_activation": false,
+    "plaid_durable_lifecycle": false,
+    "hosted_activation": false,
+    "production_preflight": "NO-GO"
+  },
+  "provider_state": {
+    "accessed_or_mutated": false,
+    "supabase_deeper_504_cause": "unknown; three gateway 504s established previously",
+    "historical_management_token_invalidation": "unproven",
+    "support_packet": "PREPARED BUT UNSENT"
+  },
+  "validation_corrections": [
+    {
+      "log": "unit-auth-all.log",
+      "reason": "Sandbox prevented loopback HTTP fixtures; 22 failures / 23 errors. Authorized local-socket rerun passed 555 auth tests; final full suite passed. No timeout or product workaround."
+    },
+    {
+      "log": "candidate-lint.log",
+      "reason": "Incorrect --force flag passed to ESLint; rerun correct command passed. No product change."
+    },
+    {
+      "log": "postgres.log",
+      "reason": "Initial fixture start omitted explicit port, failed to bind occupied 5432. Existing listener was not accessed or modified. Restart explicitly used fixture port 55540."
+    }
+  ],
+  "evidence_sha256": {
+    "final-frozen.log": "a6a197d2540d6339b9db0b2ac5bb43694342ba085ebd685ed43b649ef71c9666",
+    "final-build.log": "24bb46958d1787245c7db5b8dc0d77219705bd930d666b9c5fa587e39b046de5",
+    "final-typecheck.log": "1e3e98661fb8f976a4d4f51025cb4a66689c178df2a55ea0f5b538a97cc50d25",
+    "final-lint.log": "ffb00d50730c5999cc7fa10f1f288eb495a3b77ecddd12dc87641761981ab9c9",
+    "final-units.log": "181bfbdcbde5f9e2281f9d16168b2a39ef76f506adff033143bd9869f89b9ddf",
+    "final-controls.log": "6ba04eb26bd53ed96296d5b5f96c5edb697fc3eac67849b8ffea48ab6565424a",
+    "final-guards.log": "3f4cbc0632cbc9f168c2236e9955a37d255e391c867c0e612f6fa5f35eb0752c",
+    "integration-final-db.log": "73f018da3e6083da22eb3532be32e401115d037c20cf64c88ab150bd8d26d120",
+    "integration-final-web.log": "c67a7d85004047041ec136ac9ad2c0b8f8b98ec2ac9fda661fc7f093275b05ef",
+    "integration-local-final-scanner.log": "e3c13e25e0e7188afd369d347a3cd3d7add7210d2271877bcba2630520b2a876",
+    "integration-admin-final-readback.log": "5ba017164a64bb9323f8abcd4e3952ab1ddbb4ef7bb9d12faf682a74bbe7bf0d",
+    "readback-final.json": "9364654d9a45b7e83dc0f270734b334677e67b68f9a8c90838eac343840c5359",
+    "mutations.json": "684dba28a0f4ceeb0db4e8fb32084c21f3fab4141c00947a0d563e897820ca6d",
+    "cap-mutations.json": "e1b8a9c043cfb49e80315c378fba8dc3c89db3c156329c0b3b7addd325e71fb2",
+    "restore-mutation.json": "0339f32fbd98b4b765fe7ba9efa02254a6f9ab500026e1540b59b555c574b5f7",
+    "scanner-contention.json": "b856062e403b76b5a8821a015f8db5e40505ba2b828a39f27f43e160839d5e39",
+    "scanner-contention.mjs": "4204060bf34e9c4b2ecdd8b2b772949bbac701e301b1d444cf3b924a976956f4",
+    "original-preservation-final.json": "035944ab1e776162b2e6c29c3bceba20e1cf5872904acfabcd3708d9297cf08d",
+    "run.py": "bf46228ea4e3ebb5ecd1fd9327f658dda993ff430ba5062218f4681c94e410ae",
+    "guards.mjs": "e0d72964daf0e9fc08bb9a8b9d5a348423cfd559b730ea378bf2140178f86248",
+    "readback.py": "df0729e7f5bd519826233b840a5e9b0ad578a5ec92b1ebce7aa40b869402f1b6",
+    "readback-final.sql": "8d3a733fe57d1fdbab8d01216104d85335716c2d7d65b29922dba1724548513b",
+    "versions.mjs": "66f5727e2c6d40a2da1c5bb022e7bc1267fdf132e8a23382e2ce4c2dc2ca8ad2",
+    "mutation-factor-read-freshness.log": "16358c4277b380885d59f81a0f66a9ca6196073edf4733be988bd25357a01725",
+    "mutation-mfa-post-audit.log": "3c5993739e4e10200605ca912cec8746a1b90d7faba1a3747543bf69e996bfc2",
+    "mutation-recovery-post-audit.log": "175108355e0a7106afdee5bc51a7f3aff4a42ee44959dc8a051f2e089ce5cc34",
+    "integration-mutation-scope-household.log": "121ff76b7b87a3e18c3f122b8a80df463d72734d5b949cda6e3f6c9172c35547",
+    "integration-mutation-scope-lifetime.log": "81f708e3a62230665d6abbc8998d4196360cf2f8343c10d2b93a3bad8ff33b22",
+    "integration-mutation-scope-async.log": "d07d30a167574abc069ffd782bd3519c41dfc5245813ccc024e41aaed2c6f44b",
+    "integration-mutation-scope-commit.log": "46be621e05434728a0c2ca0aebdc8453ae4b1c933d9145687cdcb27ec7a206cb",
+    "integration-mutation-export-active.log": "21386bb09d361460c29e83e493b8ea9d2e275cd662bc115033debcbc6417ec56",
+    "integration-mutation-historical-member-cap-lock.log": "66229a83775a88ff6ee4f139b4cb035471e698140acc0652ea8e074580972253",
+    "integration-mutation-historical-upload-clock.log": "6716132cc547821818855cff640f81ada9e56fc388f7415deae40149a2afda74",
+    "integration-mutation-historical-restore-clock.log": "c0589c8971e4f1bc0e977bc672dcec1d7aa4643116fc25b54590bb86a1db8829",
+    "preview-final.json": "090bd63cf0b69f91516555a1b8e1bcc699624eace2c5913197565b749c241a87"
+  },
+  "local_preview": {
+    "url": "http://127.0.0.1:4317/",
+    "status": 200,
+    "title": "Pellum \u2014 a little less to carry",
+    "scope": "private public-page preview only; no authenticated backend or provider evidence"
+  },
+  "route_inventory": {
+    "mounted_route_files": 27,
+    "http_methods": 36,
+    "ast_negative_controls": 6,
+    "whole_app_mfa_proven": false
+  }
+}

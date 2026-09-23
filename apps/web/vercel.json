@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "node ../../scripts/staging-cloud-oidc-proof.mjs && pnpm turbo run build --filter=@autobureau/web...",
+  "outputDirectory": ".next",
+  "regions": ["iad1"],
+  "github": {
+    "enabled": false
+  }
+}

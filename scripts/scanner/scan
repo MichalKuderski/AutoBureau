@@ -1,0 +1,15 @@
+#!/bin/sh
+# Fixed command; input is bytes on stdin, never an executable, option, or filename.
+# No scanner text, signature name, or document content is returned or persisted.
+/usr/bin/clamscan --database=/var/lib/clamav --official-db-only=yes \
+  --fail-if-cvd-older-than=14 --no-summary --quiet --tempdir=/tmp \
+  --max-filesize=25M --max-scansize=50M --max-files=32 --max-recursion=4 \
+  --max-scantime=0 --alert-exceeds-max=yes --alert-encrypted=yes \
+  --alert-broken=yes --alert-broken-media=yes --alert-macros=yes \
+  --bytecode-timeout=1000 --pcre-match-limit=10000 --pcre-recmatch-limit=1000 \
+  --follow-dir-symlinks=0 --follow-file-symlinks=0 - >/dev/null 2>/dev/null
+case "$?" in
+  0) printf 'CLEAN\n';;
+  1) printf 'REJECTED\n';;
+  *) printf 'ERROR\n';;
+esac

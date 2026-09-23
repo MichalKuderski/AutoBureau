@@ -1,0 +1,33 @@
+import type {
+  DocumentMeta,
+  Household,
+  HouseholdMember,
+  Item,
+  Obligation,
+} from "@autobureau/contracts";
+
+/**
+ * View models.
+ *
+ * The wire shapes come from `@autobureau/contracts` and are authoritative. These
+ * types add only what a *screen* needs and the API genuinely returns alongside —
+ * resolved member names, provenance links, computed urgency. Keeping them separate
+ * means a UI convenience can never silently redefine a domain shape.
+ */
+
+export type { DocumentMeta, Household, HouseholdMember, Item, Obligation };
+
+/**
+ * Cursor-paginated envelope — every list endpoint returns this (doc 03 §1, ADR-011).
+ *
+ * Re-exported rather than redeclared. It is a *wire* shape, so it belongs in
+ * `packages/contracts`, which doc 03 names as the source of truth; a second definition
+ * here was one edit away from disagreeing with the schema the server validates against.
+ */
+export type { Page } from "@autobureau/contracts";
+
+export type { Provenance, ObligationView, ItemView, DocumentView, ProposedChange, DashboardSummary } from "@autobureau/contracts";
+
+export type { TimelineEntry, TimelineLens } from "@autobureau/contracts";
+
+export type { NotificationView } from "@autobureau/contracts";

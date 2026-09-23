@@ -1,0 +1,14 @@
+{
+  "capturedAt": "2026-09-13T22:02:03.158376+00:00",
+  "environment": "staging",
+  "removedRule": 59896856,
+  "remainingRules": [
+    {
+      "id": 58428124,
+      "name": "main",
+      "type": "branch"
+    }
+  ],
+  "previewHoldRemovedAfterSuccessfulMigration": true,
+  "productionTouched": false
+}

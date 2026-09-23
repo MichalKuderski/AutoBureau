@@ -1,0 +1,58 @@
+/**
+ * Browser-safe entry point.
+ *
+ * Everything exported here runs in any runtime — schemas, the event registry, error
+ * shapes, and isomorphic ID generation. Node-only utilities (payload hashing, which
+ * needs a synchronous SHA-256) live behind the `./node` subpath so that importing a
+ * schema in a React component cannot drag server code into the client bundle.
+ * Discovered while wiring the web app: a single entry point made `node:crypto` a
+ * transitive dependency of every screen.
+ */
+export { uuidv7, UUID_RE } from "./ids.js";
+export {
+  PROBLEM_BASE, PROBLEM_KINDS, problem,
+  ProblemDetailsSchema, FieldErrorSchema,
+  type ProblemDetails, type ProblemKind, type FieldError,
+} from "./problem.js";
+export {
+  EVENT_TYPES, EventTypeSchema, EventEnvelopeSchema, EventPayloadSchema,
+  type EventType, type EventEnvelope,
+} from "./events.js";
+export {
+  AUDIT_ACTIONS, AuditActionSchema, ACTOR_TYPES, ActorTypeSchema,
+  type AuditAction, type ActorType,
+} from "./audit.js";
+export {
+  PageSchema, PAGE_LIMIT_DEFAULT, PAGE_LIMIT_MAX, PageLimitSchema,
+  encodeCursor, decodeCursor, cursorFingerprintInput, CursorError,
+  SortDirectionSchema, ORDERING_RULE, nullableUpdate,
+  IDEMPOTENCY_HEADER, IdempotencyKeySchema, idempotencyDisposition,
+  idempotencyFingerprintInput,
+  type Page, type CursorKeyset, type SortDirection, type IdempotencyDisposition,
+} from "./http.js";
+export * from "./domain/common.js";
+export * from "./domain/entities.js";
+export * from "./domain/settings.js";
+export * from "./domain/views.js";
+export * from "./domain/members.js";
+export * from "./domain/obligation-actions.js";
+export * from "./domain/timeline.js";
+export * from "./domain/item-input.js";
+export * from "./domain/census.js";
+export * from "./domain/onboarding.js";
+export * from "./domain/notifications.js";
+export * from "./domain/document-upload.js";
+
+export * from "./jobs.js";
+export * from "./deletion-evidence.js";
+export * from "./document-security.js";
+export * from "./restore-authority.js";
+export * from "./privacy-retirement.js";
+
+export * from "./privacy-export.js";
+
+export * from "./stripe-test-journal.js";
+export {DocumentQuotaSchema,type DocumentQuota} from './document-quota.js';
+export {canonicalDeadlinePdf,inspectCanonicalPdf,PDF_POLICY} from "./canonical-public-pdf.js";
+
+export * from "./journal-retirement.js";

@@ -1,0 +1,408 @@
+{
+  "created_at": "2026-09-20T21:15:29.452981+00:00",
+  "scope": "isolated local development and synthetic fixtures only",
+  "branch": "codex/review-pellum-hardening-v2",
+  "base_sha": "e4cbca92a54d059cabd73cf1173cff29f7252e3a",
+  "previous_tested_implementation": "3913413791c550ac90c004b7f0929b83430a8e8c",
+  "tested_implementation_sha": "163367485e6aef3c75b6a4f65d92884147a3658a",
+  "final_documentation_commit": "resolve from Git; subsequent commit changes documentation/evidence only",
+  "commits": [
+    {
+      "sha": "21508e63fe09c9ecfd6ff61f2bd6dd05c18ef725",
+      "subject": "feat: define approved local scanner sandbox boundary"
+    },
+    {
+      "sha": "92b94391507fd0eac75488cd82823b98fc7303fe",
+      "subject": "feat: journal scans and fence verifiable household deletion"
+    },
+    {
+      "sha": "163367485e6aef3c75b6a4f65d92884147a3658a",
+      "subject": "feat: gate local model stub with closed redaction capabilities"
+    }
+  ],
+  "versions": {
+    "node": "22.16.0",
+    "pnpm": "10.34.5",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7",
+    "prisma": "6.19.3",
+    "next": "15.5.22",
+    "postgresql": "18.3 (Postgres.app)",
+    "pgvector": "0.8.1"
+  },
+  "units": {
+    "ops": 8,
+    "ai-boundary": 44,
+    "contracts": 140,
+    "db": 16,
+    "web": 1300
+  },
+  "unit_total": 1508,
+  "integrations": {
+    "db": 115,
+    "web": 377
+  },
+  "integration_total": 492,
+  "node_controls": 188,
+  "architecture_guards": 7,
+  "build": "PASS",
+  "typecheck": "PASS",
+  "lint": {
+    "errors": 0,
+    "existing_warnings": 13
+  },
+  "frozen_install": "PASS offline; only a workspace importer added using already locked devDependency versions; no resolved package upgrade",
+  "all_final_turbo_runs_uncached": true,
+  "warnings": [
+    "13 existing no-console lint warnings",
+    "existing React act/error-boundary test diagnostics",
+    "Node MockTimers experimental API warning; no skipped final tests"
+  ],
+  "security_mutations": [
+    {
+      "name": "adr018-mutation-nonce",
+      "exit": 1,
+      "failure": "Tests  1 failed | 9 passed | 12 skipped (22)",
+      "log_sha256": "3556b21768ac264e60051ba03488308015ea4c8152bd2e39023fb943f0fa03fe"
+    },
+    {
+      "name": "adr018-mutation-hash",
+      "exit": 1,
+      "failure": "Tests  1 failed | 9 passed | 12 skipped (22)",
+      "log_sha256": "ba5309b3319a1021462839635c288450d6c8f689b79ac04411fb73437a2567ab"
+    },
+    {
+      "name": "adr018-mutation-sandbox",
+      "exit": 1,
+      "failure": "# fail 1",
+      "log_sha256": "5ab447ba6836780ff63d63de8c1069ed4713c4e519d9bf57899e93c766b4b2ed"
+    },
+    {
+      "name": "adr018-mutation-allowlist",
+      "exit": 1,
+      "failure": "Tests  25 failed | 2 passed | 17 skipped (44)",
+      "log_sha256": "c9cd3969af152e98009df5dfd65251af3330a5f0e5a62d3928278c52054af84d"
+    },
+    {
+      "name": "adr018-mutation-capability",
+      "exit": 1,
+      "failure": "Tests  1 failed | 43 skipped (44)",
+      "log_sha256": "fc4b5e5259496228712b3c2bedf409fa89a7e5a725af2e08ac1b6e94e01ec36f"
+    },
+    {
+      "name": "integration-adr018-mutation-lease",
+      "exit": 1,
+      "failure": "Tests  1 failed | 1 passed | 29 skipped (31)",
+      "log_sha256": "41810d8117f08f4887e13c30b77d5ae16ed6e752083e2bdaae2738eec806754f"
+    },
+    {
+      "name": "integration-adr018-mutation-fence",
+      "exit": 1,
+      "failure": "Tests  1 failed | 24 skipped (25)",
+      "log_sha256": "721c7e59a6e1715eb452e943dfe1b2a2eaf734f16fe4c36a1bc2dfe4796a7afe"
+    },
+    {
+      "name": "integration-adr018-mutation-ownership",
+      "exit": 1,
+      "failure": "Tests  1 failed | 24 skipped (25)",
+      "log_sha256": "b3e41d6c6ab5a6b9253b092c893cb4c2613227ed80f0ed1a3d555a6a5c6fad61"
+    }
+  ],
+  "mutation_restoration": "Source bytes restored in finally blocks; local DB triggers re-enabled; all final migration tests use a fresh cluster with original effective guards",
+  "local_database_readback": {
+    "port": 55540,
+    "roles": [
+      {
+        "role": "app_document_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_retention_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_deletion_verifier",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_dispatcher",
+        "login": false,
+        "createdb": false,
+        "bypassrls": true,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_job_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_user",
+        "login": true,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      }
+    ],
+    "vector": "0.8.1",
+    "database": "pellum_adr018_final",
+    "policies": 33,
+    "forced_rls": 27,
+    "journal_rls": [
+      {
+        "table": "deletion_attempts",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "deletion_observations",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "deletion_resources",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "document_scan_attempts",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "document_scans",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "household_deletions",
+        "forced": true,
+        "enabled": true
+      }
+    ],
+    "privacy_fences": 18,
+    "server_version": "18.3 (Postgres.app)",
+    "remaining_journals": {
+      "scans": 0,
+      "attempts": 0,
+      "deletions": 0,
+      "resources": 0,
+      "observations": 0,
+      "scan_attempts": 0
+    },
+    "ensure_rls_triggers": 0,
+    "migration_checksums": {
+      "20260728000001_rls": "88773bb83beb8729fff185e2e06953c64d39abe7e8114372cb313671472eb8c2",
+      "20260728000000_init": "ce990d3117f49b6f5d3d9f473b62f1d2bcf7eeed9a466fc3546ae2ff6c517aee",
+      "20260823000000_idempotency_keys": "e823ded41ae885b113523d6e310e121c72027a92ba90cc801a3dce5dcabab01d",
+      "20260825000000_auth_rate_limits": "a4f472eb96c5df6ea575a7bc00d4182f31243fcbdb4a3b241c53bb13fe339ffa",
+      "20260814000001_self_audit_insert": "36599c66d8fdc229e64de8accb00ce048670869d29704fda0aaf1dc03a7edb89",
+      "20260913000000_job_delivery_inbox": "821c3cc51edc4956b409600408afea3cc2d21e693267d75527abda779f4bc641",
+      "20260912000000_notification_ledger": "7c78a5df525a5bba008ca87ab0635a45f49d0eb4aab854de80378f9b9608ec02",
+      "20260913000001_job_worker_scope_read": "fd7aa69db34551af95c598ec33a63ddf546f90030d3406e83098fde08d8323bc",
+      "20260912000002_document_upload_ledger": "bbd230504ed051b08862014e6f2e0bfc2eb4c4e4f14a6bede7c4a88dc8cb7cdf",
+      "20260913000002_api_role_table_privileges": "bd2e43764c69be3770b6c159e8e0723083c71d21604ff8e9bb35564d9422b125",
+      "20260920000000_document_security_journals": "3eb411ac77b00e23edc059ea696a2fc308f19367648ea5b7d784f6243160c203",
+      "20260906000000_restore_intended_rls_posture": "eceed5a27d9de4269b3c503d2c25a555880a29b3a9ad1b96d36d272a4508de47",
+      "20260912000001_notification_recipient_index": "5b38c48c5e2e1fd8829aab286c4d69d1bb160ab96623bb37bc90a73207add8fe",
+      "20260814000000_principal_scope_and_audit_actor": "c1fe37b667eed2855f4a0bd8d30ff1d53ea69e5bfb2bbc403f0d20992a4ef0f2"
+    },
+    "remaining_job_inbox": 0,
+    "migrations_completed": 14,
+    "new_role_memberships": 0,
+    "runtime_owned_tables": 0,
+    "migrations_unfinished": 0,
+    "provider_table_grants": 0,
+    "journal_audit_triggers": 6,
+    "migrations_rolled_back": 0,
+    "remaining_job_deliveries": 0,
+    "new_security_definer_functions": 0
+  },
+  "migration_checksum_match": "all 14 migration files match final clean-cluster applied checksums exactly",
+  "migration_change": "one local-only additive migration, six forced-RLS journals, three NOLOGIN/NOBYPASSRLS roles, 18 write fences, six journal audit triggers; no hosted migration",
+  "docker_availability": {
+    "scope": "local Docker read-only availability; no container/image mutation",
+    "checked_at": "2026-09-20T21:11:41.794000+00:00",
+    "checks": [
+      {
+        "check": "engine",
+        "responsive": false,
+        "timeout_seconds": 10
+      },
+      {
+        "check": "images",
+        "responsive": false,
+        "timeout_seconds": 10
+      }
+    ]
+  },
+  "original_user_file_inventory": {
+    "total": 386,
+    "unchanged": 386
+  },
+  "logs": {
+    "adr018-candidate-frozen": {
+      "exit": 0,
+      "sha256": "a7e6df4cd4ef0076a46dce8d22ea4b3a2825edf2e75d70dc5dcf469e94235f79"
+    },
+    "adr018-candidate-build": {
+      "exit": 0,
+      "sha256": "08e493fe5ae48f65ed6cf5f4e7a2ba8dbb493ddf4e68669eaef29f131ef9069e"
+    },
+    "adr018-candidate-typecheck": {
+      "exit": 0,
+      "sha256": "21772afbc2afb4845aed0efa77bf00d1040324a02e4a5fd4072c5287d5db60b8"
+    },
+    "adr018-candidate-lint": {
+      "exit": 0,
+      "sha256": "ffb00d50730c5999cc7fa10f1f288eb495a3b77ecddd12dc87641761981ab9c9"
+    },
+    "adr018-candidate-unit": {
+      "exit": 0,
+      "sha256": "aae68430cd3b13e1d52c91659860236d347ceef2cb9b80550b34bdff3e55b91d"
+    },
+    "integration-adr018-reviewed": {
+      "exit": 0,
+      "sha256": "b7fdadd3c7013c20e9a82d0892b5ef6253b76cc318ffe50c4d89bde7a2cf8028"
+    },
+    "adr018-candidate-controls": {
+      "exit": 0,
+      "sha256": "871f3e0221960293f31a1ba0343abeaefa3d437354e2ad25635a5b57a08c1359"
+    },
+    "adr018-candidate-architecture": {
+      "exit": 0,
+      "sha256": "3f4cbc0632cbc9f168c2236e9955a37d255e391c867c0e612f6fa5f35eb0752c"
+    }
+  },
+  "log_directory": "/private/tmp/pellum-v2-review-20260920",
+  "source_sha256": {
+    ".github/workflows/ci.yml": "bda9b254f1844751e41652f56a099d8f5f2fc1cefb10fed49b770dfe11bf0f2e",
+    "apps/web/src/server/documents/scan-invocation.test.ts": "07d26ac6325c1867a5d2145e8222290cb28d10e9e7b61c08bbda4f48613beb30",
+    "apps/web/src/server/documents/scan-invocation.ts": "00602e195055043c849274ff32113bc1a1fbf2bbb89eb5252b2a7502da0e90ee",
+    "apps/web/src/server/documents/synthetic-review.ts": "f4bf5f78b6bc9e7b72b240757caa16308b88bde0574f93b5f9df80b24906abd5",
+    "apps/web/src/server/domain/document-upload.ts": "4823ca74f98013c9453a43d28dc82bd51ca6a27cd1259202adb5da383c190f35",
+    "docs/architecture/05-document-pipeline.md": "aeb46a57a258d0bec54224088730299a5812227d70d223d3673ac69c44e9630a",
+    "docs/architecture/adr/ADR-018-document-scan-redaction-and-deletion-boundaries.md": "adb4eef3b3b406e4cbd2e3739adbeeee427383ba6aec72efe672b08b066363fb",
+    "docs/engineering/document-retention-coverage.json": "48534f13eb047e44e7d318f152b38f2454bf242697e4108acaf58f339167acc5",
+    "packages/contracts/src/audit.ts": "24c634b4babe69a6f594b38f8db81d6598517d7499867a4e92c6f54cbd789182",
+    "packages/contracts/src/document-security.test.ts": "beecd9ef0c6cc55fc164990db01796b3214305a77cbfedb6682c32b116802fec",
+    "packages/contracts/src/document-security.ts": "d0b5362fa3778627ca565f9fe467ca7cf36f52c87a824f8860ced0fa83333a06",
+    "packages/contracts/src/events.ts": "319bb1391c7e985d87ff561ddf9f1acfbc024833b9187a366f4a37e35f16c004",
+    "packages/contracts/src/index.ts": "fd9d83fc4f20f8ab02985b1f7946953065296e8480c7b5a4e9068bda100b98b7",
+    "packages/contracts/src/jobs.ts": "9c84e425d81a164307357f048ad33ed7e352b4692df0fc98063b18f32ff19629",
+    "packages/db/prisma/migrations/20260920000000_document_security_journals/migration.sql": "3eb411ac77b00e23edc059ea696a2fc308f19367648ea5b7d784f6243160c203",
+    "packages/db/prisma/schema.prisma": "b6590570f27f8ab40e95561061762b6980b3b2b18f6f378b526e69f33bbcbbcc",
+    "packages/db/src/deletion-journal.ts": "3f01801a28c17b2e2cde05991b2b96bb49097dd4dbcbad13aa80cf2a2afbc78c",
+    "packages/db/src/document-scans.ts": "bd361c723f265f88264378322aa70e008f1fc3ea569e220b55fa859a63032647",
+    "packages/db/src/index.ts": "2be7c416a5a6a443a7cf8d626d38d22cf2c8f62e29288b0a555cd8419ac9f676",
+    "packages/db/src/jobs.ts": "1e761153c34000d3263b1e646a28a1c68ef8073c34098bf821f990ef9b76731c",
+    "packages/db/tests/integration/document-security.integration.test.ts": "a5baa668238a7c02729877812d38510ac8024954fef50aa8b13987f3d776bcdd",
+    "pnpm-lock.yaml": "eb11be75f7c5b2828ca0f07c24ea61bd4aad8eb25ff571c8e8691acccd868094",
+    "pnpm-workspace.yaml": "d30e879097e7eda50ea495d70c16d7c0dbf7621b6a23fd29e64ab256eff020d7",
+    "scripts/document-boundary-guard.test.mjs": "21323842b15f3b951a283cf9e5fd842316699daf3522dd9cf530ce4ba717802b",
+    "scripts/scanner-sandbox.mjs": "0496cd2a97f4529a3d81a7b6afd2db27343d6a5861273cd41773ca759b5f048e",
+    "scripts/scanner-sandbox.test.mjs": "efb95c073fc00796dcfa6ee6f32cbf8a12034b28ea5f8a3e9844985a22615870",
+    "services/ai/package.json": "8fa64f077d6b8218da861c39ec06e1ec1db34e6088c848fa996acbd0eb64b742",
+    "services/ai/src/gateway.ts": "972980c2f3c9c0b4ff68ded050fae71c295367fbe8e5a42d7cc073a21e0bf6c9",
+    "services/ai/src/redaction.test.ts": "8cb588b209cb610685d86e3dca8dce1bde38b960d6d1b0fec63cc86e69d7c96c",
+    "services/ai/src/redaction.ts": "663731fe1306a4204a0d0bce5dce69041d7e0029a30e6cd51fafb836b08a40aa",
+    "services/ai/tsconfig.json": "fc260cbe86688e06932291129be27acbf84fb4b0744efa4cefa4544de09f6f59"
+  },
+  "additional_evidence_hashes": {
+    "adr018-database-readback.json": "9264345a95884f7da3be0eef25e6f3044c0fd5a905dd867801c17bde897e36da",
+    "adr018-docker-availability.json": "e7c024829e5248a90c2fc73be9ddc9baee98883d4f1d681a229e2df7ee6be09e",
+    "adr018-mutations.json": "85b2bd52210dc4538f56253ec741ab64b2a631107e5d0eed151df4fc5fe06112",
+    "adr018-guards.json": "3f4cbc0632cbc9f168c2236e9955a37d255e391c867c0e612f6fa5f35eb0752c"
+  },
+  "commands": [
+    "pnpm install --frozen-lockfile --offline --store-dir /private/tmp/pellum-v2-review-20260920/pnpm-store",
+    "pnpm build --force",
+    "pnpm typecheck --force",
+    "pnpm lint",
+    "pnpm test --force",
+    "pnpm test:integration --force",
+    "node --test scripts/*.test.mjs",
+    "seven exact CI guardrail shell blocks",
+    "read-only SQL migration/role/RLS/cleanup readback"
+  ],
+  "runner": "sanitized run-local.py; run-adr018.py supplies only 127.0.0.1:55540/pellum_adr018_final for integration, expected PG major 18; admin only fixtures/readback, assertions use restricted app/worker/verifier roles",
+  "development_failures_corrected": {
+    "audit_trigger": "UUID target incorrectly cast as text; corrected before clean migration verification",
+    "manifest_lock": "FOR UPDATE required broader UPDATE permission; replaced with resource advisory lock",
+    "fresh_database": "historical cluster-wide CREATE ROLE collisions; final runs use a fresh cluster",
+    "unit_sandbox": "loopback EPERM; complete native suite rerun with local-network permission",
+    "workspace_offline": "unrelated package metadata absent during lockfile resolution; added new importer using exact already-locked versions, frozen offline install passes",
+    "lint": "explicit throw in cleanup finally refactored without weakening fail-closed cleanup"
+  },
+  "retired_local_risks": [
+    "scanner effective-settings drift goes unchecked",
+    "forged/stale scan binding or clean/failure contradiction advances the journal",
+    "concurrent or expired scan/deletion ownership grants completion",
+    "post-fence DB writes and job effects resume",
+    "deletion acknowledgement misrepresented as erasure",
+    "raw SQL dispatcher leases omit audit entries",
+    "raw/parser/scanner/serialized values accepted as provider capabilities",
+    "unsupported regions allowed through the public synthetic grammar"
+  ],
+  "unresolved": [
+    "local Docker engine unresponsive; Linux enforcement, real image/engine/signature pins and AV efficacy unproven",
+    "real-format parsing/OCR/redaction and isolated hosted provider runtime unproven",
+    "in-flight storage capabilities/provider operations need independent reconciliation",
+    "resource inventory completeness and deletion executors/provider/backup/restore/identity-link expiry not finished; final receipts disabled",
+    "full synthetic intake-review-reminder-erasure lifecycle not run",
+    "Supabase deeper gateway-504 cause unknown",
+    "historical Supabase management-token invalidation unproven",
+    "recovery/MFA/privacy/Stripe TEST/Plaid Sandbox/full UI and hosted acceptance remain incomplete",
+    "legal operator/jurisdiction/public contacts undecided"
+  ],
+  "supabase_support_packet": "PREPARED BUT UNSENT; unchanged",
+  "auth_implementation_and_diagnostic_evidence": "unchanged from starting checkpoint",
+  "excluded_evidence": [
+    "CI PostgreSQL 16",
+    "hosted Supabase migrations/roles",
+    "stable-staging acceptance",
+    "real antivirus efficacy",
+    "real PII redaction accuracy",
+    "complete erasure",
+    "full document/reminder/provider lifecycle",
+    "exhaustive browser/accessibility QA",
+    "Production readiness"
+  ],
+  "mutations": {
+    "local_code": true,
+    "disposable_synthetic_db": true,
+    "provider": false,
+    "Production": false,
+    "hosted_auth_config_users_sessions": false,
+    "push": false,
+    "PR5": false,
+    "merge": false,
+    "workflow_dispatch": false,
+    "deployment": false,
+    "DNS": false,
+    "real_documents": false,
+    "model_provider": false,
+    "Stripe_live": false,
+    "Plaid_real_accounts": false,
+    "external_support_send": false
+  },
+  "production_preflight": "NO-GO",
+  "task_owned_postgres_stopped_after_readback": true
+}

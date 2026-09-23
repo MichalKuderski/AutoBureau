@@ -1,0 +1,92 @@
+/**
+ * The public-route allowlist (ADR-009 D3).
+ *
+ * Deny-by-default means this list is the *entire* unauthenticated surface of the
+ * application. It is an exact-match list with no prefixes and no patterns, because a
+ * prefix quietly admits every path beneath it — `/auth/` would have made any future
+ * `/auth/anything` public without anyone deciding to. Adding an entry here is a visible,
+ * reviewable act, and a test pins the list so an addition cannot pass unnoticed.
+ */
+
+/** D3 verbatim: the pages a signed-out person is meant to reach. */
+const PUBLIC_PAGES = ["/", "/sign-in", "/sign-up", "/forgot-password"] as const;
+
+/**
+ * The endpoints that establish or repair a session.
+ *
+ * These are not in D3's prose, and they are not an expansion of it — they are entailed
+ * by it. A sign-in endpoint that required a session could never be reached; a refresh
+ * endpoint behind the gate would be redirected to itself. Sign-out is public so that a
+ * user with an expired access token can still clear their cookies.
+ */
+const PUBLIC_AUTH_ENDPOINTS = [
+  "/v1/auth/sign-in",
+  // Public only to reach the independently guarded loopback-only synthetic mount.
+  "/v1/auth/recovery",
+  "/v1/auth/recovery/complete",
+  // Creating an account cannot require an account. Like sign-in, it is public in the
+  // routing sense only: it verifies the request's origin, rate-limits it, and issues
+  // cookies solely when the provider returned a session it could verify.
+  "/v1/auth/sign-up",
+  "/v1/auth/sign-out",
+  "/v1/auth/magic-link",
+  "/auth/refresh",
+  // Reached by following an emailed link, i.e. always without a session. It carries an
+  // authorization code that is inert without the verifier cookie, so being public costs
+  // nothing: the code alone authenticates no one.
+  "/auth/callback",
+  // Also reached only by following an emailed link. Unlike the callback above, the hash it
+  // carries IS the credential — it has to be, because a confirmation link is followed on
+  // whatever device opened the email and no cookie from sign-up is there to pair with it.
+  // Being public is therefore load-bearing rather than free, and the compensating property
+  // is the hash itself: single-use, provider-validated, and bounded before it is sent.
+  "/auth/confirm",
+] as const;
+
+// Exact static brand assets contain no household data. No asset-directory wildcard.
+const PUBLIC_ASSETS = ["/icon.svg", "/manifest.webmanifest"] as const;
+export const PUBLIC_PATHS: readonly string[] = [...PUBLIC_PAGES, ...PUBLIC_AUTH_ENDPOINTS, ...PUBLIC_ASSETS];
+
+/** The path `/auth/refresh` redirects to when it cannot repair the session. */
+export const SIGN_IN_PATH = "/sign-in";
+
+/** Where a successful refresh goes when `next` is missing or refused. */
+export const DEFAULT_DESTINATION = "/dashboard";
+
+/**
+ * Where an authenticated principal with no household is sent (P1-02).
+ *
+ * Deliberately NOT in the allowlist above: it is reached only with a verified session, and
+ * middleware guards it exactly like `/dashboard`. It is named here because it is a routing
+ * destination this module already owns the vocabulary for, not because it is public.
+ */
+export const ONBOARDING_PATH = "/onboarding";
+
+export function isPublicPath(pathname: string): boolean {
+  // Trailing slashes are normalised so `/sign-in/` cannot slip past an exact match, and
+  // so `/sign-in/../dashboard` style inputs never reach the comparison as something else.
+  const normalised = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  return PUBLIC_PATHS.includes(normalised);
+}
+
+/**
+ * Same-origin destination validation — the open-redirect guard.
+ *
+ * Accepts only a path on this origin. Rejected: absolute URLs, protocol-relative `//evil`,
+ * backslash variants that some parsers normalise to `//`, anything with a control
+ * character, and `/auth/refresh` itself, which is the loop the redirect exists to avoid.
+ */
+export function safeDestination(raw: string | null): string {
+  if (raw === null || raw === "") return DEFAULT_DESTINATION;
+  if (!raw.startsWith("/")) return DEFAULT_DESTINATION;
+  if (raw.startsWith("//") || raw.startsWith("/\\")) return DEFAULT_DESTINATION;
+  if (raw.includes("\\")) return DEFAULT_DESTINATION;
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001f\u007f]/.test(raw)) return DEFAULT_DESTINATION;
+
+  const path = raw.split("?")[0]?.split("#")[0] ?? "";
+  const normalised = path.length > 1 ? path.replace(/\/+$/, "") : path;
+  if (normalised === "/auth/refresh") return DEFAULT_DESTINATION;
+
+  return raw;
+}

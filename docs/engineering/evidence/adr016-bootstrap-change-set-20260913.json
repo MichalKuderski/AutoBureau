@@ -1,0 +1,151 @@
+{
+  "change_set": {
+    "Changes": [
+      {
+        "Type": "Resource",
+        "ResourceChange": {
+          "Action": "Add",
+          "LogicalResourceId": "DeploymentBoundary",
+          "ResourceType": "AWS::IAM::ManagedPolicy",
+          "Scope": [],
+          "Details": []
+        }
+      },
+      {
+        "Type": "Resource",
+        "ResourceChange": {
+          "Action": "Add",
+          "LogicalResourceId": "DeploymentRole",
+          "ResourceType": "AWS::IAM::Role",
+          "Scope": [],
+          "Details": []
+        }
+      },
+      {
+        "Type": "Resource",
+        "ResourceChange": {
+          "Action": "Add",
+          "LogicalResourceId": "GitHubProvider",
+          "ResourceType": "AWS::IAM::OIDCProvider",
+          "Scope": [],
+          "Details": []
+        }
+      },
+      {
+        "Type": "Resource",
+        "ResourceChange": {
+          "Action": "Add",
+          "LogicalResourceId": "StateBucketPolicy",
+          "ResourceType": "AWS::S3::BucketPolicy",
+          "Scope": [],
+          "Details": []
+        }
+      },
+      {
+        "Type": "Resource",
+        "ResourceChange": {
+          "Action": "Add",
+          "LogicalResourceId": "StateBucket",
+          "ResourceType": "AWS::S3::Bucket",
+          "Scope": [],
+          "Details": []
+        }
+      },
+      {
+        "Type": "Resource",
+        "ResourceChange": {
+          "Action": "Add",
+          "LogicalResourceId": "StateLocks",
+          "ResourceType": "AWS::DynamoDB::Table",
+          "Scope": [],
+          "Details": []
+        }
+      },
+      {
+        "Type": "Resource",
+        "ResourceChange": {
+          "Action": "Add",
+          "LogicalResourceId": "StateRole",
+          "ResourceType": "AWS::IAM::Role",
+          "Scope": [],
+          "Details": []
+        }
+      },
+      {
+        "Type": "Resource",
+        "ResourceChange": {
+          "Action": "Add",
+          "LogicalResourceId": "UploadBoundary",
+          "ResourceType": "AWS::IAM::ManagedPolicy",
+          "Scope": [],
+          "Details": []
+        }
+      }
+    ],
+    "ChangeSetName": "adr016-bootstrap-20260913T1910Z",
+    "ChangeSetId": "arn:aws:cloudformation:us-east-2:792394000571:changeSet/adr016-bootstrap-20260913T1910Z/ddb028d4-186b-40b1-9350-4ad83e500b07",
+    "StackId": "arn:aws:cloudformation:us-east-2:792394000571:stack/pellum-stg-adr016-bootstrap/cea667c0-afa6-11f1-8ab0-02a933ef93df",
+    "StackName": "pellum-stg-adr016-bootstrap",
+    "Description": "Approved staging-only ADR-016 remote state and bounded CI roles; eight additions, no runtime compute.",
+    "Parameters": null,
+    "CreationTime": "2026-09-13T19:10:39.267000+00:00",
+    "ExecutionStatus": "AVAILABLE",
+    "Status": "CREATE_COMPLETE",
+    "StatusReason": null,
+    "NotificationARNs": [],
+    "RollbackConfiguration": {},
+    "Capabilities": [
+      "CAPABILITY_NAMED_IAM"
+    ],
+    "Tags": [
+      {
+        "Key": "Environment",
+        "Value": "staging"
+      },
+      {
+        "Key": "Purpose",
+        "Value": "adr016-state-bootstrap"
+      },
+      {
+        "Key": "Application",
+        "Value": "Pellum"
+      }
+    ],
+    "ParentChangeSetId": null,
+    "IncludeNestedStacks": false,
+    "RootChangeSetId": null,
+    "OnStackFailure": null,
+    "ImportExistingResources": null,
+    "StackDriftStatus": null,
+    "DeploymentMode": null,
+    "DeploymentConfig": {
+      "Mode": "STANDARD",
+      "DisableRollback": false
+    }
+  },
+  "events": {
+    "OperationEvents": [
+      {
+        "EventId": "66c7c38a-d94c-4e73-8a00-b03c3f2a1588",
+        "StackId": "arn:aws:cloudformation:us-east-2:792394000571:stack/pellum-stg-adr016-bootstrap/cea667c0-afa6-11f1-8ab0-02a933ef93df",
+        "OperationId": "ddb028d4-186b-40b1-9350-4ad83e500b07",
+        "OperationType": "CREATE_CHANGESET",
+        "OperationStatus": "SUCCEEDED",
+        "EventType": "STACK_EVENT",
+        "Timestamp": "2026-09-13T19:10:43.202000+00:00",
+        "StartTime": "2026-09-13T19:10:39.326000+00:00",
+        "EndTime": "2026-09-13T19:10:43.202000+00:00"
+      },
+      {
+        "EventId": "89f1d1e8-bc8d-4c8b-aa89-d292415ace9d",
+        "StackId": "arn:aws:cloudformation:us-east-2:792394000571:stack/pellum-stg-adr016-bootstrap/cea667c0-afa6-11f1-8ab0-02a933ef93df",
+        "OperationId": "ddb028d4-186b-40b1-9350-4ad83e500b07",
+        "OperationType": "CREATE_CHANGESET",
+        "OperationStatus": "IN_PROGRESS",
+        "EventType": "STACK_EVENT",
+        "Timestamp": "2026-09-13T19:10:39.326000+00:00",
+        "StartTime": "2026-09-13T19:10:39.326000+00:00"
+      }
+    ]
+  }
+}

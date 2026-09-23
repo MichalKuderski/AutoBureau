@@ -1,0 +1,35 @@
+{
+  "workflowRun": 34765409926,
+  "sha": "9e31175acba752af012b312d7c4adca87dd631fb",
+  "deployment": "autobureau-staging-na98bdapf-data-analyst-mike.vercel.app",
+  "observedAt": "2026-09-13T15:25:11.719Z",
+  "route": "/v1/auth/sign-up",
+  "fixture": "second synthetic acceptance identity",
+  "applicationStatus": 503,
+  "upstreamStatus": 504,
+  "traceId": "01a09b5f-3e1e-7c9e-9cac-69dc18be392b",
+  "event": "auth.sign_up_provider_unavailable",
+  "diagnosticCommandSucceeded": true,
+  "duplicateIdenticalLogRecords": 2,
+  "distinctTraces": 1,
+  "duplicateSignupSequence": [
+    204,
+    202,
+    202,
+    429,
+    429
+  ],
+  "acceptancePassed": 54,
+  "acceptanceTotal": 57,
+  "rootCause": "Upstream HTTP 504 is proven for this occurrence; underlying provider cause and earlier duplicate-signup failures remain unresolved",
+  "historicalProviderLogRetentionDays": 1,
+  "gatewayCorroboration": {
+    "project": "kdqnfruwgocfqwpbpuxo",
+    "logId": "42aac198-23e9-4fb8-8954-7d266864ea96",
+    "timestamp": "2026-09-13T15:25:06Z",
+    "method": "POST",
+    "path": "/auth/v1/signup",
+    "status": 504,
+    "xSbErrorCode": null
+  }
+}

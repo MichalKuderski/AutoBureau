@@ -1,0 +1,673 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-09-20T22:33:55.517444+00:00",
+  "classification": "LOCAL_SYNTHETIC_DEVELOPMENT_ONLY",
+  "production_preflight": "NO-GO",
+  "branch": "codex/review-pellum-hardening-v2",
+  "worktree": "/private/tmp/pellum-native-review-20260920",
+  "base_sha": "8c6892d1b1a904da98ea6f2f591c5209ffaf7d90",
+  "tested_implementation_sha": "2aec08a2ceb77f2fd7eea21713aba90146bb3c81",
+  "final_documentation_sha": "Resolve the subsequent evidence-only commit from Git; excluded here to avoid a self-referential hash.",
+  "base_docs_only_delta": [
+    "docs/engineering/adr018-local-foundations-20260920.md",
+    "docs/engineering/document-security-foundations-20260920.md",
+    "docs/engineering/evidence/adr018-native-20260920.json",
+    "docs/engineering/launch-risk-register.md",
+    "docs/engineering/staging-release-checkpoint-20260913.md"
+  ],
+  "implementation_commits": [
+    {
+      "sha": "051c9aeebc4754df8fd9703bd3b8e586b5dcdabd",
+      "subject": "feat: constrain local PDF parsing to a complete canonical subset"
+    },
+    {
+      "sha": "8eeca04029179a2eeb860495f4b07a32fad63149",
+      "subject": "feat: pin and verify isolated local ClamAV scanning"
+    },
+    {
+      "sha": "2fb184cfff05394a131ea24f7d9cef81c30d275a",
+      "subject": "feat: exercise fenced local erasure with independent synthetic evidence"
+    },
+    {
+      "sha": "78d63c1d36c52bd73f6495c17863df8f255e0f4e",
+      "subject": "fix: enforce household parity on document deletion references"
+    },
+    {
+      "sha": "2aec08a2ceb77f2fd7eea21713aba90146bb3c81",
+      "subject": "feat: bind local erasure batches to durable component leases"
+    }
+  ],
+  "versions": {
+    "node": "v22.16.0",
+    "next": "15.5.22",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7",
+    "@prisma/client": "6.19.3",
+    "pnpm": "10.34.5",
+    "postgresql": "18.3 (Postgres.app)",
+    "pgvector": "0.8.1",
+    "docker_server": "29.7.2",
+    "clamav": "1.4.6 LTS"
+  },
+  "validation": {
+    "frozen_install": "PASS (offline pinned store)",
+    "build": "PASS",
+    "typecheck": "PASS",
+    "lint_errors": 0,
+    "preexisting_lint_warnings": 13,
+    "unit_total": 1556,
+    "units": {
+      "web": 1303,
+      "ai": 89,
+      "contracts": 140,
+      "db": 16,
+      "ops": 8
+    },
+    "integration_total": 515,
+    "integrations": {
+      "db": 138,
+      "web": 377
+    },
+    "node_controls": 192,
+    "architecture_guards": [
+      {
+        "name": "No direct LLM provider SDK imports outside services/ai",
+        "exit": 0
+      },
+      {
+        "name": "Dispatcher escape hatch stays allow-listed",
+        "exit": 0
+      },
+      {
+        "name": "Anonymous global-table access stays allow-listed",
+        "exit": 0
+      },
+      {
+        "name": "Global-table union membership is pinned",
+        "exit": 0
+      },
+      {
+        "name": "Rate-limit thresholds are not runtime-configurable",
+        "exit": 0
+      },
+      {
+        "name": "Sentry integration introduces no OpenTelemetry runtime",
+        "exit": 0
+      },
+      {
+        "name": "PRD scope fence",
+        "exit": 0
+      }
+    ],
+    "separate_real_scanner_lifecycle": {
+      "passed": 1,
+      "duration_ms": 30341,
+      "scope": "public synthetic local fixture, simulated review, local transport, no provider/model call"
+    },
+    "deliberate_weakenings_detected": 12,
+    "mutation_results": [
+      {
+        "name": "adr018-mutation-nonce",
+        "exit": 1,
+        "failure": "Tests  1 failed | 12 passed | 12 skipped (25)",
+        "log_sha256": "4280970f97ca472d9519487c1963007349b0c6c4ed8b67ccd0e529a1bb4105bd"
+      },
+      {
+        "name": "adr018-mutation-hash",
+        "exit": 1,
+        "failure": "Tests  1 failed | 12 passed | 12 skipped (25)",
+        "log_sha256": "436078c82ab4d4d6facea32b66c4758f31bcb7ebdec089af5483d18c984508ce"
+      },
+      {
+        "name": "adr018-mutation-sandbox",
+        "exit": 1,
+        "failure": "# fail 1",
+        "log_sha256": "e7fdd209b7275604881b85fe2c6af32bafcf3460bc6f2722facde7a3f19403ce"
+      },
+      {
+        "name": "adr018-mutation-allowlist",
+        "exit": 1,
+        "failure": "Tests  25 failed | 2 passed | 17 skipped (44)",
+        "log_sha256": "558577a2a4f1b1c2032c47f8761674f2ee3a9afe13bfb12b8cc0f0fb0c7b6349"
+      },
+      {
+        "name": "adr018-mutation-capability",
+        "exit": 1,
+        "failure": "Tests  1 failed | 43 skipped (44)",
+        "log_sha256": "f0a741c84b6e03cb4406e3d6b228099e33f619a34ff3674eb47dac2fed05bd93"
+      },
+      {
+        "name": "integration-adr018-mutation-lease",
+        "exit": 1,
+        "failure": "Tests  1 failed | 1 passed | 29 skipped (31)",
+        "log_sha256": "e9e37e789bb13ffc96122ffb969208703a910298314bef1b41b0e44da7ab8775"
+      },
+      {
+        "name": "continuation-mutation-release",
+        "exit": 1,
+        "failure": "Tests  1 failed | 12 passed | 12 skipped (25)",
+        "log_sha256": "56d40ffc426833dd19e89d67316d2b9402aabb45fc1780b4d11e43d2b5d094ca"
+      },
+      {
+        "name": "continuation-mutation-pdf",
+        "exit": 1,
+        "failure": "Tests  39 failed | 6 passed (45)",
+        "log_sha256": "f70a7a02a058db89b531de9709ac6cd0409361a6426d10308465504006babd24"
+      },
+      {
+        "name": "continuation-mutation-restore-fence",
+        "exit": 1,
+        "failure": "# fail 1",
+        "log_sha256": "2f1ba88fb11d9cf31c6f00e85bc17f1f142ec930444d39fb8e23634409734c75"
+      },
+      {
+        "name": "integration-adr018-mutation-fence",
+        "exit": 1,
+        "failure": "Tests  1 failed | 28 skipped (29)",
+        "log_sha256": "abb1c26eb258bd3e2f4de47adcfaa1f4bcce9295bdeb4cc9c67eab293ba87739"
+      },
+      {
+        "name": "integration-adr018-mutation-ownership",
+        "exit": 1,
+        "failure": "Tests  1 failed | 28 skipped (29)",
+        "log_sha256": "7d774d1ec19d9626f4b3a8f66a254ed2cbddc7a56b0b579a7e07b0dc46f62ffd"
+      },
+      {
+        "name": "database erasure lease binding removed",
+        "expected_failure_observed": true,
+        "exit": 1,
+        "source_unchanged": true,
+        "log_sha256": "08e2ba24144dfcbe8ac3b3bb7d8378f45c706a4f844c8bd4988f2cfa16de5b39"
+      }
+    ],
+    "historical_fk_negative_controls": {
+      "failed_before_fix": 4,
+      "historical_sha": "2fb184cfff05394a131ea24f7d9cef81c30d275a",
+      "final_insert_update_refusals": 8,
+      "same_household_positive_actions": 2
+    },
+    "native_phase_order": "frozen -> build -> typecheck -> lint -> units -> integrations -> explicit real-scanner proof -> controls -> guards",
+    "warnings": [
+      "13 pre-existing lint warnings",
+      "Next reports plugin detection warning",
+      "React test act/error-boundary warnings retained"
+    ],
+    "failed_experiments_retained": [
+      "Combined Turbo build/typecheck raced on generated Next .next/types; sequential runs pass",
+      "Early PID-1 self-signal under emulation did not fail; corrected probe uses nonzero exit",
+      "New synthetic DB fixture initially used hex text instead of bytes; corrected",
+      "Four newly introduced FK regression controls failed against historical behavior, then were fixed",
+      "DB weakening mutations deliberately fail; restored before final validation"
+    ]
+  },
+  "database_readback": {
+    "port": 55540,
+    "roles": [
+      {
+        "role": "app_user",
+        "login": true,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_document_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_retention_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_deletion_verifier",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_job_worker",
+        "login": false,
+        "createdb": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_dispatcher",
+        "login": false,
+        "createdb": false,
+        "bypassrls": true,
+        "superuser": false,
+        "createrole": false
+      }
+    ],
+    "vector": "0.8.1",
+    "database": "pellum_adr018_final",
+    "policies": 37,
+    "forced_rls": 27,
+    "journal_rls": [
+      {
+        "table": "deletion_attempts",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "deletion_observations",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "deletion_resources",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "document_scan_attempts",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "document_scans",
+        "forced": true,
+        "enabled": true
+      },
+      {
+        "table": "household_deletions",
+        "forced": true,
+        "enabled": true
+      }
+    ],
+    "privacy_fences": 18,
+    "server_version": "18.3 (Postgres.app)",
+    "remaining_journals": {
+      "scans": 0,
+      "attempts": 0,
+      "deletions": 0,
+      "resources": 0,
+      "observations": 0,
+      "scan_attempts": 0
+    },
+    "ensure_rls_triggers": 0,
+    "migration_checksums": {
+      "20260728000001_rls": "88773bb83beb8729fff185e2e06953c64d39abe7e8114372cb313671472eb8c2",
+      "20260728000000_init": "ce990d3117f49b6f5d3d9f473b62f1d2bcf7eeed9a466fc3546ae2ff6c517aee",
+      "20260823000000_idempotency_keys": "e823ded41ae885b113523d6e310e121c72027a92ba90cc801a3dce5dcabab01d",
+      "20260825000000_auth_rate_limits": "a4f472eb96c5df6ea575a7bc00d4182f31243fcbdb4a3b241c53bb13fe339ffa",
+      "20260814000001_self_audit_insert": "36599c66d8fdc229e64de8accb00ce048670869d29704fda0aaf1dc03a7edb89",
+      "20260913000000_job_delivery_inbox": "821c3cc51edc4956b409600408afea3cc2d21e693267d75527abda779f4bc641",
+      "20260912000000_notification_ledger": "7c78a5df525a5bba008ca87ab0635a45f49d0eb4aab854de80378f9b9608ec02",
+      "20260921000001_local_online_erasure": "101ba6c706505e63bc972516eb26eeda499f74a67f52cdff9ff087dc1393148a",
+      "20260913000001_job_worker_scope_read": "fd7aa69db34551af95c598ec33a63ddf546f90030d3406e83098fde08d8323bc",
+      "20260912000002_document_upload_ledger": "bbd230504ed051b08862014e6f2e0bfc2eb4c4e4f14a6bede7c4a88dc8cb7cdf",
+      "20260921000002_erasure_notification_rls": "c8fc66925ab950dade5b20ecb753a431a19573029a99e19a960115d5eee1297f",
+      "20260913000002_api_role_table_privileges": "bd2e43764c69be3770b6c159e8e0723083c71d21604ff8e9bb35564d9422b125",
+      "20260920000000_document_security_journals": "3eb411ac77b00e23edc059ea696a2fc308f19367648ea5b7d784f6243160c203",
+      "20260921000000_local_scan_execution_budget": "4fa516669cec1874c9056be72762a8b0859a1219ab9d7df4aa9d45524b489b75",
+      "20260921000004_local_erasure_lease_binding": "97d69be81c8f28ae88d0623273eec9b41f8027c0e116a13ac5416693b08c2aee",
+      "20260906000000_restore_intended_rls_posture": "eceed5a27d9de4269b3c503d2c25a555880a29b3a9ad1b96d36d272a4508de47",
+      "20260912000001_notification_recipient_index": "5b38c48c5e2e1fd8829aab286c4d69d1bb160ab96623bb37bc90a73207add8fe",
+      "20260814000000_principal_scope_and_audit_actor": "c1fe37b667eed2855f4a0bd8d30ff1d53ea69e5bfb2bbc403f0d20992a4ef0f2",
+      "20260921000003_document_tenant_reference_parity": "a4d2a483af3ce90f4c2ca9cfb87839a5022809299d3d79cff8d6e721851f6d94"
+    },
+    "remaining_job_inbox": 0,
+    "migrations_completed": 19,
+    "new_role_memberships": 0,
+    "runtime_owned_tables": 0,
+    "migrations_unfinished": 0,
+    "provider_table_grants": 0,
+    "journal_audit_triggers": 6,
+    "migrations_rolled_back": 0,
+    "remaining_job_deliveries": 0,
+    "tenant_reference_indexes": 3,
+    "tenant_reference_constraints": [
+      {
+        "name": "obligations_tenant_item_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (item_id, household_id) REFERENCES items(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      },
+      {
+        "name": "reminders_tenant_obligation_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (obligation_id, household_id) REFERENCES obligations(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      },
+      {
+        "name": "document_chunks_tenant_document_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (document_id, household_id) REFERENCES documents(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      },
+      {
+        "name": "items_tenant_source_document_fk",
+        "validated": true,
+        "deferrable": true,
+        "definition": "FOREIGN KEY (source_document_id, household_id) REFERENCES documents(id, household_id) DEFERRABLE",
+        "delete_action": "a",
+        "initially_deferred": false
+      }
+    ],
+    "new_runtime_passwords_cleared": true,
+    "new_security_definer_functions": 0,
+    "checksums_match": true
+  },
+  "scanner": {
+    "source": "docker.io/clamav/clamav",
+    "publisher": "Official ClamAV upstream image",
+    "verified_date": "2026-09-20",
+    "upstream": {
+      "repository": "docker.io/clamav/clamav",
+      "version": "1.4.6",
+      "platform": "linux/amd64",
+      "index": "sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200",
+      "manifest": "sha256:655c84d3d60f5830c8bc495c9410d39bca86d28723451d8bff5ca62c76bbdcaf",
+      "engine": "sha256:68791dcfb6b7822a70578b3b797b84227142f0018460fed22c7c818f5f26d54b",
+      "signatures": "sha256:20db5c4ea99545311d1081ca0944eb701701686e9e3d7670e9974bc8d0374986",
+      "dailyVersion": 28122,
+      "dailyTimestamp": "2026-09-13T06:26:25Z",
+      "verified": "2026-09-20",
+      "publisher": "Cisco Talos",
+      "license": "GPL-2.0; bundled third-party notices require redistribution review",
+      "activation": "local-synthetic-only"
+    },
+    "derived_release": {
+      "image": "sha256:6fd4a9a21f9a143db97e50b7d212187b67c7b004097d5f0469ddebef6341d4bf",
+      "engine": "sha256:68791dcfb6b7822a70578b3b797b84227142f0018460fed22c7c818f5f26d54b",
+      "signatures": "sha256:20db5c4ea99545311d1081ca0944eb701701686e9e3d7670e9974bc8d0374986"
+    },
+    "signature_manifest_sha256": "20db5c4ea99545311d1081ca0944eb701701686e9e3d7670e9974bc8d0374986",
+    "platform_limit": "Published AMD64 image under ARM64 Docker Desktop emulation; not native hosted Linux proof",
+    "behavior": [
+      {
+        "fixture": "clean",
+        "verdict": "clean",
+        "seconds": 28.326
+      },
+      {
+        "fixture": "fake PDF header with EICAR string",
+        "verdict": "indeterminate",
+        "seconds": 19.828
+      },
+      {
+        "fixture": "malformed",
+        "verdict": "indeterminate",
+        "seconds": 19.609
+      }
+    ],
+    "standard_raw_eicar": {
+      "verdict": "REJECTED",
+      "cleanupVerified": true
+    },
+    "effective_linux_probes": [
+      {
+        "mode": "controls",
+        "image": "sha256:44b5b7edd644f78d5853b5a5bd0d00f4945787736066d37efb2bcbe67dd638de",
+        "observed": "65532\nCapEff:\t0000000000000000\nNoNewPrivs:\t1\nSeccomp:\t2\n3221225472\n0\n100000 100000\n16\n64\nROOT_READONLY\nTMP_NOEXEC\nTMP_BOUNDED\nIface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT                                                       \nNETWORK_DENIED\n",
+        "seconds": 2.8,
+        "remaining": ""
+      },
+      {
+        "mode": "hang",
+        "image": "sha256:70596672acc2a629ad2f2a615476beaa5e4aa0423046acda737a484538224e49",
+        "error": "scanner deadline",
+        "seconds": 40.333,
+        "remaining": ""
+      },
+      {
+        "mode": "crash",
+        "image": "sha256:7fd1292c5b56fcbafcf720410070f261d9d13805ca2240bcf5c870f677e2afd4",
+        "error": "scanner runtime failed",
+        "seconds": 0.906,
+        "remaining": ""
+      },
+      {
+        "mode": "overflow",
+        "image": "sha256:b43da016ecc5b904abffb721e3cb35d9d148bb12b3e9c2a9e3654c4993e09fa2",
+        "error": "scanner runtime failed",
+        "seconds": 0.617,
+        "remaining": ""
+      }
+    ],
+    "limits": {
+      "memory_bytes": 3221225472,
+      "swap_extra_bytes": 0,
+      "cpus": 1,
+      "pids": 16,
+      "file_descriptors": 64,
+      "tmpfs_bytes": 67108864,
+      "input_bytes": 26214400,
+      "stdout_bytes": 1024,
+      "watchdog_ms": 40000,
+      "cleanup_ms": 5000,
+      "app_boundary_ms": 46000,
+      "scan_lease_ms": 90000
+    },
+    "not_proven": [
+      "Universal malware detection",
+      "Publisher signature/attestation verification",
+      "Sustained RSS/PID/CPU exhaustion stress",
+      "Hosted signature update operations",
+      "Native target-platform performance"
+    ]
+  },
+  "parser_and_model": {
+    "supported": "One canonical PDF 1.4 public deadline-notice page; complete byte/structure admission, variable cited date",
+    "unsupported": "All other PDFs, raster/OCR, additional metadata/regions/attachments/codecs",
+    "projection": "Fixed version/task/kind enums only",
+    "external_model_calls": 0,
+    "claim": "Narrow local fail-closed boundary; not arbitrary-document redaction efficacy"
+  },
+  "erasure": {
+    "bounded_batch_rows": 100,
+    "durable_component_lease_seconds": 30,
+    "attempt_cap": 3,
+    "fenced_settlement_minutes": 15,
+    "undo_grace_days": 14,
+    "per_batch_authority": "Matching live attempt/token/resource/household/component required by scoped query and DB trigger",
+    "crash_controls": [
+      "precommit data+audit rollback",
+      "postcommit/pre-ack lease-expiry recovery without re-erasing rows"
+    ],
+    "independent_observations": "Restricted DB verifier plus separate synthetic filesystem observer; acknowledgements never establish absence",
+    "retained": "Outbox/delivery/inbox/scan journals remain fenced; no provider/account/backup retirement claimed",
+    "restore_activation_allowed": false,
+    "final_receipt_issuable": false
+  },
+  "cleanup": {
+    "original_containers_unchanged": true,
+    "original_images_preserved": true,
+    "task_containers_remaining": 0,
+    "task_images_retained": true,
+    "containers": [
+      {
+        "id": "52c711432d3b8b4c2d956cede8e0cceec3c82e7a3cb8b5e2f4684454c13915c5",
+        "name": "autobureau-redis-1",
+        "state": "exited"
+      },
+      {
+        "id": "2af9c702989a1ae92137c698ac5f122181fa46f21d469ecba3a4d379edeb72dd",
+        "name": "autobureau-postgres-1",
+        "state": "exited"
+      }
+    ],
+    "disposable_postgres_stopped": true,
+    "task_cluster_and_logs_retained": true,
+    "original_files_verified": 386,
+    "original_files_changed": 0
+  },
+  "retained_gates": [
+    "Supabase deeper 504 cause unresolved",
+    "Historical management-token invalidation unproven",
+    "Supabase support packet PREPARED BUT UNSENT",
+    "No hosted scanner/workers or real document intake",
+    "No external document model call",
+    "Stripe TEST-only; Plaid Sandbox/Development-only",
+    "No real financial accounts/live payment",
+    "No provider mutation/Production access",
+    "No push, PR #5 edit, merge, CI/deploy dispatch, hosted migration, DNS or public launch"
+  ],
+  "next_order": [
+    "Complete large-inventory reconciliation and content-free job/scan evidence retirement policy",
+    "Establish independently authenticated restore-ledger/provider/backup evidence path without weakening receipts",
+    "Review scanner supply chain/signature-update and native target enforcement before separately approved hosted synthetic probes",
+    "Extend parser coverage only with complete supported-format evidence; real data remains closed",
+    "Continue independent recovery/privacy/Stripe TEST/Plaid Sandbox/UI work; these are not newly claimed complete"
+  ],
+  "log_hashes": {
+    "release-frozen": {
+      "path": "/private/tmp/pellum-v2-review-20260920/release-frozen.log",
+      "sha256": "0a3c99624752955a4493bade6ab7c52df4591da014582d05d1a7bccf0f367140",
+      "exit": 0
+    },
+    "release-build": {
+      "path": "/private/tmp/pellum-v2-review-20260920/release-build.log",
+      "sha256": "c1bfc6f353afab9b7c6abbe19ad7b7803ef53039bf906cead6e69e45883135e1",
+      "exit": 0
+    },
+    "release-typecheck": {
+      "path": "/private/tmp/pellum-v2-review-20260920/release-typecheck.log",
+      "sha256": "2cddb0f1730f3b1441236a4fb9b250e5f011b9c85986eb2d44d313755b191f60",
+      "exit": 0
+    },
+    "release-lint": {
+      "path": "/private/tmp/pellum-v2-review-20260920/release-lint.log",
+      "sha256": "ffb00d50730c5999cc7fa10f1f288eb495a3b77ecddd12dc87641761981ab9c9",
+      "exit": 0
+    },
+    "release-unit": {
+      "path": "/private/tmp/pellum-v2-review-20260920/release-unit.log",
+      "sha256": "107053313f48d2c9ad66c86419f8589d5a2882bab24e1b9b63bcd5db08e6e3ca",
+      "exit": 0
+    },
+    "integration-release": {
+      "path": "/private/tmp/pellum-v2-review-20260920/integration-release.log",
+      "sha256": "18809f502272853ad15e3ed30ab9d9988ae1ed2d0d0c3033eb4d137de6cb48af",
+      "exit": 0
+    },
+    "integration-local-release-proof": {
+      "path": "/private/tmp/pellum-v2-review-20260920/integration-local-release-proof.log",
+      "sha256": "4a6411ffa4462dedff9056a9a56fef3e390084863b757196d3e43f02199bcb83",
+      "exit": 0
+    },
+    "release-controls": {
+      "path": "/private/tmp/pellum-v2-review-20260920/release-controls.log",
+      "sha256": "655a27561d76ba150b5715fd9bc99ad1d63913df540253acae1242c2f16211a4",
+      "exit": 0
+    },
+    "release-guards": {
+      "path": "/private/tmp/pellum-v2-review-20260920/release-guards.log",
+      "sha256": "3f4cbc0632cbc9f168c2236e9955a37d255e391c867c0e612f6fa5f35eb0752c",
+      "exit": 0
+    },
+    "release-versions": {
+      "path": "/private/tmp/pellum-v2-review-20260920/release-versions.log",
+      "sha256": "763d2812c3c1329d020f237201376bb3289b50b400ccba6c0edabb6d251366a6",
+      "exit": 0
+    },
+    "integration-cross-reference-negative": {
+      "path": "/private/tmp/pellum-v2-review-20260920/integration-cross-reference-negative.log",
+      "sha256": "e9b877b2be79f3d6edba76c0e1bc5332233bc51bfe3cd076ed78f39c996113ea",
+      "exit": 1
+    },
+    "integration-parity-expanded": {
+      "path": "/private/tmp/pellum-v2-review-20260920/integration-parity-expanded.log",
+      "sha256": "22158ea8a71817e78e6938f8d166ec2785f840c8d4f730dbac772504de8f7ea3",
+      "exit": 0
+    },
+    "integration-leased-erasure-final": {
+      "path": "/private/tmp/pellum-v2-review-20260920/integration-leased-erasure-final.log",
+      "sha256": "6675b9f98352fc123f152fabc6af185cabb1543d5cbf0e2ef6046c9f0078c682",
+      "exit": 1
+    },
+    "integration-leased-erasure-verified": {
+      "path": "/private/tmp/pellum-v2-review-20260920/integration-leased-erasure-verified.log",
+      "sha256": "c7564c74ca7c040e3a0bb090d5079262211084f178059837fee40e641c5f66b9",
+      "exit": 0
+    },
+    "integration-erasure-lease-mutation": {
+      "path": "/private/tmp/pellum-v2-review-20260920/integration-erasure-lease-mutation.log",
+      "sha256": "08e2ba24144dfcbe8ac3b3bb7d8378f45c706a4f844c8bd4988f2cfa16de5b39",
+      "exit": 1
+    },
+    "integration-final-candidate": {
+      "path": "/private/tmp/pellum-v2-review-20260920/integration-final-candidate.log",
+      "sha256": "1d4583f630b6b7fa019b8ec31cb3ff252e568ea821ff80bf13f5c1d7179cb773",
+      "exit": 2
+    }
+  },
+  "artifact_hashes": {
+    "release-readback.json": "da77cd47fddade14f950ffb6c19f2c55d625a753124eae832275b4f7494a5758",
+    "release-readback.sql": "9e311a6a65d998af9765d6f8e808859b48227f6e746d75e0f507dce2fa95d910",
+    "release-docker-cleanup.json": "200e25a6a94ddc1124b7b4a97d82e90a6b5d3cb49fa3944e19b98f4f2706f5fb",
+    "adr018-continuation-docker.json": "5689391cf71412dbe01b91546489a8acbf4abb944fd8e07be550299dc9322233",
+    "final-linux-probes.json": "c94263ecc3f8cf4014598066badf1adf754b0f286ce783db930b8acb1aa053d5",
+    "final-linux-probes.log": "b8688ba00f5dc44ae18c667c0785bc2e21a95b0eb5f4de496dd4288b2e2a9bad",
+    "scanner-live.json": "9260cfefbb47f321fe8394331e7b7f5ebab6fc1bf35c6c77fe852b453fcc428f",
+    "eicar-engine.json": "76f3b577bbb5f86a386986114dc52fe548755fca3cb503e768c0310ce85f6c2b",
+    "continuation-mutations.json": "071856c718c0a672734802ec532f89d75a97d3916b0fa4172f3e8ddac102f7c5",
+    "erasure-lease-mutation.json": "d50b7f1db698f492b70d65cec82caa4a24400880e34e6108a17517703fe29e00",
+    "original-worktree-hashes.json": "ed672d9090b5903f7626cf1b101108345cc32a960951c596407d271bad7043e5",
+    "adr018-guards.json": "3f4cbc0632cbc9f168c2236e9955a37d255e391c867c0e612f6fa5f35eb0752c",
+    "run-continuation.py": "55e911528568e7bcf02f1f11cbc81b681fcf14e83d8f7b585deb3fe158268221",
+    "release-native-validation.py": "98a905373401633b6c4cfc9434e1e36bbb25e456531e0bf7d683ba95f1409821",
+    "release-pg-bootstrap.log": "cff6f47905b9e5297f51eaac9ebe1a156427f21f3fb46fdc84f90cefea0f0990",
+    "scanner-live.mjs": "cafb4df2cfb228110d523d37892252ca86be0bf7bd9f173f993641a221ee438d",
+    "eicar-engine.mjs": "7fbeb32f7a82acf5a7a12264cbc07f115eda92779560d02fe6fe2957db00551b",
+    "continuation-mutations.py": "22b2245e568881cad23fc8c23f9240ad8cc5f3430760f60782649b0de20d11f0",
+    "erasure-lease-mutation.py": "eebe93abe7dcf13e33c2fbb050fdead2c73320e1cf2d44c97da04339e7722117"
+  },
+  "implementation_file_hashes": {
+    "apps/web/src/server/documents/scan-boundary.test.ts": "4767e59549ca924f5702ae2578204e0d593ed2477c1ae9119580f0a0f4caf753",
+    "apps/web/src/server/documents/scan-boundary.ts": "cb76ca1b8c65fef2abb77ff6d1cf0a3de579bfd3c54f510897d97fda4071c508",
+    "apps/web/src/server/documents/scan-invocation.test.ts": "9fc0c5916efa1e262a385502cd8e23174eaadda64d92d007cf42eda91c5f4838",
+    "apps/web/src/server/documents/scan-invocation.ts": "a209438ab42892c33778836f7cb312adf31f720c651079b2adb15bceb0b29ef5",
+    "apps/web/src/server/documents/synthetic-review.test.ts": "4f93fb5d3c68650dbac50e953e9cba6a9c98f3ec2fa8c07dfe7ba1de8ca5297b",
+    "packages/contracts/src/audit.ts": "1eb776e9f14ee29e272dea94ee4ac8c535f7cfec767579152581938535e24e66",
+    "packages/contracts/src/document-security.ts": "bdd55f3f62cb187f7a1166f2b40b8982247d83c143b95c0b382c735472ec6585",
+    "packages/db/prisma/migrations/20260921000000_local_scan_execution_budget/migration.sql": "4fa516669cec1874c9056be72762a8b0859a1219ab9d7df4aa9d45524b489b75",
+    "packages/db/prisma/migrations/20260921000001_local_online_erasure/migration.sql": "101ba6c706505e63bc972516eb26eeda499f74a67f52cdff9ff087dc1393148a",
+    "packages/db/prisma/migrations/20260921000002_erasure_notification_rls/migration.sql": "c8fc66925ab950dade5b20ecb753a431a19573029a99e19a960115d5eee1297f",
+    "packages/db/prisma/migrations/20260921000003_document_tenant_reference_parity/migration.sql": "a4d2a483af3ce90f4c2ca9cfb87839a5022809299d3d79cff8d6e721851f6d94",
+    "packages/db/prisma/migrations/20260921000004_local_erasure_lease_binding/migration.sql": "97d69be81c8f28ae88d0623273eec9b41f8027c0e116a13ac5416693b08c2aee",
+    "packages/db/prisma/schema.prisma": "c54d92b025725ae2f39150c228a947db130bf5a9a5ef6969610872a986a03913",
+    "packages/db/src/deletion-journal.ts": "82cb3025d9d39b929a71430eeaa1c493a2e4f1432dbe4b0f204ec09d38e601ee",
+    "packages/db/src/document-scans.ts": "979c4b14b51b343287d1609764ab8ce3df013f24894e0b5dee75950be29594c7",
+    "packages/db/src/index.ts": "582f830a1b41bdce143bd7a60d1fb87532049970640bf01ea9a49ca97fc82111",
+    "packages/db/src/local-erasure.ts": "5cb3fed8524d63b4fc43732617acc5fe0aacf1cf36ade51c086d8cb3d6cd0af6",
+    "packages/db/tests/integration/document-security.integration.test.ts": "f1017f48bcf089d3e72102505a1fabdc95f8d3bf4e8d74df2d077f6838e854e7",
+    "packages/db/tests/local/document-lifecycle.proof.ts": "c6e03b92b15f837de97663f3e776da157b63a3c922427ba3233ca360b409f423",
+    "packages/db/vitest.document-proof.config.ts": "c0dd62443fdcdd52ce9835cb7beda64b856994a2f3a34bbb2ebb7409adb2ee63",
+    "scripts/document-boundary-guard.test.mjs": "9573e9a0f00c18caf486919b3add5bb4c54843a2b65a369d44c245a63dc1c21c",
+    "scripts/fixtures/synthetic-document-scanner.mjs": "e778a7aa48028eaab9eb4597ed625eaef12ac0662a5959713eebe96077a7c23d",
+    "scripts/scanner-clamav.mjs": "87eddc4380e2e5771d7311d33890c419df0cd4ee216141acfc373d247dbb68e5",
+    "scripts/scanner-sandbox.mjs": "04606f04a41cf0ec1318c19a001b645978c7a2197adbb0d2120983f6dc19c0a6",
+    "scripts/scanner/Dockerfile": "b5d9bf1f718bcc76bc85d34b70a9d31b7bc20c382227b47621748230e26b682f",
+    "scripts/scanner/local-release.json": "b7f484d3248c75345a5f44840f1f327b196933ff1ba586f196540eda0513de30",
+    "scripts/scanner/probe-local.mjs": "9902118fb518a519d3cba0a38647c3e87f652642b5846b633ff322f267cfaa59",
+    "scripts/scanner/scan": "abecc4e4250585ec8062d65ae79c2c528540ede90f0a03d208fc6f43115e93de",
+    "scripts/scanner/signatures.sha256": "20db5c4ea99545311d1081ca0944eb701701686e9e3d7670e9974bc8d0374986",
+    "scripts/scanner/upstream.json": "b4af1155d23592287cd7f688883cce56f13170311a98df4638511d56072b2870",
+    "scripts/synthetic-object-store.mjs": "4037ce5ba1d9c03773a39cc0b46fc125084f04f658fc3aaade038e587f79c364",
+    "scripts/synthetic-object-store.test.mjs": "b04dfed91c305853f2610de5753ae2e81ef3dd496c6918568d6c8ed7c328492b",
+    "services/ai/src/canonical-pdf.test.ts": "70bab78dbe54013bd1909add98b222fea2859bf86309450b3f8173479177d459",
+    "services/ai/src/canonical-pdf.ts": "a30ec61436030b0a30c68df9905b59bafb66caec14cec244413b2c025df9e921",
+    "services/ai/src/redaction.ts": "6c6e1898dfb595c1a99e059ae1630d78907550b52a838eb18edba89c6867bffb"
+  }
+}

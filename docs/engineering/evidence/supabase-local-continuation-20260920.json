@@ -1,0 +1,99 @@
+{
+  "date": "2026-09-20",
+  "base_sha": "1ab22307629134ef4e5555ca6d723136d540137a",
+  "tested_implementation_sha": "25a2272c211f89975f7d26a4e691a7b65d91e0a5",
+  "branch": "codex/review-pellum-hardening-v2",
+  "scope": "local development plus read-only staging management diagnostics",
+  "unit_tests": 1370,
+  "integration_tests": 452,
+  "integration_breakdown": {
+    "db": 75,
+    "web": 377
+  },
+  "negative_control": {
+    "historical_failed": 5,
+    "historical_passed": 11,
+    "restored_passed": 16
+  },
+  "architecture_guards": 7,
+  "original_files_unchanged": 386,
+  "node": "22.16.0",
+  "pnpm": "10.34.5",
+  "postgres": "18.3",
+  "local_database_invariants": {
+    "migrations_completed": 13,
+    "rolled_back": 0,
+    "forced_rls": 21,
+    "policies": 27,
+    "ensure_rls_triggers": 0,
+    "app_superuser": false,
+    "app_bypassrls": false,
+    "app_owned_tables": 0
+  },
+  "provider": {
+    "project": "kdqnfruwgocfqwpbpuxo",
+    "query_backend": "ClickHouse logs",
+    "gateway_504_matches": 3,
+    "matching_auth_request_count": 0,
+    "postgres_level_LOG": 40,
+    "supavisor_level_info": 94,
+    "historical_window_utc": [
+      "2026-09-13T15:20:00Z",
+      "2026-09-13T22:30:00Z"
+    ],
+    "oauth_revoked_and_replaced": true,
+    "full_management_credential_invalidation_proven": false,
+    "deeper_504_cause": "unresolved",
+    "support_packet_sent": false
+  },
+  "excluded_evidence": [
+    "hosted acceptance",
+    "browser end-to-end QA",
+    "CI PostgreSQL 16",
+    "live SQS",
+    "full credential invalidation",
+    "Production readiness"
+  ],
+  "mutations": {
+    "provider": false,
+    "Production": false,
+    "auth_config_users_sessions": false,
+    "push": false,
+    "merge": false,
+    "deployment": false
+  },
+  "logs": {
+    "lint-diag": {
+      "exit": 0,
+      "sha256": "ffb00d50730c5999cc7fa10f1f288eb495a3b77ecddd12dc87641761981ab9c9"
+    },
+    "build-diag": {
+      "exit": 0,
+      "sha256": "de543912702234566701c2fc25311e6647bd4ff078e9aadf42038add945acdb9"
+    },
+    "typecheck-diag": {
+      "exit": 0,
+      "sha256": "86f8ba8ea85c772297da3f8a6a8744650700d8a87e1af69d63cceea9f48c2ced"
+    },
+    "unit-diag": {
+      "exit": 0,
+      "sha256": "19cdd6f521cbabb5bb1cfff10abfa98e4d124ac604bb16524eacaf227902055d"
+    },
+    "integration-diag": {
+      "exit": 0,
+      "sha256": "fa7fefc425e10b0443cea31ec4f0f3e1d39e186546e6327db1cf5677462b06f6"
+    },
+    "integration-jobs-continuation-fixed": {
+      "exit": 0,
+      "sha256": "91235450f7354d00cc373384fea4291a7319a54ad0f35f7d4a82c86d43658930"
+    },
+    "integration-jobs-negative": {
+      "exit": 1,
+      "sha256": "0610013b541b2a92f66c6452998e5b26494752ece632967a58f221c31ecd3836"
+    },
+    "integration-jobs-restored": {
+      "exit": 0,
+      "sha256": "56d91a07cfb2bb4062ed6e84682e6b9c7a5a8766d3dbd1054a4f3051755901f2"
+    }
+  }
+}

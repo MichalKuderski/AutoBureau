@@ -1,0 +1,352 @@
+{
+  "scope": "local-only; no stable-staging, provider end-to-end or release readiness claim",
+  "recordedAt": "2026-09-21T15:38:26.500598+00:00",
+  "branch": "codex/review-pellum-hardening-v2",
+  "startingHead": "538bf5ff60f18413c697ad038d23329d32c5c322",
+  "testedImplementationSha": "722e0e9908c9e0f48831d624b4dac0fa12d26c1b",
+  "finalHeadPolicy": "The subsequent evidence/report commit is documentation-only; resolve final HEAD through Git. No application edits after the tested SHA.",
+  "commits": [
+    "e7be237e93c49555abe9b06332523d4b98c7a243 feat(billing): isolate TEST authority and enforce approved human allowances",
+    "7809d437f88be91d23a9f7f460db4cfdbcbc4252 fix(privacy): read historical exports without inventing missing fields",
+    "320ab39796c30fe0d6c3e11b2eb5a6f753a92bc8 test(documents): allow isolated billing review database proof target",
+    "722e0e9908c9e0f48831d624b4dac0fa12d26c1b feat(members): bind explicitly declared self to the account holder"
+  ],
+  "adr020": "APPROVE WITH REQUIRED AMENDMENTS; local implementation delegation only",
+  "toolchain": {
+    "node": "v22.16.0",
+    "pnpm": "10.34.5",
+    "next": "15.5.22",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7",
+    "prisma": "6.19.3",
+    "zxcvbn": "4.4.2",
+    "scannerRelease": {
+      "image": "sha256:6fd4a9a21f9a143db97e50b7d212187b67c7b004097d5f0469ddebef6341d4bf",
+      "engine": "sha256:68791dcfb6b7822a70578b3b797b84227142f0018460fed22c7c818f5f26d54b",
+      "signatures": "sha256:20db5c4ea99545311d1081ca0944eb701701686e9e3d7670e9974bc8d0374986"
+    },
+    "stripe": "22.6.2",
+    "postgres": "18.3 (Postgres.app)",
+    "pgvector": "0.8.1",
+    "clamav": "1.4.6"
+  },
+  "checks": {
+    "units": {
+      "total": 1917,
+      "web": 1615,
+      "db": 53,
+      "contracts": 152,
+      "ai": 89,
+      "ops": 8,
+      "files": 106
+    },
+    "integrations": {
+      "total": 707,
+      "db": 229,
+      "web": 478,
+      "files": 39,
+      "actualRoles": "app_user and scoped non-admin workers; admin fixture and readback only"
+    },
+    "localControls": 199,
+    "architectureGuards": 7,
+    "isolatedRealClamavLifecycles": 1,
+    "lintErrors": 0,
+    "preExistingLintWarnings": 13,
+    "frozenInstall": "PASS",
+    "build": "PASS",
+    "typecheck": "PASS"
+  },
+  "successfulCheckExitCodes": {
+    "final-frozen": 0,
+    "final-build": 0,
+    "final-typecheck": 0,
+    "final-unit": 0,
+    "final-lint": 0,
+    "final-guards": 0,
+    "final-controls": 0,
+    "integration-admin-candidate-migrate": 0,
+    "integration-release-db": 0,
+    "integration-release-web": 0,
+    "integration-local-final-scanner": 0,
+    "integration-admin-final-mutations": 0,
+    "integration-final-restored-billing": 0,
+    "integration-admin-final-readback": 0
+  },
+  "warnings": [
+    "13 pre-existing no-console warnings",
+    "Node MockTimers experimental warning",
+    "Full local success does not diagnose historical queued scanner result or Supabase deeper timeout hop"
+  ],
+  "securityMutations": {
+    "cases": [
+      {
+        "name": "atomic-billing",
+        "detected": true,
+        "expectedNonzeroExit": 1,
+        "restored": true
+      },
+      {
+        "name": "member-admission",
+        "detected": true,
+        "expectedNonzeroExit": 1,
+        "restored": true
+      },
+      {
+        "name": "member-commit-expiry",
+        "detected": true,
+        "expectedNonzeroExit": 1,
+        "restored": true
+      }
+    ],
+    "intendedFailingAssertions": 4,
+    "historicalAuditAttacksDetectedAndFixed": 2,
+    "restoredAffectedSuite": "PASS"
+  },
+  "databaseReadback": {
+    "port": 55541,
+    "vector": "0.8.1",
+    "database": "pellum_billing_20260921",
+    "policies": 46,
+    "forced_rls": 33,
+    "privacy_fences": 24,
+    "server_version": "18.3 (Postgres.app)",
+    "billing_memberships": 0,
+    "ensure_rls_triggers": 0,
+    "remaining_job_inbox": 0,
+    "migrations_completed": 27,
+    "new_role_memberships": 0,
+    "runtime_owned_tables": 0,
+    "local_test_activation": false,
+    "migrations_unfinished": 0,
+    "provider_table_grants": 0,
+    "disabled_user_triggers": 0,
+    "inventory_unique_index": true,
+    "journal_audit_triggers": 12,
+    "migrations_rolled_back": 0,
+    "remaining_stripe_states": 0,
+    "billing_guard_definition": "47e1f7134ba9ba535cff49ee56a8f6fa",
+    "remaining_job_deliveries": 0,
+    "remaining_stripe_intents": 0,
+    "remaining_stripe_notices": 0,
+    "tenant_reference_indexes": 3,
+    "old_worker_billing_grants": 0,
+    "remaining_stripe_bindings": 0,
+    "remaining_export_artifacts": 0,
+    "remaining_account_challenges": 0,
+    "new_runtime_passwords_cleared": true,
+    "billing_state_guard_definition": "b46dfc5a608723fdd219f7691ddb8831",
+    "new_security_definer_functions": 0
+  },
+  "roles": [
+    {
+      "role": "app_job_worker",
+      "login": false,
+      "createdb": false,
+      "bypassrls": false,
+      "superuser": false,
+      "createrole": false
+    },
+    {
+      "role": "app_document_worker",
+      "login": false,
+      "createdb": false,
+      "bypassrls": false,
+      "superuser": false,
+      "createrole": false
+    },
+    {
+      "role": "app_retention_worker",
+      "login": false,
+      "createdb": false,
+      "bypassrls": false,
+      "superuser": false,
+      "createrole": false
+    },
+    {
+      "role": "app_deletion_verifier",
+      "login": false,
+      "createdb": false,
+      "bypassrls": false,
+      "superuser": false,
+      "createrole": false
+    },
+    {
+      "role": "app_dispatcher",
+      "login": false,
+      "createdb": false,
+      "bypassrls": true,
+      "superuser": false,
+      "createrole": false
+    },
+    {
+      "role": "app_user",
+      "login": true,
+      "createdb": false,
+      "bypassrls": false,
+      "superuser": false,
+      "createrole": false
+    },
+    {
+      "role": "app_billing_test",
+      "login": false,
+      "createdb": false,
+      "bypassrls": false,
+      "superuser": false,
+      "createrole": false
+    }
+  ],
+  "migrationChecksums": {
+    "20260728000001_rls": "88773bb83beb8729fff185e2e06953c64d39abe7e8114372cb313671472eb8c2",
+    "20260728000000_init": "ce990d3117f49b6f5d3d9f473b62f1d2bcf7eeed9a466fc3546ae2ff6c517aee",
+    "20260924000001_plan_catalog": "032cfc1bb37bc5a3c50e5fcd229a0103bbc301ea909e1dac47de1b3d42102d43",
+    "20260823000000_idempotency_keys": "e823ded41ae885b113523d6e310e121c72027a92ba90cc801a3dce5dcabab01d",
+    "20260825000000_auth_rate_limits": "a4f472eb96c5df6ea575a7bc00d4182f31243fcbdb4a3b241c53bb13fe339ffa",
+    "20260814000001_self_audit_insert": "36599c66d8fdc229e64de8accb00ce048670869d29704fda0aaf1dc03a7edb89",
+    "20260913000000_job_delivery_inbox": "821c3cc51edc4956b409600408afea3cc2d21e693267d75527abda779f4bc641",
+    "20260912000000_notification_ledger": "7c78a5df525a5bba008ca87ab0635a45f49d0eb4aab854de80378f9b9608ec02",
+    "20260921000001_local_online_erasure": "101ba6c706505e63bc972516eb26eeda499f74a67f52cdff9ff087dc1393148a",
+    "20260913000001_job_worker_scope_read": "fd7aa69db34551af95c598ec33a63ddf546f90030d3406e83098fde08d8323bc",
+    "20260912000002_document_upload_ledger": "bbd230504ed051b08862014e6f2e0bfc2eb4c4e4f14a6bede7c4a88dc8cb7cdf",
+    "20260924000000_dedicated_test_billing": "f220e2b3709091da654771211653c97a801540bac4f6b5b3a0fa45d67272e6b2",
+    "20260921000002_erasure_notification_rls": "c8fc66925ab950dade5b20ecb753a431a19573029a99e19a960115d5eee1297f",
+    "20260913000002_api_role_table_privileges": "bd2e43764c69be3770b6c159e8e0723083c71d21604ff8e9bb35564d9422b125",
+    "20260922000000_privacy_inventory_sources": "c94fca681c1c5bc1343f7d2e582d82ac33a5858baeb4d4db5ba325f39cf25ae8",
+    "20260924000002_billing_audit_cardinality": "b179be63682b9a0b862e4c3c7734c4f3ac9f9068ceeaa2ca2cf0bb7fb6f72306",
+    "20260920000000_document_security_journals": "3eb411ac77b00e23edc059ea696a2fc308f19367648ea5b7d784f6243160c203",
+    "20260923000001_stripe_test_notice_journal": "a9f40b9a96555ddcf8efafaf2ccacd7db4b5cbcae6bac2abc0d191f67a8b31f8",
+    "20260921000000_local_scan_execution_budget": "4fa516669cec1874c9056be72762a8b0859a1219ab9d7df4aa9d45524b489b75",
+    "20260921000004_local_erasure_lease_binding": "97d69be81c8f28ae88d0623273eec9b41f8027c0e116a13ac5416693b08c2aee",
+    "20260923000000_account_security_challenges": "1b9335ec8009f029d2300afca3d46b2b100b5e53b6a0ccb92a4efc2f05982ef1",
+    "20260906000000_restore_intended_rls_posture": "eceed5a27d9de4269b3c503d2c25a555880a29b3a9ad1b96d36d272a4508de47",
+    "20260912000001_notification_recipient_index": "5b38c48c5e2e1fd8829aab286c4d69d1bb160ab96623bb37bc90a73207add8fe",
+    "20260923000002_local_export_artifact_journal": "570dbffa5d9bab9e5abd2a2cf7717d263c00c81d1f38c854d368d43bdcb2e79d",
+    "20260923000003_local_test_subscription_state": "024a735344ce7abc32222b33b37edeb4bf84e43f26e3ae90c762b83838dd08b7",
+    "20260814000000_principal_scope_and_audit_actor": "c1fe37b667eed2855f4a0bd8d30ff1d53ea69e5bfb2bbc403f0d20992a4ef0f2",
+    "20260921000003_document_tenant_reference_parity": "a4d2a483af3ce90f4c2ca9cfb87839a5022809299d3d79cff8d6e721851f6d94"
+  },
+  "historicalMigrationsUnchanged": true,
+  "remainingJournals": {
+    "scans": 0,
+    "attempts": 0,
+    "deletions": 0,
+    "resources": 0,
+    "observations": 0,
+    "scan_attempts": 0
+  },
+  "privacy": {
+    "finalReceiptIssuable": false,
+    "adr019Activated": false,
+    "exportComplete": false,
+    "historicalVersionsReadable": [
+      1,
+      2
+    ]
+  },
+  "productPolicy": {
+    "prdVersion": "1.2",
+    "free": {
+      "documents": 10,
+      "warning": 8,
+      "managedHumans": 1
+    },
+    "premium": {
+      "documents": 50,
+      "warning": 40,
+      "managedHumans": null,
+      "monthlyPriceCents": 1200,
+      "annualPriceCents": 9900
+    },
+    "selfExcluded": true,
+    "humanKinds": [
+      "adult",
+      "child",
+      "dependent"
+    ],
+    "excludedKinds": [
+      "pet",
+      "entity"
+    ],
+    "archivedExcluded": true,
+    "memberEnforcement": "local gateway/SQL race/expiry proof",
+    "processedDocumentEnforcement": "INCOMPLETE; reservation journal and safe pending custody required",
+    "hostedTestProjectionActivated": false
+  },
+  "originalUserFiles": {
+    "inventoried": 386,
+    "unchanged": 386
+  },
+  "preview": {
+    "url": "http://127.0.0.1:4317/",
+    "status": 200,
+    "pellumPresent": true,
+    "authenticatedE2E": false
+  },
+  "sizeEstimate": {
+    "method": "pg_column_size of synthetic composite rows; no persistent fixture or production measurement",
+    "catalog_rows": 2,
+    "intent_index_count": 3,
+    "intent_tuple_bytes": 244
+  },
+  "retainedExternalRisks": {
+    "supabase504": "three upstream gateway records confirmed; deeper request-linked hop unknown",
+    "credentialContainment": "OAuth revocation/replacement established; historical management-token invalidation unproven",
+    "supportPacket": "PREPARED BUT UNSENT"
+  },
+  "unperformed": [
+    "push",
+    "PR mutation",
+    "merge",
+    "workflow dispatch",
+    "deployment",
+    "hosted migration",
+    "provider-account mutation",
+    "Production access",
+    "Live Stripe",
+    "real Plaid accounts",
+    "real sensitive documents",
+    "external document model call",
+    "DNS/public launch",
+    "support submission"
+  ],
+  "unfinishedLocalWork": [
+    "processed-document quotas and reviewed pending custody",
+    "explicit correction of legacy unbound self records",
+    "complete export and original/identifier boundary",
+    "durable Plaid custody/inbox/sync/removal",
+    "authenticated browser and accessibility matrix"
+  ],
+  "productionPreflight": "NO-GO",
+  "privateEvidenceDirectory": "/private/tmp/pellum-billing-authority-20260921",
+  "evidenceSha256": {
+    "final-frozen.log": "683c5d0252d896daf7e7daecdd8b159831b7ad109572c965f6310055b47bd5f6",
+    "final-build.log": "aef9d9472c9fdd1290bfe20b78cdf19fa5566dbfc9f9b22acce1b6a214ff6734",
+    "final-typecheck.log": "62a1fd59fd895c38da63f640c1c872b93a79e3e01a693457242d581638f7ee5d",
+    "final-unit.log": "4db567df8af8d7a991188bd9ce472a937fc51cf8ce39b1ecab73754bcaaba05a",
+    "final-lint.log": "ffb00d50730c5999cc7fa10f1f288eb495a3b77ecddd12dc87641761981ab9c9",
+    "final-guards.log": "3f4cbc0632cbc9f168c2236e9955a37d255e391c867c0e612f6fa5f35eb0752c",
+    "final-controls.log": "81051179d8bc244f7631d3a34a7e474a15e93763509d93fd4d3566edc159332f",
+    "integration-admin-candidate-migrate.log": "1dbac7c9ca0e10d6697bee913653fc912364aac6947df4e2c376c835e9db0f0d",
+    "integration-release-db.log": "09f19fb1c7e74df210016045ef5d39a59ec779daf6028f605023e26d1c4cf904",
+    "integration-release-web.log": "98b0de189e64254db2df12e63ce2e8450c5170cfd2e59f889cec9bba46cc06de",
+    "integration-local-final-scanner.log": "ec8f7a37986b9bfd88ec8be25e560a40a61aebdebe6ca8078329cc16e3ea8ba8",
+    "integration-admin-final-mutations.log": "c6fdcb9375fdbe201e1e800ddf495e68bd29582eea7e8dbfeff2b09d2c3da171",
+    "integration-final-restored-billing.log": "173a9861095dbfa4f981968c917463001381a944219b41a3e0559884d6a95ec9",
+    "integration-admin-final-readback.log": "49c0cd2bcf0641e41e8e16d98e69f6e4c323d890173b4f023cdfcdd14c1d246d",
+    "candidate-versions.log": "e8ad96702cd57ad4c02ca74f4f8e56ba8ab89443f0e4fd86fe326a087c75473e",
+    "run.py": "195aa71826a4e2b27bfaf08335ca33339e38b4cf865df1ed89844d029ae4059b",
+    "readback-final.sql": "5e6717acf659c84627475ef7cf4497201586911dc13bbd10639edd2597ada3d5",
+    "readback-final.json": "065a6b952d7ddac2ec810ad62f9236486b6074870584c01aa9a14181f6c11b81",
+    "readback.py": "44e700d23ac385fd9c2e3a7990d402c9ecda6cce5c4a8108364799dfe1860970",
+    "guards.mjs": "cc3da84acb607ceccc82e3b3dfc735676add0240dc2eb5204656688b5065f4e8",
+    "mutations.py": "f96797d4b6c7d43faa3e802d0ca8abda24308f2d85cb64718b808125a2635564",
+    "mutations.json": "1984928606b203ad361634d5f44838ef5f20e3ee56d0f30c6f838555afbd6bae",
+    "size-proof.json": "95a8d685f9b0260f0b53d248231d51961e99c3e43b5df8724a9e1c42484f09e2",
+    "original-preservation.json": "4a5dce72cad9ec52b01928541e004c613e614225147b01dcc4f7f001873aeb01",
+    "preview-readback.json": "1654861bbdf43907098b44571cdc8f0f595b0ae00d095334fa55588cfcd2617f",
+    "integration-mutation-atomic-billing.log": "6abe8a1d498ff717ee132dd7c97900d0352d475a3b98ce1a1e8f44b92cc8c5ae",
+    "integration-mutation-member-admission.log": "e771fa5f62d8bcd7a126170fe43bf215a71fe56664e3c6ffb05a353bd00322a7",
+    "integration-mutation-member-commit-expiry.log": "8f976e8b4814e728824f7bc19ceed08fecf4b56dc69bacfc7e835be4b25b4806",
+    "integration-historical-audit-origin.log": "b7aee3d0882628c17606e02aa6497ddd8c39824e524f9169bff6f51b0a7dd6e7",
+    "integration-historical-audit-namespace.log": "6879b8278d91d9525d88f05e7f66f95183ba7c6c57286c5391dd50420605af80"
+  }
+}

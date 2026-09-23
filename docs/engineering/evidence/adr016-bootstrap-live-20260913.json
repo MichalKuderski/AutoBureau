@@ -1,0 +1,668 @@
+{
+  "stack": {
+    "Stacks": [
+      {
+        "StackId": "arn:aws:cloudformation:us-east-2:792394000571:stack/pellum-stg-adr016-bootstrap/cea667c0-afa6-11f1-8ab0-02a933ef93df",
+        "StackName": "pellum-stg-adr016-bootstrap",
+        "ChangeSetId": "arn:aws:cloudformation:us-east-2:792394000571:changeSet/adr016-bootstrap-20260913T1910Z/ddb028d4-186b-40b1-9350-4ad83e500b07",
+        "Description": "Staging Terraform state and bounded CI roles; bootstrap resources remain outside the quarantine resource state.",
+        "CreationTime": "2026-09-13T19:10:39.267000+00:00",
+        "LastUpdatedTime": "2026-09-13T19:14:07.742000+00:00",
+        "RollbackConfiguration": {},
+        "StackStatus": "CREATE_COMPLETE",
+        "DisableRollback": false,
+        "DeploymentConfig": {
+          "Mode": "STANDARD",
+          "DisableRollback": false
+        },
+        "NotificationARNs": [],
+        "Capabilities": [
+          "CAPABILITY_NAMED_IAM"
+        ],
+        "Outputs": [
+          {
+            "OutputKey": "StateBucket",
+            "OutputValue": "pellum-stg-tfstate-792394000571-us-east-2",
+            "Description": "Dedicated encrypted Terraform state bucket"
+          },
+          {
+            "OutputKey": "LockTable",
+            "OutputValue": "pellum-stg-tfstate-locks",
+            "Description": "DynamoDB lock compatibility table"
+          },
+          {
+            "OutputKey": "UploadBoundaryArn",
+            "OutputValue": "arn:aws:iam::792394000571:policy/pellum-stg-upload-boundary",
+            "Description": "Required permissions boundary for both upload roles"
+          },
+          {
+            "OutputKey": "StateRoleArn",
+            "OutputValue": "arn:aws:iam::792394000571:role/pellum-stg-terraform-state",
+            "Description": "Role for the S3 backend only"
+          },
+          {
+            "OutputKey": "DeploymentRoleArn",
+            "OutputValue": "arn:aws:iam::792394000571:role/pellum-stg-terraform-deploy",
+            "Description": "Initially read-only plan role with immutable deployment ceiling"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "staging"
+          },
+          {
+            "Key": "Purpose",
+            "Value": "adr016-state-bootstrap"
+          },
+          {
+            "Key": "Application",
+            "Value": "Pellum"
+          }
+        ],
+        "EnableTerminationProtection": false,
+        "DriftInformation": {
+          "StackDriftStatus": "NOT_CHECKED"
+        },
+        "LastOperations": [
+          {
+            "OperationType": "CREATE_STACK",
+            "OperationId": "2bb500ae-8bbb-4774-8973-d6575a575583"
+          }
+        ]
+      }
+    ]
+  },
+  "resources": {
+    "StackResourceSummaries": [
+      {
+        "LogicalResourceId": "DeploymentBoundary",
+        "PhysicalResourceId": "arn:aws:iam::792394000571:policy/pellum-stg-terraform-deploy-boundary",
+        "ResourceType": "AWS::IAM::ManagedPolicy",
+        "LastUpdatedTimestamp": "2026-09-13T19:14:26.352000+00:00",
+        "ResourceStatus": "CREATE_COMPLETE",
+        "DriftInformation": {
+          "StackResourceDriftStatus": "NOT_CHECKED"
+        }
+      },
+      {
+        "LogicalResourceId": "DeploymentRole",
+        "PhysicalResourceId": "pellum-stg-terraform-deploy",
+        "ResourceType": "AWS::IAM::Role",
+        "LastUpdatedTimestamp": "2026-09-13T19:14:45.337000+00:00",
+        "ResourceStatus": "CREATE_COMPLETE",
+        "DriftInformation": {
+          "StackResourceDriftStatus": "NOT_CHECKED"
+        }
+      },
+      {
+        "LogicalResourceId": "GitHubProvider",
+        "PhysicalResourceId": "arn:aws:iam::792394000571:oidc-provider/token.actions.githubusercontent.com",
+        "ResourceType": "AWS::IAM::OIDCProvider",
+        "LastUpdatedTimestamp": "2026-09-13T19:14:11.059000+00:00",
+        "ResourceStatus": "CREATE_COMPLETE",
+        "DriftInformation": {
+          "StackResourceDriftStatus": "NOT_CHECKED"
+        }
+      },
+      {
+        "LogicalResourceId": "StateBucket",
+        "PhysicalResourceId": "pellum-stg-tfstate-792394000571-us-east-2",
+        "ResourceType": "AWS::S3::Bucket",
+        "LastUpdatedTimestamp": "2026-09-13T19:14:24.252000+00:00",
+        "ResourceStatus": "CREATE_COMPLETE",
+        "DriftInformation": {
+          "StackResourceDriftStatus": "NOT_CHECKED"
+        }
+      },
+      {
+        "LogicalResourceId": "StateBucketPolicy",
+        "PhysicalResourceId": "pellum-stg-tfstate-792394000571-us-east-2",
+        "ResourceType": "AWS::S3::BucketPolicy",
+        "LastUpdatedTimestamp": "2026-09-13T19:14:25.896000+00:00",
+        "ResourceStatus": "CREATE_COMPLETE",
+        "DriftInformation": {
+          "StackResourceDriftStatus": "NOT_CHECKED"
+        }
+      },
+      {
+        "LogicalResourceId": "StateLocks",
+        "PhysicalResourceId": "pellum-stg-tfstate-locks",
+        "ResourceType": "AWS::DynamoDB::Table",
+        "LastUpdatedTimestamp": "2026-09-13T19:14:24.040000+00:00",
+        "ResourceStatus": "CREATE_COMPLETE",
+        "DriftInformation": {
+          "StackResourceDriftStatus": "NOT_CHECKED"
+        }
+      },
+      {
+        "LogicalResourceId": "StateRole",
+        "PhysicalResourceId": "pellum-stg-terraform-state",
+        "ResourceType": "AWS::IAM::Role",
+        "LastUpdatedTimestamp": "2026-09-13T19:14:29.981000+00:00",
+        "ResourceStatus": "CREATE_COMPLETE",
+        "DriftInformation": {
+          "StackResourceDriftStatus": "NOT_CHECKED"
+        }
+      },
+      {
+        "LogicalResourceId": "UploadBoundary",
+        "PhysicalResourceId": "arn:aws:iam::792394000571:policy/pellum-stg-upload-boundary",
+        "ResourceType": "AWS::IAM::ManagedPolicy",
+        "LastUpdatedTimestamp": "2026-09-13T19:14:26.372000+00:00",
+        "ResourceStatus": "CREATE_COMPLETE",
+        "DriftInformation": {
+          "StackResourceDriftStatus": "NOT_CHECKED"
+        }
+      }
+    ]
+  },
+  "block": {
+    "PublicAccessBlockConfiguration": {
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true,
+      "BlockPublicPolicy": true,
+      "RestrictPublicBuckets": true
+    }
+  },
+  "ownership": {
+    "OwnershipControls": {
+      "Rules": [
+        {
+          "ObjectOwnership": "BucketOwnerEnforced"
+        }
+      ]
+    }
+  },
+  "encryption": {
+    "ServerSideEncryptionConfiguration": {
+      "Rules": [
+        {
+          "ApplyServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "AES256"
+          },
+          "BucketKeyEnabled": false,
+          "BlockedEncryptionTypes": {
+            "EncryptionType": [
+              "SSE-C"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "versioning": {
+    "Status": "Enabled"
+  },
+  "location": {
+    "LocationConstraint": "us-east-2"
+  },
+  "bucket_policy": {
+    "Policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"RequireTLS\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Action\":\"s3:*\",\"Resource\":[\"arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2\",\"arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2/*\"],\"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}}},{\"Sid\":\"OnlyStateRoleMayAccessStateObjects\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Action\":[\"s3:GetObject\",\"s3:GetObjectVersion\",\"s3:PutObject\",\"s3:DeleteObject\",\"s3:DeleteObjectVersion\"],\"Resource\":\"arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2/*\",\"Condition\":{\"ArnNotEquals\":{\"aws:PrincipalArn\":\"arn:aws:iam::792394000571:role/pellum-stg-terraform-state\"}}},{\"Sid\":\"NeverDeleteStateVersions\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Action\":[\"s3:DeleteObject\",\"s3:DeleteObjectVersion\"],\"Resource\":\"arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2/adr016/storage.tfstate\"}]}"
+  },
+  "locks": {
+    "Table": {
+      "AttributeDefinitions": [
+        {
+          "AttributeName": "LockID",
+          "AttributeType": "S"
+        }
+      ],
+      "TableName": "pellum-stg-tfstate-locks",
+      "KeySchema": [
+        {
+          "AttributeName": "LockID",
+          "KeyType": "HASH"
+        }
+      ],
+      "TableStatus": "ACTIVE",
+      "CreationDateTime": "2026-09-13T14:14:12.156000-05:00",
+      "ProvisionedThroughput": {
+        "NumberOfDecreasesToday": 0,
+        "ReadCapacityUnits": 0,
+        "WriteCapacityUnits": 0
+      },
+      "TableSizeBytes": 0,
+      "ItemCount": 0,
+      "TableArn": "arn:aws:dynamodb:us-east-2:792394000571:table/pellum-stg-tfstate-locks",
+      "TableId": "9162e943-651f-45f3-a4f7-e5a246b157ce",
+      "BillingModeSummary": {
+        "BillingMode": "PAY_PER_REQUEST",
+        "LastUpdateToPayPerRequestDateTime": "2026-09-13T14:14:12.156000-05:00"
+      },
+      "SSEDescription": {
+        "Status": "ENABLED",
+        "SSEType": "KMS",
+        "KMSMasterKeyArn": "arn:aws:kms:us-east-2:792394000571:key/a2a32562-a824-431d-a17c-b40db2ea4c3a"
+      },
+      "DeletionProtectionEnabled": true,
+      "WarmThroughput": {
+        "ReadUnitsPerSecond": 12000,
+        "WriteUnitsPerSecond": 4000,
+        "Status": "ACTIVE"
+      }
+    }
+  },
+  "oidc": {
+    "Url": "token.actions.githubusercontent.com",
+    "ClientIDList": [
+      "sts.amazonaws.com"
+    ],
+    "ThumbprintList": [
+      "ab9d0263244dd0326eb67015705a667e79cfe998"
+    ],
+    "CreateDate": "2026-09-13T19:14:10.297000+00:00",
+    "Tags": [
+      {
+        "Key": "Environment",
+        "Value": "staging"
+      },
+      {
+        "Key": "Application",
+        "Value": "Pellum"
+      },
+      {
+        "Key": "Purpose",
+        "Value": "adr016-state-bootstrap"
+      }
+    ]
+  },
+  "StateRole": {
+    "Role": {
+      "Path": "/",
+      "RoleName": "pellum-stg-terraform-state",
+      "RoleId": "AROA3Q7S45C5W73HWT4ZK",
+      "Arn": "arn:aws:iam::792394000571:role/pellum-stg-terraform-state",
+      "CreateDate": "2026-09-13T19:14:13+00:00",
+      "AssumeRolePolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "Federated": "arn:aws:iam::792394000571:oidc-provider/token.actions.githubusercontent.com"
+            },
+            "Action": "sts:AssumeRoleWithWebIdentity",
+            "Condition": {
+              "StringEquals": {
+                "token.actions.githubusercontent.com:sub": "repo:MichalKuderski@177895094/AutoBureau@1336298759:environment:staging",
+                "token.actions.githubusercontent.com:repository_owner_id": "177895094",
+                "token.actions.githubusercontent.com:repository_id": "1336298759",
+                "token.actions.githubusercontent.com:ref": [
+                  "refs/heads/main",
+                  "refs/pull/5/merge"
+                ],
+                "token.actions.githubusercontent.com:environment": "staging",
+                "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+              }
+            }
+          }
+        ]
+      },
+      "Description": "",
+      "MaxSessionDuration": 3600,
+      "Tags": [
+        {
+          "Key": "Environment",
+          "Value": "staging"
+        },
+        {
+          "Key": "Application",
+          "Value": "Pellum"
+        },
+        {
+          "Key": "Purpose",
+          "Value": "adr016-state-bootstrap"
+        }
+      ],
+      "RoleLastUsed": {}
+    }
+  },
+  "StateRole-policy": {
+    "RoleName": "pellum-stg-terraform-state",
+    "PolicyName": "one-state-and-lock",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "s3:ListBucket",
+          "Resource": "arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2",
+          "Effect": "Allow",
+          "Sid": "ListDedicatedStateBucket"
+        },
+        {
+          "Action": [
+            "s3:GetObject",
+            "s3:PutObject"
+          ],
+          "Resource": "arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2/adr016/storage.tfstate",
+          "Effect": "Allow",
+          "Sid": "ReadAndWriteState"
+        },
+        {
+          "Action": [
+            "s3:GetObject",
+            "s3:PutObject",
+            "s3:DeleteObject"
+          ],
+          "Resource": "arn:aws:s3:::pellum-stg-tfstate-792394000571-us-east-2/adr016/storage.tfstate.tflock",
+          "Effect": "Allow",
+          "Sid": "NativeLock"
+        },
+        {
+          "Action": "dynamodb:DescribeTable",
+          "Resource": "arn:aws:dynamodb:us-east-2:792394000571:table/pellum-stg-tfstate-locks",
+          "Effect": "Allow",
+          "Sid": "DescribeLockTable"
+        },
+        {
+          "Condition": {
+            "Null": {
+              "dynamodb:LeadingKeys": "false"
+            },
+            "ForAllValues:StringEquals": {
+              "dynamodb:LeadingKeys": [
+                "pellum-stg-tfstate-792394000571-us-east-2/adr016/storage.tfstate",
+                "pellum-stg-tfstate-792394000571-us-east-2/adr016/storage.tfstate-md5"
+              ]
+            }
+          },
+          "Action": [
+            "dynamodb:GetItem",
+            "dynamodb:PutItem",
+            "dynamodb:DeleteItem"
+          ],
+          "Resource": "arn:aws:dynamodb:us-east-2:792394000571:table/pellum-stg-tfstate-locks",
+          "Effect": "Allow",
+          "Sid": "ExactLockRecords"
+        }
+      ]
+    }
+  },
+  "StateRole-policy-names": {
+    "PolicyNames": [
+      "one-state-and-lock"
+    ]
+  },
+  "StateRole-attachments": {
+    "AttachedPolicies": []
+  },
+  "DeploymentRole": {
+    "Role": {
+      "Path": "/",
+      "RoleName": "pellum-stg-terraform-deploy",
+      "RoleId": "AROA3Q7S45C5YUJCOF6X3",
+      "Arn": "arn:aws:iam::792394000571:role/pellum-stg-terraform-deploy",
+      "CreateDate": "2026-09-13T19:14:28+00:00",
+      "AssumeRolePolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "Federated": "arn:aws:iam::792394000571:oidc-provider/token.actions.githubusercontent.com"
+            },
+            "Action": "sts:AssumeRoleWithWebIdentity",
+            "Condition": {
+              "StringEquals": {
+                "token.actions.githubusercontent.com:repository_owner_id": "177895094",
+                "token.actions.githubusercontent.com:sub": "repo:MichalKuderski@177895094/AutoBureau@1336298759:environment:staging",
+                "token.actions.githubusercontent.com:repository_id": "1336298759",
+                "token.actions.githubusercontent.com:environment": "staging",
+                "token.actions.githubusercontent.com:ref": [
+                  "refs/heads/main",
+                  "refs/pull/5/merge"
+                ],
+                "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+              }
+            }
+          }
+        ]
+      },
+      "Description": "",
+      "MaxSessionDuration": 3600,
+      "PermissionsBoundary": {
+        "PermissionsBoundaryType": "Policy",
+        "PermissionsBoundaryArn": "arn:aws:iam::792394000571:policy/pellum-stg-terraform-deploy-boundary"
+      },
+      "Tags": [
+        {
+          "Key": "Environment",
+          "Value": "staging"
+        },
+        {
+          "Key": "Application",
+          "Value": "Pellum"
+        },
+        {
+          "Key": "Purpose",
+          "Value": "adr016-state-bootstrap"
+        }
+      ],
+      "RoleLastUsed": {}
+    }
+  },
+  "DeploymentRole-policy": {
+    "RoleName": "pellum-stg-terraform-deploy",
+    "PolicyName": "plan-read-only",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": [
+            "s3:GetBucketLocation",
+            "s3:GetBucketTagging",
+            "s3:GetBucketPolicy",
+            "s3:GetBucketPublicAccessBlock",
+            "s3:GetBucketOwnershipControls",
+            "s3:GetEncryptionConfiguration",
+            "s3:GetBucketCORS",
+            "s3:GetLifecycleConfiguration",
+            "s3:GetBucketVersioning",
+            "s3:GetBucketAcl",
+            "s3:GetAccelerateConfiguration",
+            "s3:GetBucketRequestPayment",
+            "s3:GetBucketWebsite",
+            "s3:GetReplicationConfiguration",
+            "s3:GetBucketLogging",
+            "s3:GetBucketObjectLockConfiguration",
+            "s3:ListBucket"
+          ],
+          "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2",
+          "Effect": "Allow",
+          "Sid": "ReadNamedQuarantineConfiguration"
+        },
+        {
+          "Action": [
+            "iam:GetRole",
+            "iam:GetRolePolicy",
+            "iam:ListRolePolicies",
+            "iam:ListAttachedRolePolicies",
+            "iam:ListInstanceProfilesForRole",
+            "iam:ListRoleTags"
+          ],
+          "Resource": [
+            "arn:aws:iam::792394000571:role/pellum-stg-upload-signer",
+            "arn:aws:iam::792394000571:role/pellum-preview-upload-signer"
+          ],
+          "Effect": "Allow",
+          "Sid": "ReadTwoUploadRoles"
+        },
+        {
+          "Action": [
+            "iam:GetOpenIDConnectProvider",
+            "iam:ListOpenIDConnectProviderTags"
+          ],
+          "Resource": "arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike",
+          "Effect": "Allow",
+          "Sid": "ReadNamedVercelProvider"
+        }
+      ]
+    }
+  },
+  "DeploymentRole-policy-names": {
+    "PolicyNames": [
+      "plan-read-only"
+    ]
+  },
+  "DeploymentRole-attachments": {
+    "AttachedPolicies": []
+  },
+  "UploadBoundary": {
+    "PolicyVersion": {
+      "Document": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Action": [
+              "s3:GetObject",
+              "s3:PutObject"
+            ],
+            "Resource": [
+              "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/incoming",
+              "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/sealed/*"
+            ],
+            "Effect": "Allow",
+            "Sid": "ReadAndWriteUploadObjects"
+          },
+          {
+            "Action": "s3:DeleteObject",
+            "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2/hh/*/upload/*/sealed/*",
+            "Effect": "Allow",
+            "Sid": "DiscardSealedAttempts"
+          }
+        ]
+      },
+      "VersionId": "v1",
+      "IsDefaultVersion": true,
+      "CreateDate": "2026-09-13T19:14:10+00:00"
+    }
+  },
+  "DeploymentBoundary": {
+    "PolicyVersion": {
+      "Document": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Action": [
+              "s3:GetBucketLocation",
+              "s3:GetBucketTagging",
+              "s3:GetBucketPolicy",
+              "s3:GetBucketPublicAccessBlock",
+              "s3:GetBucketOwnershipControls",
+              "s3:GetEncryptionConfiguration",
+              "s3:GetBucketCORS",
+              "s3:GetLifecycleConfiguration",
+              "s3:GetBucketVersioning",
+              "s3:GetBucketAcl",
+              "s3:GetAccelerateConfiguration",
+              "s3:GetBucketRequestPayment",
+              "s3:GetBucketWebsite",
+              "s3:GetReplicationConfiguration",
+              "s3:GetBucketLogging",
+              "s3:GetBucketObjectLockConfiguration",
+              "s3:ListBucket"
+            ],
+            "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2",
+            "Effect": "Allow",
+            "Sid": "ReadNamedQuarantineConfiguration"
+          },
+          {
+            "Action": [
+              "iam:GetRole",
+              "iam:GetRolePolicy",
+              "iam:ListRolePolicies",
+              "iam:ListAttachedRolePolicies",
+              "iam:ListInstanceProfilesForRole",
+              "iam:ListRoleTags"
+            ],
+            "Resource": [
+              "arn:aws:iam::792394000571:role/pellum-stg-upload-signer",
+              "arn:aws:iam::792394000571:role/pellum-preview-upload-signer"
+            ],
+            "Effect": "Allow",
+            "Sid": "ReadTwoUploadRoles"
+          },
+          {
+            "Action": [
+              "iam:GetOpenIDConnectProvider",
+              "iam:ListOpenIDConnectProviderTags"
+            ],
+            "Resource": "arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike",
+            "Effect": "Allow",
+            "Sid": "ReadNamedVercelProvider"
+          },
+          {
+            "Condition": {
+              "StringEquals": {
+                "s3:LocationConstraint": "us-east-2"
+              }
+            },
+            "Action": [
+              "s3:CreateBucket"
+            ],
+            "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2",
+            "Effect": "Allow",
+            "Sid": "CreateOhioQuarantineBucket"
+          },
+          {
+            "Action": [
+              "s3:PutBucketTagging",
+              "s3:PutBucketPolicy",
+              "s3:PutBucketPublicAccessBlock",
+              "s3:PutBucketOwnershipControls",
+              "s3:PutEncryptionConfiguration",
+              "s3:PutBucketCORS",
+              "s3:PutLifecycleConfiguration"
+            ],
+            "Resource": "arn:aws:s3:::pellum-stg-quarantine-792394000571-us-east-2",
+            "Effect": "Allow",
+            "Sid": "ConfigureOnlyQuarantine"
+          },
+          {
+            "Condition": {
+              "StringEquals": {
+                "iam:PermissionsBoundary": "arn:aws:iam::792394000571:policy/pellum-stg-upload-boundary"
+              }
+            },
+            "Action": [
+              "iam:CreateRole"
+            ],
+            "Resource": [
+              "arn:aws:iam::792394000571:role/pellum-stg-upload-signer",
+              "arn:aws:iam::792394000571:role/pellum-preview-upload-signer"
+            ],
+            "Effect": "Allow",
+            "Sid": "CreateOnlyBoundedUploadRoles"
+          },
+          {
+            "Action": [
+              "iam:TagRole",
+              "iam:PutRolePolicy",
+              "iam:UpdateAssumeRolePolicy"
+            ],
+            "Resource": [
+              "arn:aws:iam::792394000571:role/pellum-stg-upload-signer",
+              "arn:aws:iam::792394000571:role/pellum-preview-upload-signer"
+            ],
+            "Effect": "Allow",
+            "Sid": "ConfigureOnlyUploadRoles"
+          },
+          {
+            "Action": [
+              "iam:CreateOpenIDConnectProvider",
+              "iam:TagOpenIDConnectProvider"
+            ],
+            "Resource": "arn:aws:iam::792394000571:oidc-provider/oidc.vercel.com/data-analyst-mike",
+            "Effect": "Allow",
+            "Sid": "CreateNamedVercelProvider"
+          }
+        ]
+      },
+      "VersionId": "v1",
+      "IsDefaultVersion": true,
+      "CreateDate": "2026-09-13T19:14:10+00:00"
+    }
+  },
+  "capturedAt": "2026-09-13T19:19:14.652005+00:00"
+}

@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "capturedAt": "2026-09-13T19:55:50.096248+00:00",
+  "account": "792394000571",
+  "region": "us-east-2",
+  "bucketHeadStatus": 404,
+  "uploadRolesAbsent": true,
+  "vercelProviderAbsent": true,
+  "exactLiveGrantAndBoundaries": true,
+  "encryptedPrivateRemoteState": true,
+  "unrelatedMigrationHostAndVolumeUnchanged": true,
+  "productionApplicationAccessed": false
+}

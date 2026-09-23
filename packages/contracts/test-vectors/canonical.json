@@ -1,0 +1,107 @@
+[
+  {
+    "name": "empty object",
+    "input": {},
+    "canonical": "{}",
+    "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  {
+    "name": "empty array",
+    "input": [],
+    "canonical": "[]",
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  {
+    "name": "scalars",
+    "input": {
+      "s": "x",
+      "i": 42,
+      "neg": -7,
+      "b": true,
+      "f": false,
+      "n": null
+    },
+    "canonical": "{\"b\":true,\"f\":false,\"i\":42,\"n\":null,\"neg\":-7,\"s\":\"x\"}",
+    "sha256": "a22e464c4673f0212d964a013c3f85fb01222bd496a76c011da36c486ce4f306"
+  },
+  {
+    "name": "key sorting utf16",
+    "input": {
+      "b": 1,
+      "a": 2,
+      "Z": 3,
+      "é": 4,
+      "_x": 5
+    },
+    "canonical": "{\"Z\":3,\"_x\":5,\"a\":2,\"b\":1,\"é\":4}",
+    "sha256": "a6ed0838296cbdd89d058a97830afbba59ccd962a70ba46062a26bb87de8ff13"
+  },
+  {
+    "name": "nested",
+    "input": {
+      "outer": {
+        "inner": [
+          1,
+          2,
+          {
+            "deep": "v"
+          }
+        ]
+      }
+    },
+    "canonical": "{\"outer\":{\"inner\":[1,2,{\"deep\":\"v\"}]}}",
+    "sha256": "4bc2ec0b524651b23dace1ecd85d8ee7ffbd307f8cf11d3339beea83d74abe3f"
+  },
+  {
+    "name": "unicode strings",
+    "input": {
+      "emoji": "🧾",
+      "accented": "café",
+      "newline": "a\nb",
+      "tab": "a\tb",
+      "quote": "say \"hi\""
+    },
+    "canonical": "{\"accented\":\"café\",\"emoji\":\"🧾\",\"newline\":\"a\\nb\",\"quote\":\"say \\\"hi\\\"\",\"tab\":\"a\\tb\"}",
+    "sha256": "2e81a0b07993f4f87b1c3c8fa7a03a681e400895d9689bbb3b7b04ae7fda10dc"
+  },
+  {
+    "name": "control chars",
+    "input": {
+      "ctl": "\u0000\u0001\u001f"
+    },
+    "canonical": "{\"ctl\":\"\\u0000\\u0001\\u001f\"}",
+    "sha256": "0c4a71cc182d61d21766f74d2581561ad9f0da5eeccf54e9047c555e4db55d7a"
+  },
+  {
+    "name": "zero and minus-zero",
+    "input": {
+      "z": 0,
+      "mz": 0
+    },
+    "canonical": "{\"mz\":0,\"z\":0}",
+    "sha256": "24c11322421eb0e1daa62559e9e7c8218f29f62149b2ffd8b3140ed7591f1480"
+  },
+  {
+    "name": "max safe int",
+    "input": {
+      "max": 9007199254740991,
+      "min": -9007199254740991
+    },
+    "canonical": "{\"max\":9007199254740991,\"min\":-9007199254740991}",
+    "sha256": "63546eb60913dcb1cdd5118f7bf4885beed344af930c8a9d5f38fad243fd4819"
+  },
+  {
+    "name": "approval payload (representative)",
+    "input": {
+      "kind": "send_email",
+      "to": "records@dmv.ca.gov",
+      "subject": "Registration renewal — plate {{plate}}",
+      "body_template": "Please find the renewal for {{member_name}}.",
+      "obligation_id": "01890a5d-ac96-774b-bb1b-2b0d7b3dcb6d",
+      "amount_cents": 16800,
+      "currency": "USD"
+    },
+    "canonical": "{\"amount_cents\":16800,\"body_template\":\"Please find the renewal for {{member_name}}.\",\"currency\":\"USD\",\"kind\":\"send_email\",\"obligation_id\":\"01890a5d-ac96-774b-bb1b-2b0d7b3dcb6d\",\"subject\":\"Registration renewal — plate {{plate}}\",\"to\":\"records@dmv.ca.gov\"}",
+    "sha256": "4c2f8f59dcf6c99a377d9edb1b63c701bf364c4f2484091cd5a0b44be46bbd14"
+  }
+]

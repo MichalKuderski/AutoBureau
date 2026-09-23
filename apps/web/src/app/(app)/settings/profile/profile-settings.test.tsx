@@ -1,0 +1,177 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { renderScreen } from "@/test/render";
+import { ProfileSettings } from "./profile-settings";
+const refresh = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+afterEach(() => { vi.unstubAllGlobals(); refresh.mockClear(); });
+
+describe("profile persistence", () => {
+  it("waits for the server before showing Saved and refreshes server context", async () => {
+    let respond!: (value: Response) => void;
+    const fetchMock = vi.fn(() => new Promise<Response>((resolve) => { respond = resolve; }));
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderScreen(<ProfileSettings />);
+    await user.clear(screen.getByRole("textbox", { name: "Name" }));
+    await user.type(screen.getByRole("textbox", { name: "Name" }), "Updated name");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(screen.queryByText("Saved")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save changes/i })).toBeDisabled();
+    expect(fetchMock).toHaveBeenCalledWith("/v1/me", expect.objectContaining({ method: "PATCH", body: expect.stringContaining("Updated name") }));
+    respond(Response.json({ display_name: "Updated name", timezone: "America/Chicago" }));
+    expect(await screen.findByText("Saved")).toBeInTheDocument();
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+  it("keeps the edited value and shows an error after a failed request", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+    renderScreen(<ProfileSettings />);
+    await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(await screen.findByText("Couldn’t save your profile")).toBeInTheDocument();
+    expect(screen.queryByText("Saved")).not.toBeInTheDocument();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Blueprint P0-03.
+ *
+ * The control being tested was never broken in the sense of throwing or failing to
+ * render — it rendered perfectly, and told the truth about nothing. So the assertions
+ * below are not about behaviour so much as about what a user could reasonably conclude
+ * from what's on screen: that two-step verification is real, and that toggling it does
+ * something. Test A and B prove neither is any longer true; Test C proves fixing that
+ * did not disturb anything else on the page.
+ */
+
+describe("Test A · no enabled MFA claim", () => {
+  it("renders the two-step verification switch as off and disabled", () => {
+    renderScreen(<ProfileSettings />);
+
+    const toggle = screen.getByRole("switch", { name: /two-step verification/i });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(toggle).toBeDisabled();
+  });
+
+  it("states plainly that it is not available, rather than describing it as active", () => {
+    renderScreen(<ProfileSettings />);
+
+    expect(
+      screen.getByText("Not available yet — two-step verification is not currently supported."),
+    ).toBeInTheDocument();
+    // The exact phrase this task exists to remove.
+    expect(screen.queryByText(/you'll be asked for a code on new devices/i)).not.toBeInTheDocument();
+  });
+
+  it("does not name a specific sign-in mechanism the account relies on instead", () => {
+    renderScreen(<ProfileSettings />);
+
+    // A first attempt at this copy said "sign-in currently relies on your password
+    // alone" — false, because a magic-link path also exists. The description must not
+    // trade one narrow claim about the account's protection for another.
+    expect(screen.queryByText(/password alone/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("Test B · no fictional success behavior", () => {
+  it("produces no toast or state change when the disabled switch is activated", async () => {
+    renderScreen(<ProfileSettings />);
+
+    const toggle = screen.getByRole("switch", { name: /two-step verification/i });
+    // A disabled control fires no click at all; this is the click a user would make.
+    await userEvent.click(toggle);
+
+    expect(screen.queryByText(/two-step verification on/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/two-step verification off/i)).not.toBeInTheDocument();
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("has no other control anywhere on the page claiming MFA is on or available", () => {
+    renderScreen(<ProfileSettings />);
+
+    expect(screen.queryByText(/authenticator app/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { checked: true })).not.toBeInTheDocument();
+  });
+});
+
+describe("Test C · unrelated settings remain intact", () => {
+  it("still renders profile identity fields and the save action", () => {
+    renderScreen(<ProfileSettings />);
+
+    expect(screen.getByRole("textbox", { name: "Name" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save changes/i })).toBeInTheDocument();
+  });
+
+  it("still renders the security card's other control and the sessions card", () => {
+    renderScreen(<ProfileSettings />);
+
+    expect(screen.getByRole("heading", { name: "Security" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /change password/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Sessions" })).toBeInTheDocument();
+    expect(screen.getByText("This device")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /sign out everywhere else/i })).toBeInTheDocument();
+  });
+
+  it("still renders the privacy/data alert", () => {
+    renderScreen(<ProfileSettings />);
+    expect(screen.getByText(/your data belongs to you/i)).toBeInTheDocument();
+  });
+});
+
+/**
+ * Blueprint P0-11.
+ *
+ * "Change password" and "Sign out everywhere else" rendered as ordinary, clickable
+ * buttons with no `onClick` at all — pressing either produced no request, no toast,
+ * no error, no anything. A user has no way to tell that from a button that works.
+ * These assertions prove both are now genuinely non-interactive at the DOM level,
+ * not just visually muted, and that pressing them still produces nothing observable.
+ */
+
+describe("P0-11 Test A · Change password is not actionable", () => {
+  it("is a disabled button, not merely styled to look inactive", () => {
+    renderScreen(<ProfileSettings />);
+    const button = screen.getByRole("button", { name: /change password/i });
+    expect(button).toBeDisabled();
+  });
+
+  it("states plainly that it is not available", () => {
+    renderScreen(<ProfileSettings />);
+    const button = screen.getByRole("button", { name: /change password/i });
+    expect(button.parentElement).toHaveTextContent(/not available yet/i);
+  });
+
+  it("produces no toast, error, or navigation when clicked", async () => {
+    renderScreen(<ProfileSettings />);
+    const button = screen.getByRole("button", { name: /change password/i });
+    // A disabled control fires no click; this is the click a user would attempt.
+    await userEvent.click(button);
+    expect(screen.queryByText(/password (changed|updated|reset)/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("P0-11 Test B · Sign out everywhere else is not actionable", () => {
+  it("is a disabled button, not merely styled to look inactive", () => {
+    renderScreen(<ProfileSettings />);
+    const button = screen.getByRole("button", { name: /sign out everywhere else/i });
+    expect(button).toBeDisabled();
+  });
+
+  it("states plainly that it is not available", () => {
+    renderScreen(<ProfileSettings />);
+    const button = screen.getByRole("button", { name: /sign out everywhere else/i });
+    expect(button.parentElement).toHaveTextContent(/not available yet/i);
+  });
+
+  it("produces no toast, error, or session-ending behavior when clicked", async () => {
+    renderScreen(<ProfileSettings />);
+    const button = screen.getByRole("button", { name: /sign out everywhere else/i });
+    await userEvent.click(button);
+    expect(screen.queryByText(/signed out|sessions? (ended|revoked|cleared)/i)).not.toBeInTheDocument();
+    // The current-session row must still read as active — nothing was touched.
+    expect(screen.getByText("This device")).toBeInTheDocument();
+    expect(screen.getByText("Active now")).toBeInTheDocument();
+  });
+});

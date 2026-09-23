@@ -1,0 +1,274 @@
+{
+  "date_utc": "2026-09-20T20:12:19.909821+00:00",
+  "scope": "local isolated development; synthetic data only",
+  "branch": "codex/review-pellum-hardening-v2",
+  "base_sha": "78269413bc7ed82306d7569ae90914db4671683b",
+  "previous_tested_implementation": "25a2272c211f89975f7d26a4e691a7b65d91e0a5",
+  "base_vs_previous_tested": "five documentation/evidence-only files verified by git",
+  "tested_implementation_sha": "3913413791c550ac90c004b7f0929b83430a8e8c",
+  "final_documentation_commit": "resolve from Git; implementation files unchanged afterward",
+  "commits": [
+    {
+      "sha": "7b1dd139aee5bb6bb57dcce514b6c40c3c3d4881",
+      "subject": "feat: add closed scanner and synthetic document review boundaries"
+    },
+    {
+      "sha": "8f945cfebd1d1870f8d234c88bfd31e46b87a2e1",
+      "subject": "fix: fence bounded job dispatch with database lease time"
+    },
+    {
+      "sha": "3913413791c550ac90c004b7f0929b83430a8e8c",
+      "subject": "feat: validate deletion evidence coverage without issuing receipts"
+    }
+  ],
+  "versions": {
+    "node": "v22.16.0",
+    "pnpm": "10.34.5",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7",
+    "next": "15.5.22",
+    "prisma": "6.19.3"
+  },
+  "unit_total": 1443,
+  "units": {
+    "contracts": 125,
+    "ops": 8,
+    "db": 16,
+    "web": 1294
+  },
+  "integration_total": 467,
+  "integrations": {
+    "db": 90,
+    "web": 377
+  },
+  "node_controls": 156,
+  "architecture_guards": 7,
+  "focused_cases": {
+    "scanner": 22,
+    "synthetic_review": 25,
+    "deletion_evidence": 26,
+    "durable_jobs": 31
+  },
+  "all_final_turbo_runs_uncached": true,
+  "lint_errors": 0,
+  "lint_existing_warnings": 13,
+  "frozen_install": "offline, pnpm 10.34.5 pinned store; lockfile unchanged",
+  "dependency_script_warning": [
+    "@prisma/client",
+    "@prisma/engines",
+    "esbuild",
+    "prisma",
+    "sharp"
+  ],
+  "explicit_prisma_generation_and_full_build": "passed",
+  "negative_controls": [
+    {
+      "name": "document-mutation-nonce",
+      "exit": 1,
+      "failure": "Tests  1 failed | 9 passed | 12 skipped (22)",
+      "sha256": "1e7f2800e98b7d7ec242f5fb884c2844b0ee10e7295551c47c9bc5984dc07202"
+    },
+    {
+      "name": "document-mutation-projection",
+      "exit": 1,
+      "failure": "Tests  1 failed | 24 skipped (25)",
+      "sha256": "1b944ef9422c97329acc3d3d73e0d8d08bb72c70a214994dab9d2fbb27db0245"
+    },
+    {
+      "name": "document-mutation-grace",
+      "exit": 1,
+      "failure": "Tests  1 failed | 25 skipped (26)",
+      "sha256": "6c94de0b13d977afd7686d566a40e26641c88f4e210537312059d0a81d6f4327"
+    },
+    {
+      "name": "integration-document-mutation-lease",
+      "exit": 1,
+      "failure": "Tests  1 failed | 1 passed | 29 skipped (31)",
+      "sha256": "70f31cfcc4a6011a261f51e6ac737abf1d2578df3907bad313f6c924ad6b7546"
+    }
+  ],
+  "clock_lock_negative_control": {
+    "before_fix_failed": 4,
+    "before_fix_skipped": 27,
+    "corrected_job_suite_passed": 31,
+    "reason": "host clock skew or row-lock wait permitted expiry/lease errors"
+  },
+  "non_evidence_initial_failures": {
+    "document-typecheck": "child fixture env lacked required NODE_ENV; fixed with literal test value",
+    "integration-document-clock-negative": "wrong Vitest config path; corrected invocation produced four assertion failures"
+  },
+  "local_database_readback": {
+    "port": 55539,
+    "roles": [
+      {
+        "role": "app_job_worker",
+        "login": false,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_dispatcher",
+        "login": false,
+        "bypassrls": true,
+        "superuser": false,
+        "createrole": false
+      },
+      {
+        "role": "app_user",
+        "login": true,
+        "bypassrls": false,
+        "superuser": false,
+        "createrole": false
+      }
+    ],
+    "vector": "0.8.1",
+    "database": "pellum_v2_review",
+    "policies": 27,
+    "forced_rls": 21,
+    "server_version": "18.3 (Postgres.app)",
+    "ensure_rls_triggers": 0,
+    "remaining_job_inbox": 0,
+    "migrations_completed": 13,
+    "runtime_owned_tables": 0,
+    "migrations_unfinished": 0,
+    "migrations_rolled_back": 0,
+    "remaining_job_deliveries": 0
+  },
+  "local_database_readback_sha256": "5d155f9d847a440201e603e5bc46b85b57834a5ca04a422b4d35e8dead98fca3",
+  "schema_migration_or_role_grant_changes": false,
+  "original_user_files_unchanged": 386,
+  "source_sha256": {
+    "apps/web/src/server/documents/scan-boundary.ts": "afdc876125bd751cba60134b8557e0021a076e422fccb485b4d5508a604200fb",
+    "apps/web/src/server/documents/scan-boundary.test.ts": "7084beb43f375c64c1ab6c2269f36770a9b792a8d00a1fc0da1fcacae9a9f758",
+    "apps/web/src/server/documents/synthetic-review.ts": "8bc5c241d85b0c3806101283afdfe82ec1a19c3f17e9bc225467fc3c8f94e8cc",
+    "apps/web/src/server/documents/synthetic-review.test.ts": "5bdf32f43e39405c04abc9835a694e2731160c4dfb7f1e2d147b4fa5c342b827",
+    "scripts/fixtures/synthetic-document-scanner.mjs": "33c4b4206d77b49800d007d5d6738e1da55edabdf71aa15290a8d2b91ad8da0a",
+    "docs/architecture/adr/ADR-018-document-scan-redaction-and-deletion-boundaries.md": "c05c7f6e3f6bb8ce3ca55df1a497ded6fcbfbdb84eac4e96e6794c50a6596547",
+    "packages/db/src/jobs.ts": "20f948743ecac6cd331c15b109d63875faf3d8064c84e216b3ae89949e949aae",
+    "packages/db/tests/integration/jobs.integration.test.ts": "02bf20c58fcb68a4133608958b8f64d97820354cfef2663712cb756f984673b7",
+    "packages/contracts/src/deletion-evidence.ts": "539995b4a064e7e784f5364e9f65473c0cb6a40ad4b3491a3bcba58f95a72a01",
+    "packages/contracts/src/deletion-evidence.test.ts": "a719e2de034bb1fe14d429aacb4c8d4241a3202aaf6e66b4e390f421aea7214f",
+    "packages/contracts/src/index.ts": "bd2e5ea8c5ddf7761d016a5a9830542bde014f530a2703873f925b8f0516d64b",
+    "docs/engineering/document-retention-coverage.json": "652bc27d6886f8a1588840534dc019c1708167576e4b1a30e4b2ceb4beb599a2",
+    "scripts/document-boundary-guard.test.mjs": "11b30a2aef0b1824134fecf46fb278b99ae385a1e239011385601794e2a6a1ac",
+    ".github/workflows/ci.yml": "6e70303a98d8c329dbe56ed9a07d8764f1c80c28fdc788e1ae2ac0d52bcfca01"
+  },
+  "logs": {
+    "document-frozen": {
+      "exit": 0,
+      "sha256": "1218be36de6db3f1ca09edd44fa3192e902c6f6701a8a799013ddd519ba5f376"
+    },
+    "document-candidate-build": {
+      "exit": 0,
+      "sha256": "27ffdaf2f2abeecda14b39bc493091e7066550e852c6952ffa738f6170d10833"
+    },
+    "document-candidate-typecheck": {
+      "exit": 0,
+      "sha256": "c71770a354b28f46a9285856a13ba68c88c18fca4b96d6bab07c81c0d68f8b63"
+    },
+    "document-candidate-lint": {
+      "exit": 0,
+      "sha256": "ffb00d50730c5999cc7fa10f1f288eb495a3b77ecddd12dc87641761981ab9c9"
+    },
+    "document-candidate-unit": {
+      "exit": 0,
+      "sha256": "b82adf64370ab0e0efaa11de7e01048566d39a3f7d1e79330dccca9caa7d6bee"
+    },
+    "integration-document-candidate": {
+      "exit": 0,
+      "sha256": "03550377f397f1cfa65828aea6803ae823a846d465e29de96febb4d4aedeba3b"
+    },
+    "document-candidate-controls": {
+      "exit": 0,
+      "sha256": "3fb862a4c1a1902de53de57fc0190ff3902d74a98d688a897072b38e2c74a555"
+    },
+    "document-candidate-architecture": {
+      "exit": 0,
+      "sha256": "26fc55f013be9b64053ff84437792bfc2ed91cf8e59bfbc00b736e0afcc10bc6"
+    },
+    "document-toolchain": {
+      "exit": 0,
+      "sha256": "e443171c2c3008d0d693759cd11408db76904d5eecef05e284a3a8a983fc73e9"
+    },
+    "integration-document-clock-fixed": {
+      "exit": 0,
+      "sha256": "f2902fcb672f06e2e411683b3f19bd8b7d1d59f872eb2300afe0bad2bfee1de4"
+    },
+    "document-typecheck": {
+      "exit": 2,
+      "sha256": "85ba9fab3aa461d196664eaaf242ad98ef69724a5efc8f27f4357541623791b1"
+    },
+    "integration-document-clock-negative": {
+      "exit": 1,
+      "sha256": "b8b15486e498064904b35f63a2a76329cebc39b1b0456a7ffd7d618435a7c620"
+    },
+    "integration-document-clock-negative-corrected": {
+      "exit": 1,
+      "sha256": "7e9d5543f0d954a7636df58395909f7cd0abab0e2a33af3c8f6c0f2e125ed66e"
+    }
+  },
+  "log_directory": "/private/tmp/pellum-v2-review-20260920",
+  "commands": [
+    "pnpm install --frozen-lockfile --offline --store-dir /private/tmp/pellum-v2-review-20260920/pnpm-store",
+    "pnpm build --force",
+    "pnpm typecheck --force",
+    "pnpm lint",
+    "pnpm test --force",
+    "pnpm test:integration --force",
+    "node --test scripts/*.test.mjs",
+    "seven exact shell run blocks from CI guardrails"
+  ],
+  "environment": "sanitized run-local.py wrapper; fixed Node/pnpm PATH; integration uses only 127.0.0.1:55539/pellum_v2_review with expected major 18 and non-privileged app/worker assertions",
+  "retired_local_risks": [
+    "unbound/malformed scanner replies promoted through this seam",
+    "arbitrary or modified content accepted by synthetic projection",
+    "incomplete deletion assessment mistaken for issuable receipt",
+    "uncooperative async transport holds dispatcher indefinitely",
+    "expired/replaced/deleted dispatcher ownership reported as durable success",
+    "host clock skew or lock wait extends dispatcher lease",
+    "final crashed send lease remains falsely idle"
+  ],
+  "unresolved": [
+    "real scanner sandbox/engine and bounded OS resources",
+    "ADR-018 proposed replacement for raw-image vision; no real parser/redactor approval",
+    "durable authenticated deletion fences/journals/provider and backup receipts",
+    "no full document or reminder lifecycle",
+    "Supabase deeper gateway-504 hop unproven",
+    "historical Supabase management-token invalidation unproven",
+    "recovery/MFA/privacy and Stripe TEST/Plaid Sandbox lifecycles incomplete",
+    "hosted AWS/SNS/queue and exact-candidate stable acceptance gates",
+    "legal operator/jurisdiction/public contacts"
+  ],
+  "supabase_support_packet": "PREPARED BUT UNSENT; unchanged",
+  "excluded_evidence": [
+    "CI PostgreSQL 16",
+    "real malware detection",
+    "real identifier/redaction accuracy",
+    "complete erasure",
+    "hosted provider probes",
+    "stable-staging acceptance",
+    "browser/accessibility exhaustive QA",
+    "Production or launch readiness"
+  ],
+  "mutations": {
+    "local_code": true,
+    "disposable_synthetic_db": true,
+    "provider": false,
+    "Production": false,
+    "auth_settings_users_sessions": false,
+    "push": false,
+    "PR5": false,
+    "merge": false,
+    "workflow_dispatch": false,
+    "deployment": false,
+    "DNS": false,
+    "real_documents": false,
+    "model_provider": false,
+    "Stripe_live": false,
+    "Plaid_real_accounts": false,
+    "external_support_send": false
+  },
+  "production_preflight": "NO-GO",
+  "task_owned_postgres_stopped_after_readback": true
+}

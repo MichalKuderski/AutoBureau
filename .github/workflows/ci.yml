@@ -1,0 +1,255 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  # Local CI credentials only — production secrets live in Doppler (doc 09 §5).
+  POSTGRES_PASSWORD: ci_only
+  DATABASE_ADMIN_URL: postgresql://autobureau:ci_only@localhost:5432/autobureau
+  DATABASE_URL: postgresql://app_user:app_local_only@localhost:5432/autobureau
+
+jobs:
+  staging-jobs-plan:
+    name: staging job boundaries (mocked)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.2
+          terraform_wrapper: false
+      - working-directory: infra/terraform/envs/staging/jobs
+        run: |
+          terraform init -backend=false -input=false -lockfile=readonly
+          terraform fmt -check
+          terraform validate
+          terraform test
+      - run: node --test scripts/adr017-bootstrap-review.test.mjs scripts/adr017-plan-review.test.mjs scripts/staging-alert-review.test.mjs scripts/staging-alert-subscription.test.mjs
+
+  staging-storage-plan:
+    name: proposed staging storage boundaries (mocked)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform/envs/staging/storage
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.2
+          terraform_wrapper: false
+      - run: terraform init -backend=false -input=false -lockfile=readonly
+      - run: terraform fmt -check
+      - run: terraform validate
+      # The test file mocks AWS. There are no AWS credentials, plans or real applies in CI.
+      - run: terraform test
+
+  staging-bootstrap:
+    name: proposed staging bootstrap boundaries (local only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install cfn-lint==1.56.3
+      - run: cfn-lint infra/cloudformation/staging/adr016-state-bootstrap.json infra/cloudformation/staging/adr016-reviewed-grant.json infra/cloudformation/staging/adr017-state-bootstrap.json infra/cloudformation/staging/operational-alerts.json
+      - run: node --test scripts/adr016-bootstrap-review.test.mjs scripts/adr016-saved-plan.test.mjs
+
+  verify:
+    name: lint · build · typecheck · test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: autobureau
+          POSTGRES_PASSWORD: ci_only
+          POSTGRES_DB: autobureau
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U autobureau"
+          --health-interval 2s --health-timeout 2s --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: node --test scripts/document-boundary-guard.test.mjs scripts/scanner-sandbox.test.mjs scripts/account-boundary-guard.test.mjs
+      - run: pnpm test
+      - name: OIDC proof negative controls
+        run: node --test scripts/staging-oidc-settings.test.mjs scripts/staging-cloud-oidc-proof.test.mjs scripts/staging-stable-oidc-proof.test.mjs scripts/staging-proof-inspection.test.mjs scripts/staging-github-oidc-proof.test.mjs scripts/staging-storage-probe-runner.test.mjs
+      - name: Acceptance tenant-fixture negative controls
+        run: node --test scripts/acceptance-tenant-probe.test.mjs scripts/smoke-auth-evidence.test.mjs scripts/staging-auth-diagnostics.test.mjs
+      - name: Infrastructure deployment identity negative controls
+        run: node --test scripts/staging-infra-oidc.test.mjs scripts/staging-jobs-oidc.test.mjs
+
+      # Tenant isolation is the one property we never ship unverified (review F-01).
+      - name: Integration tests (RLS / tenancy / outbox)
+        run: pnpm test:integration
+
+  guardrails:
+    name: architectural guardrails
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ADR-006: application code never imports a model provider SDK directly;
+      # everything goes through the AI service's gateway.
+      - name: No direct LLM provider SDK imports outside services/ai
+        run: |
+          if grep -rEn "from ['\"](@anthropic-ai/sdk|openai)['\"]" \
+               --include="*.ts" --include="*.tsx" \
+               --exclude-dir=dist --exclude-dir=node_modules apps packages 2>/dev/null; then
+            echo "::error::Provider SDKs must be used only via the AI service gateway (ADR-006)."
+            exit 1
+          fi
+
+      # doc 06 §5: the RLS-bypassing escape hatch is allow-listed, not ambient.
+      - name: Dispatcher escape hatch stays allow-listed
+        run: |
+          hits=$(grep -rlnE "(\.|\[[\"'])unsafeAcrossAllHouseholds" --include="*.ts" \
+                   --exclude-dir=dist --exclude-dir=node_modules packages apps 2>/dev/null \
+                 | grep -vE "packages/db/(src/(scoped|jobs)\.ts|tests/)" || true)
+          if [ -n "$hits" ]; then
+            echo "::error::unsafeAcrossAllHouseholds used outside allow-listed modules:"
+            echo "$hits"
+            exit 1
+          fi
+
+      # ADR-013 D2: the anonymous, no-GUC database door is narrow on purpose. The primary
+      # fence is the `GlobalTable` union, enforced by `pnpm typecheck` — a call naming any
+      # other table does not compile. This catches what the type system cannot: a NEW caller
+      # for an ALLOWED table, somewhere it does not belong.
+      - name: Anonymous global-table access stays allow-listed
+        run: |
+          hits=$(grep -rlnE "(\.|\[[\"'])withGlobalTable" --include="*.ts" \
+                   --exclude-dir=dist --exclude-dir=node_modules packages apps 2>/dev/null \
+                 | grep -vE "^(packages/db/(src/scoped\.ts|tests/)|apps/web/src/server/http/rate-limit\.ts)$" \
+                 | grep -vE "\.test\.tsx?$" || true)
+          if [ -n "$hits" ]; then
+            echo "::error::withGlobalTable used outside allow-listed modules (ADR-013 D2):"
+            echo "$hits"
+            exit 1
+          fi
+
+      # ADR-013 D2, third fence: widening the capability must be an explicit, reviewable act
+      # rather than a one-line diff nobody notices. This pins the union's membership, so
+      # adding a table to `GlobalTable` fails CI until the same PR updates this list.
+      - name: Global-table union membership is pinned
+        run: |
+          expected='export type GlobalTable = "auth_rate_limits";'
+          if ! grep -qxF "$expected" packages/db/src/scoped.ts; then
+            echo "::error::The GlobalTable union changed. Widening anonymous database access is an"
+            echo "::error::ADR-013 decision: amend the ADR and update this guardrail in the same PR."
+            grep -n "export type GlobalTable" packages/db/src/scoped.ts || true
+            exit 1
+          fi
+
+      # ADR-013 R1 clause 3: rate-limit thresholds are literals in one module and may never
+      # be read from the environment or any other runtime-mutable source. An operator who
+      # could widen a security control without a code review would be outside the governance
+      # that owns those numbers, and a deployment could then differ from what the ADR says.
+      #
+      # Comment lines are stripped before matching. The module's own docblock explains that
+      # it must not read `process.env`, and a naive grep would flag that sentence — a fence
+      # that fails on its own documentation is a fence someone deletes.
+      - name: Rate-limit thresholds are not runtime-configurable
+        run: |
+          hits=$(grep -nE "process\.env|getenv" apps/web/src/server/http/rate-limit.ts 2>/dev/null \
+                 | grep -vE "^[0-9]+: *(\*|//|/\*)" || true)
+          if [ -n "$hits" ]; then
+            echo "::error::rate-limit.ts must not read configuration at runtime (ADR-013 R1.3):"
+            echo "$hits"
+            exit 1
+          fi
+
+      # ADR-015 D2: the Sentry integration is `@sentry/core` precisely because `@sentry/node`
+      # is an OpenTelemetry distribution — requiring it pulls eight `@opentelemetry/*`
+      # packages plus two module-loader patchers into the process before any configuration
+      # runs. ADR-014 D11 excludes OpenTelemetry, and doc 12 T8 makes dependency surface a
+      # supply-chain concern, so the exclusion is checked rather than merely written down.
+      #
+      # This matches RESOLVED PACKAGES only: pnpm writes those as `  'name@version':` at two
+      # spaces. Next.js declares `@opentelemetry/api` as an OPTIONAL PEER, which appears
+      # deeper and without a version key — nothing is installed for it, and that pre-existing
+      # reference must keep passing or the fence fails on a clean checkout.
+      #
+      # Adopting OpenTelemetry later is a decision, not a dependency bump: it needs an ADR,
+      # and this guardrail updated in the same PR.
+      - name: Sentry integration introduces no OpenTelemetry runtime
+        run: |
+          hits=$(grep -nE "^  '(@opentelemetry/[^']+|import-in-the-middle|require-in-the-middle)@" \
+                   pnpm-lock.yaml || true)
+          if [ -n "$hits" ]; then
+            echo "::error::An OpenTelemetry or module-interception package is now installed."
+            echo "::error::ADR-015 D2 excludes both. Use @sentry/core, never @sentry/node."
+            echo "$hits"
+            exit 1
+          fi
+
+      # PRD v1 §9: chat and agent-execution are postponed. Tables//models for them
+      # must not reappear without a §21 amendment.
+      - name: PRD scope fence
+        run: |
+          if grep -rEn "^model (Conversation|Message|TaskRun|Approval) " \
+               packages/db/prisma/schema.prisma 2>/dev/null; then
+            echo "::error::v1 scope fence: chat/agent models are postponed (PRD §9). Amend via PRD §21 first."
+            exit 1
+          fi
+
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  governance:
+    name: governance documents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # The assumption registry is a governing document; structural rot there
+      # silently misleads gate decisions (docs/TRACEABILITY.md §1).
+      - name: Assumption registry is valid and complete
+        run: pnpm --filter @autobureau/ops test
+
+      - name: Constitutional documents present
+        run: |
+          for f in FOUNDING_PRINCIPLES.md CLAUDE.md docs/TRACEABILITY.md \
+                   docs/product/PRD-v1.md ops/assumptions.yaml; do
+            [ -f "$f" ] || { echo "::error::missing governing document: $f"; exit 1; }
+          done
