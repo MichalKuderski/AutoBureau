@@ -190,3 +190,64 @@ arbitrary caller SQL, and is not a claim of immunity to a compromised database o
 The [PostgreSQL search-path guidance](https://www.postgresql.org/docs/18/sql-createfunction.html)
 explains why the temporary schema must be last. This mitigation is also necessary for
 invoker guard functions when callers have the table mutation privileges the guards constrain.
+
+### Durable local lifecycle increment (September 23, local only)
+
+Migration `20260928000000_local_plaid_durable_lifecycle` completes the LOCAL deterministic
+state machine after exchange. Every table is empty at migration, forced-RLS, household-scoped,
+fixture-grammar constrained (`public-fixture-*`) and inventoried for deletion. No hosted
+runtime, provider credential, KEK or real financial data is introduced.
+
+- **Routing.** `plaid_local_item_routes` stores SHA-256(environment:provider Item ID).
+  `Database.resolveFinancialItemRoute` is one fixed, callback-free query with no household
+  or user GUC; the `plaid_route_lookup` policy (runtime role only) exposes exactly the row
+  whose digest the caller already holds. Other roles are refused by privileges. The routed
+  binding is re-checked inside the household scope before anything is written.
+- **Verified inbox.** Only notices returned by the existing ES256/raw-body verifier are
+  accepted. The inbox stores a closed signal (`transactions`/`item-status`) and the body
+  digest, never the body. Pending exact duplicates coalesce; at most 32 pending per Item.
+  Unknown codes refuse; unknown, removed or fenced Items receive the same acknowledgement.
+  A signal only schedules a fresh provider read; it never writes state.
+- **One operation lease per Item** (`plaid_local_cursors`): DB-time 60-second lease with the
+  claimed cursor revision, credential revision and signal watermark captured by the trigger.
+  Sync and rotation are reads and may be taken over after expiry; a stale token can never
+  commit. Removal preempts reads but is single-attempt: an expired removal lease becomes
+  `removal-indeterminate`, never a second provider call.
+- **Atomic sync.** Bounded pagination (8 pages × 500 changes, 50 accounts) runs outside any
+  transaction with Plaid's restart-from-original-cursor on mutation (3 READ restarts, never
+  applied to credential operations). The collected batch is data: one transaction rechecks
+  fence, bound owner/incarnation, Item state, credential revision, lease, exact cursor and
+  revision, then upserts accounts, applies collapsed added/modified/removed transactions,
+  marks only signals received before the claim watermark applied, emits one closed
+  `plaid.local_sync_committed {version,revision}` and advances the cursor. Missing event,
+  unknown account, oversize or malformed data publishes nothing. Money is integer cents.
+- **Status.** `login-required`/`revoked` are projected only from a current held read. Owner
+  reconnect (update mode) writes a closed intent and requests a read; it cannot change the
+  Item identity or credential. A request made during an in-flight read survives that read.
+- **Rotation.** Compare-and-swap of Item and envelope revision N→N+1 together, sealed outside
+  the transaction under the N+1 binding; the old binding no longer opens the new envelope.
+- **Unlink/removal.** Owner unlink (closed intent in the same transaction) fences reads at
+  once. Outcomes stay distinct: `provider-acknowledged`, established `provider-invalid`, or
+  `removal-indeterminate` (custody kept for reconciliation). Custody is destroyed in the
+  same transaction as removal evidence, and only then (audited `plaid_local_credentials.delete`).
+  Reconciliation is a non-mutating read that can only establish absence; a still-present Item
+  needs an explicit new owner request. Local custody destruction is never provider deletion
+  evidence and no final deletion receipt exists.
+- **Deletion fence.** A fenced household admits only erasure-direction removal (implicit
+  unlink, no owner requirement, audit rows but no outbox); a completed deletion refuses all.
+
+Authority changes (all reviewed in the posture diff): the runtime role gains column UPDATE on
+Item state/revision/evidence and credential envelope columns, credential DELETE, and scoped
+rights on the five new tables; `app_user` gains only Item `state` (unlink) and cursor
+`refresh_requested` (reconnect), each trigger-guarded and intent-bound, plus safe account/
+transaction projections without provider IDs. `guard_plaid_effect` now permits runtime audit
+rows for Item/cursor/custody under a fence. Existing insert-time exchange guards and commit
+checks are unchanged but now fire on INSERT only. 12 new invoker functions pin `pg_temp` last;
+no SECURITY DEFINER, no BYPASSRLS, no new role.
+
+Deliberate limits: derived account/transaction retention after unlink is an **undecided
+product policy**, so records are retained (never silently deleted or re-synced) until PRD
+change control decides; export classifies them under the existing `provider-data` omission.
+Sync is audited per committed operation (cursor revision), not per transaction row. The
+administrative suspension race, operational KEK custody, hosted process isolation, provider
+Sandbox lifecycle evidence, consent UI and ADR-019 restore admission remain launch blockers.
