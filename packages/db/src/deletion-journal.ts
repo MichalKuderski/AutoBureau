@@ -154,7 +154,12 @@ export async function observeLocalDeletionResource(db: Database, householdId: st
         (SELECT count(*) FROM plaid_local_subjects WHERE household_id=${householdId}::uuid)+
         (SELECT count(*) FROM plaid_local_exchanges WHERE household_id=${householdId}::uuid)+
         (SELECT count(*) FROM plaid_local_items WHERE household_id=${householdId}::uuid)+
-        (SELECT count(*) FROM plaid_local_credentials WHERE household_id=${householdId}::uuid) AS count`;
+        (SELECT count(*) FROM plaid_local_credentials WHERE household_id=${householdId}::uuid)+
+        (SELECT count(*) FROM plaid_local_item_routes WHERE household_id=${householdId}::uuid)+
+        (SELECT count(*) FROM plaid_local_cursors WHERE household_id=${householdId}::uuid)+
+        (SELECT count(*) FROM plaid_local_webhooks WHERE household_id=${householdId}::uuid)+
+        (SELECT count(*) FROM plaid_local_accounts WHERE household_id=${householdId}::uuid)+
+        (SELECT count(*) FROM plaid_local_transactions WHERE household_id=${householdId}::uuid) AS count`;
       remaining = Number(row!.count); // Neither a provider acknowledgement nor provider absence.
     } else if (resource.component === "audit") {
       const [row] = await tx.$queryRaw<Array<{ count: bigint }>>`SELECT count(*) AS count FROM audit_log WHERE household_id=${householdId}::uuid`;

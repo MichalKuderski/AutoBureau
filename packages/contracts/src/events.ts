@@ -28,6 +28,11 @@ export const EVENT_TYPES = [
   "billing.test_state_reconciled",
   "plaid.local_exchange_requested",
   "plaid.local_item_activated",
+  "plaid.local_sync_committed",
+  "plaid.local_item_status_changed",
+  "plaid.local_item_removed",
+  "plaid.local_unlink_requested",
+  "plaid.local_reconnect_requested",
 ] as const;
 
 export const EventTypeSchema = z.enum(EVENT_TYPES);

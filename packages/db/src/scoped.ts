@@ -317,6 +317,41 @@ export class Database {
     );
   }
 
+  /**
+   * ADR-022 minimal webhook routing: the ONE read a verified financial webhook may make
+   * before it knows its household. Deliberately not a callback: a single fixed query,
+   * no household or user GUC, so every household-scoped table stays invisible.
+   *
+   * The only row it can see is the route whose digest the caller already holds
+   * (`plaid_route_lookup` policy, granted to `app_plaid_sandbox` alone). The digest is
+   * SHA-256 of environment + a provider Item ID taken from a signature-verified body, so
+   * the runtime can resolve its own Items but cannot list or guess anyone else's. Any
+   * other role is refused by privileges (no grant, no policy) rather than widening access.
+   * Callers must re-check the binding inside `withHousehold` before acting on it.
+   */
+  async resolveFinancialItemRoute(
+    routeDigest: string,
+    options: ScopedTransactionOptions = {},
+  ): Promise<{ itemId: string; householdId: string } | null> {
+    refuseSensitiveScopeEscape();
+    if (!/^[a-f0-9]{64}$/.test(routeDigest)) {
+      throw new ScopeError("route digest is not a lowercase SHA-256 hex digest");
+    }
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT set_config('request.plaid_route', ${routeDigest}, true)`;
+        const rows = await tx.$queryRaw<Array<{ item_id: string; household_id: string }>>`
+          SELECT id::text AS item_id, household_id::text AS household_id
+          FROM plaid_local_item_routes WHERE route_digest = ${routeDigest} LIMIT 2`;
+        return rows.length === 1 ? { itemId: rows[0]!.item_id, householdId: rows[0]!.household_id } : null;
+      },
+      {
+        timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        maxWait: options.maxWaitMs ?? DEFAULT_MAX_WAIT_MS,
+      },
+    );
+  }
+
   /** Health probe. Deliberately unscoped and trivial. */
   async ping(): Promise<boolean> {
     const rows = await this.prisma.$queryRaw<Array<{ ok: number }>>`SELECT 1 AS ok`;

@@ -1095,6 +1095,8 @@ model PlaidLocalItem {
  credentialRevision Int @default(1) @map("credential_revision")
  state String @default("active")
  createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz
+ removalEvidence String? @map("removal_evidence")
+ statusChangedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("status_changed_at") @db.Timestamptz
  @@unique([id,householdId])
  @@index([householdId,id],map:"plaid_item_scope")
  @@map("plaid_local_items")
@@ -1109,6 +1111,77 @@ model PlaidLocalCredential {
  wrappedKey String @map("wrapped_key")
  ciphertext String
  createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz
+ revision Int @default(1)
  @@index([householdId,id],map:"plaid_credential_scope")
  @@map("plaid_local_credentials")
+}
+model PlaidLocalItemRoute {
+ id String @id @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ routeDigest String @unique @map("route_digest")
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz
+ @@map("plaid_local_item_routes")
+}
+model PlaidLocalCursor {
+ id String @id @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ cursor String?
+ revision BigInt @default(0)
+ op String?
+ opToken String? @map("op_token") @db.Uuid
+ opUntil DateTime? @map("op_until") @db.Timestamptz
+ opCredentialRevision Int? @map("op_credential_revision")
+ opCursorRevision BigInt? @map("op_cursor_revision")
+ opWatermark DateTime? @map("op_watermark") @db.Timestamptz
+ lastOutcome String @default("never") @map("last_outcome")
+ refreshRequested Boolean @default(true) @map("refresh_requested")
+ updatedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz
+ @@index([householdId,id],map:"plaid_cursor_scope")
+ @@map("plaid_local_cursors")
+}
+model PlaidLocalWebhook {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ itemId String @map("item_id") @db.Uuid
+ signal String
+ bodyDigest String @map("body_digest")
+ state String @default("pending")
+ receivedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("received_at") @db.Timestamptz
+ appliedAt DateTime? @map("applied_at") @db.Timestamptz
+ @@index([householdId,itemId,state,receivedAt],map:"plaid_webhook_scope")
+ @@map("plaid_local_webhooks")
+}
+model PlaidLocalAccount {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ itemId String @map("item_id") @db.Uuid
+ providerAccountId String @map("provider_account_id")
+ name String
+ kind String
+ currency String @default("USD")
+ currentCents BigInt? @map("current_cents")
+ availableCents BigInt? @map("available_cents")
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz
+ updatedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz
+ @@unique([itemId,providerAccountId])
+ @@unique([id,itemId,householdId])
+ @@index([householdId,itemId],map:"plaid_account_scope")
+ @@map("plaid_local_accounts")
+}
+model PlaidLocalTransaction {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ itemId String @map("item_id") @db.Uuid
+ accountId String @map("account_id") @db.Uuid
+ providerTransactionId String @map("provider_transaction_id")
+ amountCents BigInt @map("amount_cents")
+ currency String @default("USD")
+ postedOn DateTime @map("posted_on") @db.Date
+ description String
+ pending Boolean
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz
+ updatedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz
+ @@unique([itemId,providerTransactionId])
+ @@index([householdId,itemId,postedOn],map:"plaid_transaction_scope")
+ @@map("plaid_local_transactions")
 }

@@ -43,7 +43,14 @@ export function createLocalPlaidCustody(){
  return Object.freeze({seal,rotateKey,
   // Void callback does not constitute a process sandbox: this runtime is trusted.
   use(binding:Binding,envelope:Envelope,operation:(token:string)=>void){const plain=read(binding,envelope);try{operation(plain.toString());}catch{refuse();}finally{plain.fill(0);}},
-  rewrap(binding:Binding,envelope:Envelope){const plain=read(binding,envelope);try{return seal(binding,plain.toString());}finally{plain.fill(0);}},
+  // Provider I/O is asynchronous; plaintext bytes are zeroed once the operation settles.
+  // The result must not echo the token; provider failures surface only as refusal, so
+  // callers map provider signals to closed values INSIDE the operation.
+  async useAsync<T>(binding:Binding,envelope:Envelope,operation:(token:string)=>Promise<T>):Promise<T>{const plain=read(binding,envelope),token=plain.toString();
+   try{const result=await operation(token);if(JSON.stringify(result??null).includes(token))refuse();return result;}catch{refuse();}finally{plain.fill(0);}},
+  // Same binding, or exactly the next revision for compare-and-swap rotation.
+  rewrap(binding:Binding,envelope:Envelope,nextRevision?:number){if(nextRevision!==undefined&&nextRevision!==binding.revision+1)refuse();
+   const plain=read(binding,envelope);try{return seal(nextRevision===undefined?binding:{...binding,revision:nextRevision},plain.toString());}finally{plain.fill(0);}},
   retire(version:number){if(version===current||!keys.has(version))refuse();keys.get(version)!.fill(0);keys.delete(version);},
   close(){for(const k of keys.values())k.fill(0);keys.clear();closed=true;},
  });

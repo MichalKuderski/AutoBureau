@@ -41,6 +41,11 @@ export const JOB_ROUTES: Readonly<Record<EventType, readonly JobConsumer[]>> = {
   "billing.test_state_reconciled": ["analytics"],
   "plaid.local_exchange_requested": ["analytics"],
   "plaid.local_item_activated": ["analytics"],
+  "plaid.local_sync_committed": ["analytics"],
+  "plaid.local_item_status_changed": ["analytics"],
+  "plaid.local_item_removed": ["analytics"],
+  "plaid.local_unlink_requested": ["analytics"],
+  "plaid.local_reconnect_requested": ["analytics"],
 };
 export function jobQueue(consumer: JobConsumer): JobQueue {
   return ["notifications", "notification-sender", "digest-builder"].includes(consumer) ? "notifications" : "pipeline";
