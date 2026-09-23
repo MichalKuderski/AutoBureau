@@ -163,10 +163,20 @@ jobs:
 
       # Direct connection, not the pooled one: `migrate deploy` takes advisory locks and
       # issues DDL, and transaction-mode pooling breaks both.
+      - name: Generate client for the read-only upgrade preflight
+        if: github.event.inputs.stage != 'deploy'
+        run: pnpm --filter @autobureau/db exec prisma generate
+        env:
+          # Generation is local and never connects. Hosted credentials enter only below.
+          DATABASE_URL: postgresql://unused:unused@127.0.0.1:5432/unused
+
+      # Data-refusing migrations otherwise fail mid-chain with an opaque "transaction is
+      # aborted" error and leave a schema no build targets. Refuse before applying any.
       - name: Apply migrations (expand)
         if: github.event.inputs.stage != 'deploy'
         run: |
           node scripts/verify-staging-migration-target.mjs
+          node scripts/migration-preflight.mjs
           pnpm --filter @autobureau/db exec prisma migrate deploy
         env:
           DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}

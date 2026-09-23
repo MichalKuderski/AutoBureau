@@ -41,6 +41,7 @@ jobs:
       - name: Apply only additive schema and reviewed API-role privilege revocation
         run: |
           node scripts/verify-staging-migration-target.mjs
+          node scripts/migration-preflight.mjs
           pnpm --filter @autobureau/db exec prisma migrate deploy
         env:
           DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}
