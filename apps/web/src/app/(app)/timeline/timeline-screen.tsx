@@ -40,7 +40,7 @@ export function TimelineScreen() {
     return (
       <>
         <PageHeader title="Timeline" />
-        <ErrorState {...describeError(query.error)} onRetry={() => void query.refetch()} />
+        <ErrorState headingLevel={2} {...describeError(query.error)} onRetry={() => void query.refetch()} />
       </>
     );
   }
@@ -63,7 +63,7 @@ export function TimelineScreen() {
       {query.isPending ? (
         <SkeletonList count={6} />
       ) : entries.length === 0 ? (
-        <EmptyState
+        <EmptyState headingLevel={2}
           tone="reassuring"
           icon={<Icon.Timeline className="size-5" />}
           title="Nothing here yet"

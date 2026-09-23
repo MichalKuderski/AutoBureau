@@ -28,7 +28,7 @@ export default function AppError({
 
   return (
     <div className="py-12">
-      <ErrorState
+      <ErrorState headingLevel={2}
         title="This page didn't load"
         description="Your household data is safe. Try again, or use the navigation to go somewhere else while we sort this out."
         onRetry={reset}

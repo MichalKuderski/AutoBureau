@@ -179,6 +179,7 @@ export function CommandPalette() {
             data-autofocus
             type="text"
             role="combobox"
+            aria-label="Search obligations or pages"
             aria-expanded="true"
             aria-controls="command-results"
             aria-activedescendant={results[cursor] ? `command-option-${cursor}` : undefined}

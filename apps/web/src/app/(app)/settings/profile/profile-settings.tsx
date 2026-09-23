@@ -45,7 +45,7 @@ export function ProfileSettings() {
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Your details</CardTitle>
+          <CardTitle as="h2">Your details</CardTitle>
           <CardDescription>How you appear in your household.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -77,7 +77,7 @@ export function ProfileSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Security</CardTitle>
+          <CardTitle as="h2">Security</CardTitle>
           <CardDescription>
             Your household holds identity documents. These settings protect them.
           </CardDescription>
@@ -118,7 +118,7 @@ export function ProfileSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Sessions</CardTitle>
+          <CardTitle as="h2">Sessions</CardTitle>
           <CardDescription>Devices currently signed in to your account.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">

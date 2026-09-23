@@ -114,7 +114,7 @@ export function HouseholdScreen() {
     return (
       <>
         <PageHeader title="Household" />
-        <ErrorState {...describeError(query.error)} onRetry={() => void query.refetch()} />
+        <ErrorState headingLevel={2} {...describeError(query.error)} onRetry={() => void query.refetch()} />
       </>
     );
   }
@@ -133,6 +133,7 @@ export function HouseholdScreen() {
 
       <div className="mb-5 flex flex-col gap-3">
         <SearchInput
+          label="Search household records"
           value={search}
           onChange={setSearch}
           placeholder="Search policies, vehicles, subscriptions…"
@@ -149,7 +150,7 @@ export function HouseholdScreen() {
       {query.isPending ? (
         <SkeletonList count={5} />
       ) : items.length === 0 ? (
-        <EmptyState
+        <EmptyState headingLevel={2}
           tone="reassuring"
           icon={<Icon.Household className="size-5" />}
           title={search ? "Nothing matches that" : memberId ? "No records for this person" : "Your registry is empty"}

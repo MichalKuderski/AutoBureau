@@ -135,6 +135,7 @@ export function DocumentsScreen({ initialStatus = "all" }: { initialStatus?: Len
 
       <div className="mb-5 flex flex-col gap-3">
         <SearchInput
+          label="Search documents"
           value={search}
           onChange={setSearch}
           placeholder="Search documents…"

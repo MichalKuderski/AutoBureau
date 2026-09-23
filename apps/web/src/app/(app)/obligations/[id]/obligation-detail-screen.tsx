@@ -49,7 +49,7 @@ export function ObligationDetailScreen({ id }: { id: string }) {
   if (query.isError) {
     return (
       <Shell>
-        <ErrorState {...describeError(query.error)} onRetry={() => void query.refetch()} />
+        <ErrorState headingLevel={2} {...describeError(query.error)} onRetry={() => void query.refetch()} />
       </Shell>
     );
   }
@@ -57,7 +57,7 @@ export function ObligationDetailScreen({ id }: { id: string }) {
   if (!query.data) {
     return (
       <Shell>
-        <EmptyState
+        <EmptyState headingLevel={2}
           icon={<Icon.Search className="size-5" />}
           title="We couldn't find that obligation"
           description="It may have been removed, or the link may be out of date. Nothing else in your household has changed."

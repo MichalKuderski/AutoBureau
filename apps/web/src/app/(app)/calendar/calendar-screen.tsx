@@ -85,7 +85,7 @@ export function CalendarScreen() {
     return (
       <>
         <PageHeader title="Calendar" />
-        <ErrorState {...describeError(query.error)} onRetry={() => void query.refetch()} />
+        <ErrorState headingLevel={2} {...describeError(query.error)} onRetry={() => void query.refetch()} />
       </>
     );
   }
@@ -210,7 +210,7 @@ export function CalendarScreen() {
       )}
 
       {!query.isPending && !query.hasNextPage && byDay.size === 0 ? (
-        <EmptyState
+        <EmptyState headingLevel={2}
           className="mt-6"
           tone="reassuring"
           icon={<Icon.Calendar className="size-5" />}

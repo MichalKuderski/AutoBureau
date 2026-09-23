@@ -47,7 +47,7 @@ function SettingsForm({ initial }: { initial: NotificationSettingsView }) {
   }}>
     <Alert tone="info" title="Delivery is being set up">Save your choices below. Email and push delivery are not active yet; enabling a channel does not register this device for push.</Alert>
     {!can("manage") && <Alert tone="info" title="Owner access required">Only a household owner can change notification settings.</Alert>}
-    <Card><CardHeader><CardTitle>What you hear from us</CardTitle><CardDescription>Choose each channel separately. Security notices stay enabled.</CardDescription></CardHeader>
+    <Card><CardHeader><CardTitle as="h2">What you hear from us</CardTitle><CardDescription>Choose each channel separately. Security notices stay enabled.</CardDescription></CardHeader>
       <CardContent><div className="flex flex-col divide-y divide-line">
         {KINDS.map((kind) => <fieldset key={kind.id} disabled={disabled} className="py-4 first:pt-0 last:pb-0">
           <legend className="sr-only">{kind.label}</legend><p className="text-sm font-medium text-ink">{kind.label}</p><p className="mt-1 text-xs text-ink-tertiary">{kind.description}</p>
@@ -59,13 +59,13 @@ function SettingsForm({ initial }: { initial: NotificationSettingsView }) {
           </label>)}</div>
         </fieldset>)}
       </div></CardContent></Card>
-    <Card><CardHeader><CardTitle>Quiet hours</CardTitle><CardDescription>Local times in {initial.timezone}. Non-urgent delivery waits until quiet hours end.</CardDescription></CardHeader>
+    <Card><CardHeader><CardTitle as="h2">Quiet hours</CardTitle><CardDescription>Local times in {initial.timezone}. Non-urgent delivery waits until quiet hours end.</CardDescription></CardHeader>
       <CardContent className="flex flex-col gap-4"><div className="grid gap-4 sm:grid-cols-2">
         <TextInput type="time" label="From" value={draft.schedule.quiet_start} onChange={(event) => schedule("quiet_start", event.target.value)} required disabled={disabled} />
         <TextInput type="time" label="Until" value={draft.schedule.quiet_end} onChange={(event) => schedule("quiet_end", event.target.value)} required disabled={disabled} />
       </div><Toggle label="Let urgent deadlines through" description="Opt in to critical reminders during quiet hours when a deadline is within 24 hours." checked={draft.schedule.urgent_override} onChange={(value) => schedule("urgent_override", value)} disabled={disabled} /></CardContent>
     </Card>
-    <Card><CardHeader><CardTitle>Weekly digest schedule</CardTitle><CardDescription>The saved schedule uses your profile timezone.</CardDescription></CardHeader><CardContent className="grid gap-4 sm:grid-cols-2">
+    <Card><CardHeader><CardTitle as="h2">Weekly digest schedule</CardTitle><CardDescription>The saved schedule uses your profile timezone.</CardDescription></CardHeader><CardContent className="grid gap-4 sm:grid-cols-2">
       <Select label="Day" value={String(draft.schedule.digest_day)} onChange={(event) => schedule("digest_day", Number(event.target.value))} disabled={disabled}
         options={["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((label, i) => ({ value: String(i), label }))} />
       <TextInput type="time" label="Time" value={draft.schedule.digest_time} onChange={(event) => schedule("digest_time", event.target.value)} required disabled={disabled} />

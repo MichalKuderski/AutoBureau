@@ -29,7 +29,7 @@ export function PrivacySettings() {
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>What we can and can't see</CardTitle>
+          <CardTitle as="h2">What we can and can't see</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="flex flex-col gap-3 text-sm">
@@ -70,7 +70,7 @@ export function PrivacySettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Export everything</CardTitle>
+          <CardTitle as="h2">Export everything</CardTitle>
           <CardDescription>
             Your original documents plus every record we've built from them, in open formats.
           </CardDescription>
@@ -94,7 +94,7 @@ export function PrivacySettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Delete your account</CardTitle>
+          <CardTitle as="h2">Delete your account</CardTitle>
           <CardDescription>
             Everything goes: documents, registry, reminders, and history.
           </CardDescription>

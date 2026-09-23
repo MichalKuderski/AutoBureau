@@ -24,7 +24,7 @@ export function NotificationsScreen() {
   const mark = useMarkNotificationsRead(household.id);
   const rows = query.data;
   const unread = rows.filter((row) => row.read_at === null);
-  if (query.isError) return <><PageHeader title="Notifications" /><ErrorState {...describeError(query.error)} onRetry={() => void query.refetch()} /></>;
+  if (query.isError) return <><PageHeader title="Notifications" /><ErrorState headingLevel={2} {...describeError(query.error)} onRetry={() => void query.refetch()} /></>;
   return <>
     <PageHeader title="Notifications" description="Saved notices for your account in this household."
       actions={unread.length ? <Button variant="secondary" size="sm" loading={mark.isPending} loadingLabel="Saving read state"
@@ -34,7 +34,7 @@ export function NotificationsScreen() {
     <div className="mb-5"><Alert tone="info" title="Reminder delivery is not active yet">Saved notices appear here when they are created. An entry here does not confirm email or push delivery.</Alert></div>
     {mark.isError && <div className="mb-5"><Alert tone="critical" title="Couldn’t save read state">{mark.error.message} Your unread notices are still available.</Alert></div>}
     <FilterBar label="Filter notifications" options={[{ value: "all", label: "All" }, { value: "unread", label: "Unread" }]} value={lens} onChange={setLens} className="mb-5" />
-    {query.isPending ? <SkeletonList count={5} /> : !rows.length ? <EmptyState tone="reassuring" icon={<Icon.Bell className="size-5" />}
+    {query.isPending ? <SkeletonList count={5} /> : !rows.length ? <EmptyState headingLevel={2} tone="reassuring" icon={<Icon.Bell className="size-5" />}
       title={lens === "unread" ? "You're all caught up" : "Nothing yet"}
       description={lens === "unread" ? "No saved notices are unread." : "There are no saved notices for your account in this household."} /> : <ul className="flex flex-col gap-2">
       {rows.map((n) => {

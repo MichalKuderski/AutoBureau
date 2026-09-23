@@ -22,6 +22,7 @@ export function ErrorState({
   onRetry,
   showSignIn,
   className,
+  headingLevel = 3,
 }: {
   title: string;
   description?: string;
@@ -37,7 +38,10 @@ export function ErrorState({
    */
   showSignIn?: boolean;
   className?: string;
+  /** 2 when the state stands directly under the page title; 3 inside an h2 section. */
+  headingLevel?: 2 | 3;
 }) {
+  const Heading = headingLevel === 2 ? "h2" : "h3";
   const router = useRouter();
   const pathname = usePathname();
 
@@ -63,7 +67,7 @@ export function ErrorState({
           />
         </svg>
       </div>
-      <h3 className="text-lg text-ink">{title}</h3>
+      <Heading className="text-lg text-ink">{title}</Heading>
       {description ? (
         <p className="mt-1.5 max-w-md text-sm text-ink-secondary text-pretty">{description}</p>
       ) : null}

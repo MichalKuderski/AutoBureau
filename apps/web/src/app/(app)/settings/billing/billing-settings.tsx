@@ -50,7 +50,7 @@ export function BillingSettings() {
             >
               <CardHeader>
                 <div className="flex items-center justify-between gap-2">
-                  <CardTitle>{p.name}</CardTitle>
+                  <CardTitle as="h2">{p.name}</CardTitle>
                   {current ? <Chip tone="accent">Current</Chip> : null}
                 </div>
                 <p className="mt-1">
@@ -92,7 +92,7 @@ export function BillingSettings() {
       {plan === "premium" ? (
         <Card>
           <CardHeader>
-            <CardTitle>Cancel</CardTitle>
+            <CardTitle as="h2">Cancel</CardTitle>
             {/*
              * Blueprint P0-09. This used to promise "you keep Premium until the end
              * of the period you've paid for" as though a billing period were being

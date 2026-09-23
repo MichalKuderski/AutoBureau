@@ -18,6 +18,8 @@ export interface EmptyStateProps {
   secondaryAction?: { label: string; onClick?: (() => void) | undefined; href?: string | undefined } | undefined;
   tone?: "neutral" | "reassuring" | undefined;
   className?: string | undefined;
+  /** 2 when the state stands directly under the page title; 3 inside an h2 section. */
+  headingLevel?: 2 | 3 | undefined;
 }
 
 /**
@@ -66,7 +68,9 @@ export function EmptyState({
   secondaryAction,
   tone = "neutral",
   className,
+  headingLevel = 3,
 }: EmptyStateProps) {
+  const Heading = headingLevel === 2 ? "h2" : "h3";
   return (
     <div
       className={cn(
@@ -88,7 +92,7 @@ export function EmptyState({
           {icon}
         </div>
       ) : null}
-      <h3 className="text-lg text-ink">{title}</h3>
+      <Heading className="text-lg text-ink">{title}</Heading>
       {description ? (
         <p className="mt-1.5 max-w-sm text-sm text-ink-secondary text-pretty">{description}</p>
       ) : null}

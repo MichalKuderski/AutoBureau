@@ -71,11 +71,15 @@ export function FilterBar<T extends string>({
 }
 
 export function SearchInput({
+  label,
   value,
   onChange,
   placeholder = "Search…",
   className,
 }: {
+  /** Accessible name. A placeholder is not a label: it disappears on input and is
+   * not reliably announced, so every search field must say what it searches. */
+  label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string | undefined;
@@ -86,6 +90,7 @@ export function SearchInput({
       <Icon.Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-tertiary" />
       <input
         type="search"
+        aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

@@ -39,7 +39,7 @@ export function MemberSettings() {
   });
   const open = (next: Action) => { archive.reset(); restore.reset(); setAction(next); };
   return <Card>
-    <CardHeader><div><CardTitle>People</CardTitle><CardDescription>Everyone whose paperwork you manage. Adding a person does not create a login or send an invitation.</CardDescription></div></CardHeader>
+    <CardHeader><div><CardTitle as="h2">People</CardTitle><CardDescription>Everyone whose paperwork you manage. Adding a person does not create a login or send an invitation.</CardDescription></div></CardHeader>
     <CardContent>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {can("manage") && <Button size="sm" onClick={() => open({ kind: "create" })}>Add someone</Button>}

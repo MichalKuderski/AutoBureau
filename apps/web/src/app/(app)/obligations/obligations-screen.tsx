@@ -90,6 +90,7 @@ export function ObligationsScreen() {
 
       <div className="mb-5 flex flex-col gap-3">
         <SearchInput
+          label="Search obligations"
           value={search}
           onChange={setSearch}
           placeholder="Search by title, item, or person…"
@@ -116,9 +117,9 @@ export function ObligationsScreen() {
       {query.isPending ? (
         <SkeletonList count={4} />
       ) : query.isError ? (
-        <ErrorState {...describeError(query.error)} onRetry={() => query.refetch()} />
+        <ErrorState headingLevel={2} {...describeError(query.error)} onRetry={() => query.refetch()} />
       ) : filtered.length === 0 ? (
-        <EmptyState
+        <EmptyState headingLevel={2}
           tone={filter === "open" || filter === "action_needed" ? "reassuring" : "neutral"}
           icon={<Icon.Check className="size-5" />}
           title={emptyTitle(filter, search)}

@@ -45,7 +45,7 @@ export function HouseholdSettings() {
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Household</CardTitle>
+          <CardTitle as="h2">Household</CardTitle>
           <CardDescription>
             Choose a name for the household whose paperwork you manage.
           </CardDescription>
@@ -76,7 +76,7 @@ export function HouseholdSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Forwarding address</CardTitle>
+          <CardTitle as="h2">Forwarding address</CardTitle>
           <CardDescription>
             Only an address actually assigned to your household appears here. Forwarding
             ingestion is not enabled in this preview.

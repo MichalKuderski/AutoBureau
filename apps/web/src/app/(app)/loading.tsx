@@ -14,7 +14,7 @@ export default function AppLoading() {
       <span className="sr-only">Loading</span>
       <div className="mb-6 flex flex-col gap-2">
         <Skeleton className="h-8 w-56" />
-        <Skeleton className="h-4 w-80" />
+        <Skeleton className="h-4 w-full max-w-80" />
       </div>
       <SkeletonList count={4} />
     </div>
