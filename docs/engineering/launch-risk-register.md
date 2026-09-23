@@ -1,5 +1,20 @@
 # Pellum staging release-candidate risk register
 
+**Latest local continuation (September 23):** [verification report](continuation-verification-20260923.md)
+records tested candidate `5bc8fe7` (local commit over a byte-verified snapshot of upstream
+`57d0790`, tree `a5bac62c`; local SHAs do not exist upstream). `57d0790` was not docs-only and
+its prior validation never finished; the baseline here passed in full. New: ADR-022 durable
+local Plaid lifecycle (non-enumerating routing, verified inbox, leased atomic sync, status,
+reconnect/unlink, CAS rotation, distinct removal outcomes, reconciliation, fence integration);
+staging-shaped upgrade 13→34 migrations on PG18/PG16 with data unchanged and a read-only
+preflight for the opaque mid-chain refusal; real-browser authenticated QA with four
+accessibility fixes. **1,982 units, 832 restricted-role integrations, 205 controls, seven
+guards, real ClamAV proof and 10/10 Plaid guard mutations** pass. No role/membership/
+SECURITY DEFINER/BYPASSRLS change. Export and deletion remain disabled in the UI; journal
+retirement, ADR-019 authority, operational Plaid custody, PG17/hosted/provider evidence,
+Supabase 504 causality (packet PREPARED BUT UNSENT) and legal gates remain. **Pre-production
+NO-GO.** This supersedes older local summaries below, not their historical hosted evidence.
+
 **Latest local cited-publication checkpoint (September 21):** [verification report](document-publication-verification-20260921.md)
 records tested implementation `1ed927d4737469c305f2888490a8c61cc922ddc7`.
 A canonical public synthetic PDF now composes upload admission, isolated real ClamAV,
