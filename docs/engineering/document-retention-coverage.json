@@ -47,7 +47,12 @@
     "PlaidLocalSubject": "provider-references",
     "PlaidLocalExchange": "provider-references",
     "PlaidLocalItem": "provider-references",
-    "PlaidLocalCredential": "provider-references"
+    "PlaidLocalCredential": "provider-references",
+    "PlaidLocalItemRoute": "provider-references",
+    "PlaidLocalCursor": "provider-references",
+    "PlaidLocalWebhook": "provider-references",
+    "PlaidLocalAccount": "provider-references",
+    "PlaidLocalTransaction": "provider-references"
   },
   "external": [
     "documents",
@@ -77,6 +82,6 @@
     "Plan catalog and local activation contain no tenant IDs or personal content. Runtime roles cannot edit them; local TEST activation defaults false. They are not deletion evidence.",
     "ADR-021 clean custody and processing journals are local-only; review deadline is a hold, not deletion. Count retained objects until independent absence; original bytes and exact-once charges require inventory/restore coverage. No final receipt or cloud durability claim.",
     "Immutable synthetic result/review journals bind original processing authority. Their retention and quota-preserving retirement remain gated by ADR-019; no cascade or final receipt.",
-    "Local Plaid subjects/exchanges/Items/credentials are inventoried immediately; encrypted credentials and lease/provider internals are excluded from all exports. Durable sync/unlink/provider absence and journal retirement remain incomplete."
+    "Local Plaid subjects/exchanges/Items/credentials/routes/cursors/webhooks/accounts/transactions are inventoried immediately; encrypted credentials, cursors, lease and provider internals are excluded from all exports. Local custody destruction after removal is not provider deletion evidence; derived financial records are retained after unlink pending a product retention decision. Provider absence, backups and journal retirement remain unproven."
   ]
 }
