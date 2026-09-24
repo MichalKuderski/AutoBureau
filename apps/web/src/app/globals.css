@@ -74,6 +74,7 @@
 
   /* Semantic — deliberately separate from the accent so status never reads as brand */
   --color-critical: #b3372e;
+  --color-critical-ink: #ffffff;
   --color-critical-soft: #fbeceb;
   --color-warning: #96650a;
   --color-warning-soft: #fbf1de;
@@ -114,6 +115,7 @@
     --color-accent-ink: #06201b;
 
     --color-critical: #e8776a;
+    --color-critical-ink: #1b0f0d;
     --color-critical-soft: #2e1c19;
     --color-warning: #d9a441;
     --color-warning-soft: #2b2416;
@@ -155,6 +157,7 @@
   --color-accent-ink: #06201b;
 
   --color-critical: #e8776a;
+  --color-critical-ink: #1b0f0d;
   --color-critical-soft: #2e1c19;
   --color-warning: #d9a441;
   --color-warning-soft: #2b2416;
@@ -189,6 +192,7 @@
   --color-accent-soft: var(--color-accent-soft);
   --color-accent-ink: var(--color-accent-ink);
   --color-critical: var(--color-critical);
+  --color-critical-ink: var(--color-critical-ink);
   --color-critical-soft: var(--color-critical-soft);
   --color-warning: var(--color-warning);
   --color-warning-soft: var(--color-warning-soft);

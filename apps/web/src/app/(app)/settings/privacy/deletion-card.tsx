@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,20 +30,28 @@ export function DeletionCard() {
   const key = ["household", household.id, "deletion"];
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
+  // The control the user acted on is replaced on success; move focus to its replacement
+  // instead of letting it fall back to the document body.
+  const [focusNext, setFocusNext] = useState<null | "undo" | "request">(null);
+  const undoRef = useRef<HTMLButtonElement>(null), requestRef = useRef<HTMLButtonElement>(null);
   const status = useQuery({ queryKey: key, queryFn: () => apiFetch<DeletionStatus>(`/households/${household.id}/deletion`, { householdId: household.id }) });
   const done = async (next: DeletionStatus) => { client.setQueryData(key, next); await client.invalidateQueries({ queryKey: key }); };
   const request = useMutation({
     mutationFn: () => apiFetch<DeletionStatus>(`/households/${household.id}/deletion`, { method: "POST", householdId: household.id, body: { confirmation: PHRASE } }),
-    onSuccess: async (next) => { setOpen(false); setTyped(""); await done(next); },
+    onSuccess: async (next) => { setOpen(false); setTyped(""); await done(next); setFocusNext("undo"); },
   });
   const undo = useMutation({
     mutationFn: (requestId: string) => apiFetch<DeletionStatus>(`/households/${household.id}/deletion/undo`, { method: "POST", householdId: household.id, body: { requestId } }),
-    onSuccess: done,
+    onSuccess: async (next) => { await done(next); setFocusNext("request"); },
   });
   const failure = (e: unknown) => e instanceof ApiError && e.status === 403
     ? "For your security, sign in again (and confirm your authenticator code if you use one), then try again."
     : "That didn't work. Nothing was changed — please try again.";
   const current = status.data?.request ?? null;
+  useEffect(() => {
+    const target = focusNext === "undo" ? undoRef.current : focusNext === "request" ? requestRef.current : null;
+    if (target) { target.focus(); setFocusNext(null); }
+  }, [focusNext, current]);
 
   return (
     <Card>
@@ -61,7 +69,7 @@ export function DeletionCard() {
             </Alert>
             {undo.isError ? <Alert tone="critical" title="Couldn't undo">{failure(undo.error)}</Alert> : null}
             <div>
-              <Button variant="secondary" disabled={!current.undoAvailable || undo.isPending} onClick={() => undo.mutate(current.id)}>
+              <Button ref={undoRef} variant="secondary" disabled={!current.undoAvailable || undo.isPending} onClick={() => undo.mutate(current.id)}>
                 {undo.isPending ? "Undoing…" : "Undo deletion"}
               </Button>
             </div>
@@ -79,7 +87,7 @@ export function DeletionCard() {
               what has and hasn't been confirmed.
             </p>
             <div>
-              <Button variant="danger" disabled={status.isPending} onClick={() => setOpen(true)}>Delete household…</Button>
+              <Button ref={requestRef} variant="danger" disabled={status.isPending} onClick={() => setOpen(true)}>Delete household…</Button>
             </div>
           </>
         )}

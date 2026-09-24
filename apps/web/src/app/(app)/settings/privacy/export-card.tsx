@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,15 +23,17 @@ export function ExportCard() {
   const { household } = useHousehold();
   const client = useQueryClient();
   const key = ["household", household.id, "exports"];
+  const [focusNext, setFocusNext] = useState<null | "download" | "request">(null);
+  const downloadRef = useRef<HTMLButtonElement>(null), requestRef = useRef<HTMLButtonElement>(null);
   const status = useQuery({ queryKey: key, queryFn: () => apiFetch<ExportStatus>(`/households/${household.id}/exports`, { householdId: household.id }) });
   const refresh = async (latest: Latest | null) => { client.setQueryData<ExportStatus>(key, s => ({ available: s?.available ?? true, latest })); await client.invalidateQueries({ queryKey: key }); };
   const prepare = useMutation({
     mutationFn: () => apiFetch<Latest>(`/households/${household.id}/exports`, { method: "POST", householdId: household.id, body: { requestId: crypto.randomUUID() } }),
-    onSuccess: refresh,
+    onSuccess: async (latest) => { await refresh(latest); setFocusNext("download"); },
   });
   const remove = useMutation({
     mutationFn: (requestId: string) => apiFetch<Latest>(`/households/${household.id}/exports/revoke`, { method: "POST", householdId: household.id, body: { requestId } }),
-    onSuccess: refresh,
+    onSuccess: async (latest) => { await refresh(latest); setFocusNext("request"); },
   });
   const download = useMutation({
     mutationFn: async (latest: Latest) => {
@@ -45,6 +48,10 @@ export function ExportCard() {
     : e instanceof ApiError && e.problem.detail ? e.problem.detail : "That didn't work. Nothing was shared — please try again.";
   const latest = status.data?.latest ?? null, ready = latest?.state === "ready";
   const error = prepare.error ?? remove.error ?? download.error;
+  useEffect(() => {
+    const target = focusNext === "download" ? downloadRef.current : focusNext === "request" ? requestRef.current : null;
+    if (target) { target.focus(); setFocusNext(null); }
+  }, [focusNext, latest]);
 
   return (
     <Card>
@@ -66,13 +73,13 @@ export function ExportCard() {
         <div className="flex flex-wrap gap-2">
           {ready && latest ? (
             <>
-              <Button variant="primary" disabled={download.isPending} onClick={() => download.mutate(latest)}>
+              <Button ref={downloadRef} variant="primary" disabled={download.isPending} onClick={() => download.mutate(latest)}>
                 <Icon.Upload className="size-4 rotate-180" />{download.isPending ? "Downloading…" : "Download export"}
               </Button>
               <Button variant="ghost" disabled={remove.isPending} onClick={() => remove.mutate(latest.requestId)}>Delete this export</Button>
             </>
           ) : (
-            <Button variant="secondary" disabled={!status.data?.available || prepare.isPending} onClick={() => prepare.mutate()}>
+            <Button ref={requestRef} variant="secondary" disabled={!status.data?.available || prepare.isPending} onClick={() => prepare.mutate()}>
               <Icon.Upload className="size-4 rotate-180" />{prepare.isPending ? "Preparing…" : "Request export"}
             </Button>
           )}

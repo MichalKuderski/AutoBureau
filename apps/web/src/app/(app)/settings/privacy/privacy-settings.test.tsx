@@ -50,6 +50,7 @@ describe("Test A · export cannot claim success", () => {
     expect(await screen.findByText("Your export is ready, with gaps")).toBeInTheDocument();
     expect(screen.getByText(/manifest.json in the download lists each one/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /download export/i })).toBeEnabled();
+    await waitFor(() => expect(screen.getByRole("button", { name: /download export/i })).toHaveFocus());
     expect(screen.queryByText(/everything we hold/i)).not.toBeInTheDocument();
   });
 
@@ -96,6 +97,8 @@ describe("Test B · deletion is real, reversible for 14 days, and never claims e
     expect(screen.getByText(/nothing has been erased yet/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /undo deletion/i })).toBeEnabled();
     expect(screen.queryByText(/permanently deleted|deletion complete|receipt/i)).not.toBeInTheDocument();
+    // Focus moves to the control that replaced the one the user acted on.
+    await waitFor(() => expect(screen.getByRole("button", { name: /undo deletion/i })).toHaveFocus());
   });
 
   it("asks for step-up authentication instead of pretending success when the server refuses", async () => {
