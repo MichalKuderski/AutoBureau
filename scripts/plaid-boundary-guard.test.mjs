@@ -13,7 +13,11 @@ test('local financial custody remains dependency-free, synthetic-only and withou
  for(const weakened of ['fetch("https://example.test")','console.log(token)','process.env.KEY','import("node:fs")'])assert.equal(ambient(s+'\n'+weakened),true);
  assert.notDeepEqual(imports(s+'\nimport db from "@autobureau/db"'),['node:crypto']);
 });
+test('the KMS-shaped custody seam takes its key service only by injection',()=>{
+ const s=read('services/plaid/src/kms-custody.ts');assert.deepEqual(imports(s),['node:crypto']);assert.equal(ambient(s),false);
+ assert.equal(/@aws-sdk|process\.env|new\s+KMS/.test(s),false);
+});
 test('ordinary app, document/model and database modules cannot import the financial decrypt seam',()=>{
  const all=[...files('apps/web/src'),...files('packages/db/src'),...files('services/ai/src')].filter(p=>!p.endsWith('.test.ts')&&!p.endsWith('.test.tsx'));
- assert.deepEqual(all.filter(p=>/@autobureau\/plaid-boundary|services\/plaid|local-custody/.test(read(p))),[]);
+ assert.deepEqual(all.filter(p=>/@autobureau\/plaid-boundary|services\/plaid|local-custody|kms-custody/.test(read(p))),[]);
 });
