@@ -35,19 +35,21 @@ export function ConnectionsSettings() {
   const key = ["household", household.id, "financial-connections"];
   const [target, setTarget] = useState<Connection | null>(null);
   const [history, setHistory] = useState<"delete" | "retain">("delete");
-  const [returnFocus, setReturnFocus] = useState<string | null>(null);
+  // Focus moves once the dialog has closed and the list re-rendered; a ref (not state)
+  // carries the request so the effect never sets state itself.
+  const returnFocus = useRef(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const data = useQuery({ queryKey: key, queryFn: () => apiFetch<Connections>(`/households/${household.id}/financial-connections`, { householdId: household.id }) });
   const update = (next: Connections) => { client.setQueryData(key, next); };
   const disconnect = useMutation({
     mutationFn: (c: Connection) => apiFetch<Connections>(`/households/${household.id}/financial-connections/${c.id}/unlink`, { method: "POST", householdId: household.id, body: { history } }),
-    onSuccess: (next, c) => { update(next); setTarget(null); setReturnFocus(c.id); },
+    onSuccess: (next) => { update(next); returnFocus.current = true; setTarget(null); },
   });
   const reconnect = useMutation({
     mutationFn: (c: Connection) => apiFetch<Connections>(`/households/${household.id}/financial-connections/${c.id}/reconnect`, { method: "POST", householdId: household.id, body: {} }),
     onSuccess: update,
   });
-  useEffect(() => { if (returnFocus) { headingRef.current?.focus(); setReturnFocus(null); } }, [returnFocus, data.data]);
+  useEffect(() => { if (returnFocus.current && target === null) { headingRef.current?.focus(); returnFocus.current = false; } }, [target, data.data]);
   const failure = (e: unknown) => e instanceof ApiError && e.status === 403
     ? "For your security, sign in again (and confirm your authenticator code if you use one), then try again."
     : "That didn't work. Nothing was changed — please try again.";
