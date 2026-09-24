@@ -199,6 +199,14 @@ export async function releaseLocalPlaidSync(db:Database,claim:LocalPlaidOpClaim,
  }));}catch{refuse();}
 }
 
+/** Owner-chosen history deletion, in the transaction that records established removal. */
+async function eraseHistoryIfChosen(tx:ScopedClient,hh:string,item:string){
+ const [i]=await tx.$queryRaw<Array<{history_after_removal:string}>>`SELECT history_after_removal FROM plaid_local_items WHERE id=${item}::uuid AND household_id=${hh}::uuid`;
+ if(i?.history_after_removal!=='delete')return{transactions:0,accounts:0};
+ const transactions=await tx.$executeRaw`DELETE FROM plaid_local_transactions WHERE item_id=${item}::uuid AND household_id=${hh}::uuid`;
+ const accounts=await tx.$executeRaw`DELETE FROM plaid_local_accounts WHERE item_id=${item}::uuid AND household_id=${hh}::uuid`;
+ return{transactions,accounts};
+}
 /** Single-attempt removal outcome. Acknowledgement and established provider-invalid
  * state remain distinct; an unknown outcome keeps custody so it can be reconciled.
  * Local custody destruction is NEVER presented as provider deletion evidence. */
@@ -214,6 +222,7 @@ export async function completeLocalPlaidRemoval(db:Database,claim:LocalPlaidOpCl
    return{state:'removal-indeterminate' as const};
   }
   await tx.$executeRaw`UPDATE plaid_local_items SET state='removed',removal_evidence=${outcome} WHERE id=${item}::uuid AND household_id=${hh}::uuid`;
+  await eraseHistoryIfChosen(tx,hh,item);
   await tx.$executeRaw`DELETE FROM plaid_local_credentials WHERE id=${item}::uuid AND household_id=${hh}::uuid`;
   if(fence==='open')await emitRuntime(tx,'plaid.local_item_removed',hh,item,{version:1});
   await tx.$executeRaw`UPDATE plaid_local_cursors SET op=NULL,op_token=NULL,last_outcome='removed' WHERE id=${item}::uuid AND household_id=${hh}::uuid`;
@@ -234,6 +243,7 @@ export async function completeLocalPlaidReconcile(db:Database,claim:LocalPlaidOp
    return{state:'removal-indeterminate' as const};
   }
   await tx.$executeRaw`UPDATE plaid_local_items SET state='removed',removal_evidence='provider-invalid' WHERE id=${item}::uuid AND household_id=${hh}::uuid`;
+  await eraseHistoryIfChosen(tx,hh,item);
   await tx.$executeRaw`DELETE FROM plaid_local_credentials WHERE id=${item}::uuid AND household_id=${hh}::uuid`;
   if(fence==='open')await emitRuntime(tx,'plaid.local_item_removed',hh,item,{version:1});
   await tx.$executeRaw`UPDATE plaid_local_cursors SET op=NULL,op_token=NULL,last_outcome='removed' WHERE id=${item}::uuid AND household_id=${hh}::uuid`;
@@ -267,16 +277,16 @@ async function currentOwner(tx:ScopedClient,hh:string){
 /** Owner unlink request. Fences reads immediately (an in-flight sync can no longer commit);
  * provider removal happens later in the isolated runtime. The eventual HTTP route must
  * enter the sensitive-session scope (recent auth/MFA) before calling this. */
-export async function requestLocalPlaidUnlink(db:Database,hh:string,itemId:string){
- if(!uuid.test(hh)||!uuid.test(itemId))refuse();
+export async function requestLocalPlaidUnlink(db:Database,hh:string,itemId:string,history:'delete'|'retain'='delete'){
+ if(!uuid.test(hh)||!uuid.test(itemId)||!['delete','retain'].includes(history))refuse();
  return db.withHousehold(hh,async tx=>{
   await currentOwner(tx,hh);
   const [i]=await tx.$queryRaw<Array<{state:string}>>`SELECT state FROM plaid_local_items WHERE id=${itemId}::uuid AND household_id=${hh}::uuid`;
   if(!i)refuse();
   if(i.state==='unlinking'||i.state==='removed')return{state:i.state};
   await outbox(tx).emit({event_type:'plaid.local_unlink_requested',aggregate_type:'plaid-local-item',aggregate_id:itemId,household_id:hh,payload:{version:1}});
-  await tx.$executeRaw`UPDATE plaid_local_items SET state='unlinking' WHERE id=${itemId}::uuid AND household_id=${hh}::uuid`;
-  return{state:'unlinking'};
+  await tx.$executeRaw`UPDATE plaid_local_items SET state='unlinking',history_after_removal=${history} WHERE id=${itemId}::uuid AND household_id=${hh}::uuid`;
+  return{state:'unlinking',history};
  });
 }
 /** Owner reconnect (update-mode) request: schedules a fresh provider read. It cannot
@@ -299,12 +309,12 @@ export async function readLocalPlaidConnections(db:Database,hh:string){
   const actor=currentActor();if(actor?.type!=='user')refuse();
   const [o]=await tx.$queryRaw<Array<{ok:boolean}>>`SELECT EXISTS(SELECT 1 FROM household_users h JOIN users u ON u.id=h.user_id WHERE h.household_id=${hh}::uuid AND h.user_id=${actor.userId}::uuid AND h.role='owner' AND u.status='active') AS ok`;
   if(!o?.ok)refuse();
-  const items=await tx.$queryRaw<Array<{id:string;state:string;status_changed_at:Date;last_outcome:string;refresh_requested:boolean}>>`
-   SELECT i.id::text,i.state,i.status_changed_at,c.last_outcome,c.refresh_requested FROM plaid_local_items i JOIN plaid_local_cursors c ON c.id=i.id AND c.household_id=i.household_id
+  const items=await tx.$queryRaw<Array<{id:string;state:string;status_changed_at:Date;last_outcome:string;refresh_requested:boolean;history_after_removal:string}>>`
+   SELECT i.id::text,i.state,i.status_changed_at,c.last_outcome,c.refresh_requested,i.history_after_removal FROM plaid_local_items i JOIN plaid_local_cursors c ON c.id=i.id AND c.household_id=i.household_id
    WHERE i.household_id=${hh}::uuid ORDER BY i.created_at,i.id LIMIT 20`;
   const accounts=await tx.$queryRaw<Array<{id:string;item_id:string;name:string;kind:string;current_cents:bigint|null;available_cents:bigint|null}>>`
    SELECT id::text,item_id::text,name,kind,current_cents,available_cents FROM plaid_local_accounts WHERE household_id=${hh}::uuid ORDER BY item_id,name,id LIMIT 200`;
-  return items.map(i=>({id:i.id,state:i.state,statusChangedAt:i.status_changed_at,lastOutcome:i.last_outcome,refreshRequested:i.refresh_requested,
+  return items.map(i=>({id:i.id,state:i.state,statusChangedAt:i.status_changed_at,lastOutcome:i.last_outcome,refreshRequested:i.refresh_requested,historyAfterRemoval:i.history_after_removal as 'delete'|'retain',
    accounts:accounts.filter(a=>a.item_id===i.id).map(a=>({id:a.id,name:a.name,kind:a.kind,currentCents:a.current_cents===null?null:Number(a.current_cents),availableCents:a.available_cents===null?null:Number(a.available_cents)}))}));
  });
 }

@@ -206,6 +206,13 @@ describe('database guards hold without the TypeScript pre-checks',()=>{
   await expect(as(g,r.token,async tx=>{await tx.$executeRaw`UPDATE plaid_local_items SET state='removed',removal_evidence='provider-acknowledged' WHERE id=${g.item}::uuid`;await tx.$executeRaw`DELETE FROM plaid_local_credentials WHERE id=${g.item}::uuid`;})).rejects.toThrow(refused);
   expect(await state(f.item)).toBe('unlinking');expect(await state(g.item)).toBe('removal-indeterminate');
  });
+ it('a removal that the owner asked to delete history for cannot commit with history left behind',async()=>{const f=await connected(),a=account();
+  await runLocalPlaidSync(db,f.hh,f.item,f.keyring,bank(f.token,new Map([[null,page({accounts:[{accountId:a,name:'PUBLIC Checking',kind:'depository',currentCents:1,availableCents:1}],added:[txn(a,-5)],nextCursor:'d1'})]])));
+  await runAsUser(f.owner,()=>requestLocalPlaidUnlink(appDb,f.hh,f.item));const c=(await claimLocalPlaidOperation(db,f.hh,f.item,'remove'))!;
+  await expect(as(f,c.token,async tx=>{await tx.$executeRaw`UPDATE plaid_local_items SET state='removed',removal_evidence='provider-acknowledged' WHERE id=${f.item}::uuid`;
+   await tx.$executeRaw`DELETE FROM plaid_local_credentials WHERE id=${f.item}::uuid`;})).rejects.toThrow('commit incomplete');
+  expect(await state(f.item)).toBe('unlinking');expect(await admin.plaidLocalTransaction.count({where:{itemId:f.item}})).toBe(1);
+ });
  it('rotation must move custody and Item revision together by exactly one',async()=>{const f=await connected();const c=(await claimLocalPlaidOperation(db,f.hh,f.item,'rotate'))!;
   await expect(as(f,c.token,tx=>tx.$executeRaw`UPDATE plaid_local_items SET credential_revision=3 WHERE id=${f.item}::uuid`)).rejects.toThrow(refused);
   await expect(as(f,c.token,tx=>tx.$executeRaw`UPDATE plaid_local_items SET credential_revision=2 WHERE id=${f.item}::uuid`)).rejects.toThrow('commit incomplete');
@@ -251,7 +258,7 @@ describe('unlink, removal and reconciliation',()=>{
   await runLocalPlaidSync(db,f.hh,f.item,f.keyring,bank(f.token,new Map([[null,page({accounts:[{accountId:a,name:'PUBLIC Checking',kind:'depository',currentCents:1,availableCents:1}],added:[txn(a,-5)],nextCursor:'u1'})]])));
   const inflight=(await claimLocalPlaidOperation(db,f.hh,f.item,'sync'))!;
   await expect(requestLocalPlaidUnlink(appDb,f.hh,f.item)).rejects.toThrow(refused);
-  expect(await runAsUser(f.owner,()=>requestLocalPlaidUnlink(appDb,f.hh,f.item))).toEqual({state:'unlinking'});
+  expect(await runAsUser(f.owner,()=>requestLocalPlaidUnlink(appDb,f.hh,f.item))).toEqual({state:'unlinking',history:'delete'});
   await expect(commitLocalPlaidSync(db,inflight,[page({nextCursor:'u2'})])).rejects.toThrow(refused);
   expect(await claimLocalPlaidOperation(db,f.hh,f.item,'sync')).toBeNull();
   let removals=0;expect(await runLocalPlaidRemoval(db,f.hh,f.item,f.keyring,{remove:async t=>{removals++;expect(t).toBe(f.token);}})).toEqual({status:'recorded',state:'removed',evidence:'provider-acknowledged'});
@@ -259,9 +266,35 @@ describe('unlink, removal and reconciliation',()=>{
   expect(await admin.plaidLocalCredential.count({where:{id:f.item}})).toBe(0);
   expect(await admin.auditLog.count({where:{householdId:f.hh,action:'plaid_local_credentials.delete'}})).toBe(1);
   expect(await admin.outboxEvent.count({where:{aggregateId:f.item,eventType:{in:['plaid.local_unlink_requested','plaid.local_item_removed']}}})).toBe(2);
-  // Derived records are retained pending the unapproved product retention decision.
-  expect(await admin.plaidLocalTransaction.count({where:{itemId:f.item}})).toBe(1);
+  // Default owner choice at unlink is to delete imported history once removal is established.
+  expect(await admin.plaidLocalTransaction.count({where:{itemId:f.item}})).toBe(0);
+  expect(await admin.plaidLocalAccount.count({where:{itemId:f.item}})).toBe(0);
   expect(await runLocalPlaidRemoval(db,f.hh,f.item,f.keyring,{remove:async()=>{removals++;}})).toEqual({status:'not-claimable'});expect(removals).toBe(1);
+ });
+ it('the owner chooses whether imported history survives disconnect; an unknown outcome keeps it until reconciled',async()=>{
+  const seed=async(f:Awaited<ReturnType<typeof connected>>)=>{const a=account();await runLocalPlaidSync(db,f.hh,f.item,f.keyring,bank(f.token,new Map([[null,page({accounts:[{accountId:a,name:'PUBLIC Checking',kind:'depository',currentCents:1,availableCents:1}],added:[txn(a,-5),txn(a,-6)],nextCursor:'h1'})]])));};
+  const kept=await connected();await seed(kept);
+  expect(await runAsUser(kept.owner,()=>requestLocalPlaidUnlink(appDb,kept.hh,kept.item,'retain'))).toEqual({state:'unlinking',history:'retain'});
+  await runLocalPlaidRemoval(db,kept.hh,kept.item,kept.keyring,{remove:async()=>undefined});
+  expect(await admin.plaidLocalTransaction.count({where:{itemId:kept.item}})).toBe(2);
+  expect(await admin.plaidLocalCredential.count({where:{id:kept.item}})).toBe(0);
+  const unknown=await connected();await seed(unknown);
+  await runAsUser(unknown.owner,()=>requestLocalPlaidUnlink(appDb,unknown.hh,unknown.item));
+  await runLocalPlaidRemoval(db,unknown.hh,unknown.item,unknown.keyring,{remove:async()=>{throw new Error('timeout');}});
+  expect(await admin.plaidLocalTransaction.count({where:{itemId:unknown.item}})).toBe(2);
+  await runLocalPlaidReconcile(db,unknown.hh,unknown.item,unknown.keyring,{status:async()=>{throw new LocalPlaidProviderSignal('item-not-found');}});
+  expect(await admin.plaidLocalTransaction.count({where:{itemId:unknown.item}})).toBe(0);
+  expect(await admin.plaidLocalAccount.count({where:{itemId:unknown.item}})).toBe(0);
+  // Only the owner's unlink request sets the choice; the runtime cannot flip it and cannot
+  // delete history without an established removal under its lease.
+  const g=await connected();await seed(g);
+  await expect(runAsUser(g.owner,()=>appDb.withHousehold(g.hh,tx=>tx.$executeRaw`UPDATE plaid_local_items SET history_after_removal='retain' WHERE id=${g.item}::uuid`))).rejects.toThrow();
+  await expect(db.withHousehold(g.hh,tx=>tx.$executeRaw`DELETE FROM plaid_local_accounts WHERE item_id=${g.item}::uuid`)).rejects.toThrow();
+  await runAsUser(g.owner,()=>requestLocalPlaidUnlink(appDb,g.hh,g.item,'retain'));
+  const c=(await claimLocalPlaidOperation(db,g.hh,g.item,'remove'))!;
+  await expect(db.withHousehold(g.hh,async tx=>{await tx.$executeRaw`SELECT set_config('request.plaid_op',${c.token},true)`;await tx.$executeRaw`UPDATE plaid_local_items SET history_after_removal='delete' WHERE id=${g.item}::uuid`;})).rejects.toThrow('permission denied'); // no column grant at all
+  await expect(db.withHousehold(g.hh,async tx=>{await tx.$executeRaw`SELECT set_config('request.plaid_op',${c.token},true)`;await tx.$executeRaw`DELETE FROM plaid_local_transactions WHERE item_id=${g.item}::uuid`;})).rejects.toThrow(refused);
+  await expect(runAsUser(g.owner,()=>requestLocalPlaidUnlink(appDb,g.hh,g.item,'maybe' as 'delete'))).rejects.toThrow(refused);
  });
  it('an unknown removal outcome keeps custody, is never retried automatically, and reconciles only on established absence',async()=>{const f=await connected();
   await runAsUser(f.owner,()=>requestLocalPlaidUnlink(appDb,f.hh,f.item));let removals=0;
@@ -270,7 +303,7 @@ describe('unlink, removal and reconciliation',()=>{
   expect(await runLocalPlaidRemoval(db,f.hh,f.item,f.keyring,{remove:async()=>{removals++;}})).toEqual({status:'not-claimable'});expect(removals).toBe(1);
   expect(await runLocalPlaidReconcile(db,f.hh,f.item,f.keyring,{status:async()=>'present'})).toEqual({status:'recorded',state:'removal-indeterminate'});
   expect((await cursorOf(f.item)).lastOutcome).toBe('still-present');
-  expect(await runAsUser(f.owner,()=>requestLocalPlaidUnlink(appDb,f.hh,f.item))).toEqual({state:'unlinking'});
+  expect(await runAsUser(f.owner,()=>requestLocalPlaidUnlink(appDb,f.hh,f.item))).toEqual({state:'unlinking',history:'delete'});
   expect(await runLocalPlaidRemoval(db,f.hh,f.item,f.keyring,{remove:async()=>{removals++;throw new LocalPlaidProviderSignal('item-not-found');}})).toEqual({status:'recorded',state:'removed',evidence:'provider-invalid'});
   expect(removals).toBe(2);expect(await admin.plaidLocalCredential.count({where:{id:f.item}})).toBe(0);
   const g=await connected();await runAsUser(g.owner,()=>requestLocalPlaidUnlink(appDb,g.hh,g.item));await runLocalPlaidRemoval(db,g.hh,g.item,g.keyring,{remove:async()=>{throw new Error('?');}});

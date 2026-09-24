@@ -1098,6 +1098,7 @@ model PlaidLocalItem {
  state String @default("active")
  createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz
  removalEvidence String? @map("removal_evidence")
+ historyAfterRemoval String @default("delete") @map("history_after_removal")
  statusChangedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("status_changed_at") @db.Timestamptz
  @@unique([id,householdId])
  @@index([householdId,id],map:"plaid_item_scope")
