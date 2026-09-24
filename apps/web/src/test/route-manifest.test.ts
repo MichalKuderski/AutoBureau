@@ -51,7 +51,8 @@ describe("the route manifest reflects the real src/app tree", () => {
 
   it("excludes API route handlers — a bare route.ts is not a page", () => {
     expect(routes.some((r) => r.startsWith("/v1"))).toBe(false);
-    expect(routes.some((r) => r.startsWith("/auth/"))).toBe(false);
+    // /auth/* holds route handlers; the recovery landing page is the one deliberate page there.
+    expect(routes.filter((r) => r.startsWith("/auth/"))).toEqual(["/auth/recovery"]);
   });
 });
 

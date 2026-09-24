@@ -10,7 +10,7 @@ import { appendCookies, clearedSessionCookies } from "./session";
 const start = z.object({ email: z.string().email().max(320) }).strict();
 const finish = z.object({ tokenHash: z.string().min(1).max(512).regex(/^[A-Za-z0-9_-]+$/), password: z.string().min(1).max(1024),
   factorId: z.string().uuid().optional(), code: z.string().regex(/^\d{6}$/).optional(),
-}).strict().refine(v => Boolean(v.factorId) === Boolean(v.code));
+}).strict().refine(v => !v.factorId || Boolean(v.code));
 export interface RecoveryPorts {
   verifyJwt(token: string): Promise<VerifiedPrincipal>;
   /** Shared durable rate limiter BEFORE provider; initiation uses normalized email,
@@ -56,11 +56,16 @@ export function createRecoveryController(config: AuthConfig, provider: AccountPr
         const factors = await provider.factors(tokens.accessToken);
         if (clock() - factorReadAt > 60) return refuse();
         if (factors.userId !== principal.userId) return refuse();
-        if (factors.factors.some(f => f.status === "verified")) {
-          if (!value.factorId || !value.code || !factors.factors.some(f => f.id === value.factorId!.toLowerCase() && f.status === "verified")) return refuse();
-          const challenge = await provider.challenge(tokens.accessToken, value.factorId), at = clock();
+        // A recovery link cannot know the factor ID before its one-use token is redeemed, so a
+        // code alone selects the account's SINGLE verified factor. Several verified factors
+        // still require an explicit ID; no code, a wrong code or no factor still refuses.
+        const verifiedNow = factors.factors.filter(f => f.status === "verified");
+        const factorId = value.factorId?.toLowerCase() ?? (verifiedNow.length === 1 ? verifiedNow[0]!.id : undefined);
+        if (verifiedNow.length > 0) {
+          if (!factorId || !value.code || !verifiedNow.some(f => f.id === factorId)) return refuse();
+          const challenge = await provider.challenge(tokens.accessToken, factorId), at = clock();
           if (challenge.expiresAt <= at || challenge.expiresAt > at + 300) return refuse();
-          tokens = await provider.verify(tokens.accessToken, value.factorId, challenge.id, value.code);
+          tokens = await provider.verify(tokens.accessToken, factorId, challenge.id, value.code);
           const elevated = await ports.verifyJwt(tokens.accessToken);
           if (elevated.userId !== principal.userId || elevated.assurance?.sessionId !== principal.assurance.sessionId || elevated.assurance.level !== "aal2"
             || elevated.expiresAt <= clock() || !elevated.assurance.methods.some(m => m.method === "totp" && m.timestamp >= at - 1 && m.timestamp <= clock())) return refuse();
@@ -72,10 +77,11 @@ export function createRecoveryController(config: AuthConfig, provider: AccountPr
         const currentFactors = await provider.factors(tokens.accessToken);
         if (currentFactors.userId !== principal.userId) return refuse();
         const verified = currentFactors.factors.filter(f => f.status === "verified");
-        if (value.factorId) {
-          if (!verified.some(f => f.id === value.factorId!.toLowerCase())) return refuse();
+        const usedFactor = verifiedNow.length > 0 ? factorId : undefined;
+        if (usedFactor) {
+          if (!verified.some(f => f.id === usedFactor)) return refuse();
         } else if (verified.length > 0) return refuse();
-        const evidence = accountOperationEvidence(principal, currentFactors, checkedAt, value.factorId?.toLowerCase());
+        const evidence = accountOperationEvidence(principal, currentFactors, checkedAt, usedFactor);
         authorizeAccountOperation("recovery", evidence, false, clock());
         await ports.admit(principal, "commit");
         await ports.audit(principal, "attempted", evidence);

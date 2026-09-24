@@ -54,6 +54,20 @@ describe("unmounted server recovery", () => {
     const f = setup(true); expect((await f.controller.complete(request(), { ...input, factorId: factor, code: "123456" })).status).toBe(200);
     expect(f.provider.updatePassword).toHaveBeenCalledWith("elevated", input.password); expect(f.provider.remove).not.toHaveBeenCalled(); expect(f.provider.enroll).not.toHaveBeenCalled();
   });
+  it("a code alone selects the single verified factor (a recovery link cannot know the factor ID)", async () => {
+    const f = setup(true); expect((await f.controller.complete(request(), { ...input, code: "123456" })).status).toBe(200);
+    expect(f.provider.challenge).toHaveBeenCalledWith("recovery", factor);
+    expect(f.provider.updatePassword).toHaveBeenCalledWith("elevated", input.password);
+  });
+  it.each(["two-verified-factors","no-factor-with-code","factor-without-code","wrong-code"] as const)("refuses %s without changing the password", async control => {
+    const f = setup(control !== "no-factor-with-code");
+    if (control === "two-verified-factors") vi.mocked(f.provider.factors).mockResolvedValue({ userId: user, factors: [
+      { id: factor, factor_type: "totp", status: "verified" }, { id: session, factor_type: "totp", status: "verified" }] });
+    if (control === "wrong-code") vi.mocked(f.provider.verify).mockRejectedValue(new ProviderError("invalid-code", "safe"));
+    const body = control === "factor-without-code" ? { ...input, factorId: factor } : { ...input, code: "123456" };
+    expect((await f.controller.complete(request(), body)).status).toBe(403);
+    expect(f.provider.updatePassword).not.toHaveBeenCalled();
+  });
   it.each(["csrf","foreign-origin","get","schema","weak-password","policy-unavailable","limit","bad-jwt","stale-token","expired","wrong-user","account-fenced","audit-unavailable"])("refuses %s before password mutation", async control => {
     const f = setup(); let req = request();
     if (control === "csrf") req.headers.delete("x-autobureau-request");

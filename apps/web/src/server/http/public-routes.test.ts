@@ -19,6 +19,7 @@ describe("A4 · the public surface is exactly this and nothing more", () => {
         // it is only ever reached by following a link from an inbox, with no session and,
         // often, on a different device from the one that signed up.
         "/auth/confirm",
+        "/auth/recovery",
         "/auth/refresh",
         "/forgot-password",
         "/icon.svg",

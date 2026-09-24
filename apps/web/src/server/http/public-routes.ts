@@ -9,7 +9,12 @@
  */
 
 /** D3 verbatim: the pages a signed-out person is meant to reach. */
-const PUBLIC_PAGES = ["/", "/sign-in", "/sign-up", "/forgot-password"] as const;
+const PUBLIC_PAGES = ["/", "/sign-in", "/sign-up", "/forgot-password",
+  // The recovery link's landing page. Reached from an inbox with no session; the one-use
+  // token hash in its URL is the credential, redeemed only by the loopback-guarded
+  // completion endpoint. The page itself grants nothing and renders "unavailable" unless
+  // the synthetic local account mount is active.
+  "/auth/recovery"] as const;
 
 /**
  * The endpoints that establish or repair a session.
