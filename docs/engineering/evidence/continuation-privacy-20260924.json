@@ -1,0 +1,504 @@
+{
+ "scope": "LOCAL ONLY. Not hosted, provider, stable-staging, legal or launch evidence.",
+ "candidate": "fb6bd051fe83392530d8679d68edb2f7a5777828",
+ "candidateTree": "8d740bdcef1a3fb648659dbd9d031d8c9f122f8b",
+ "upstreamBase": {
+  "commit": "57d079082e6a4b1854bab4d8f411300bab434f4f",
+  "tree": "a5bac62ce2a6f0ef660b6b1fe5b8a9a7c9fa2b93",
+  "note": "Local git history was initialized over a byte-verified snapshot; local commit SHAs do not exist upstream. Map evidence by tree hash."
+ },
+ "allExitZero": true,
+ "counts": {
+  "unit": 2002,
+  "databaseIntegration": 367,
+  "httpIntegration": 495,
+  "integrationTotal": 862,
+  "controls": 206,
+  "guards": 7,
+  "scannerProof": 1,
+  "guardMutationsDetectedNotAtCandidate": 16
+ },
+ "items": [
+  {
+   "id": "LOCAL-INSTALL",
+   "requirement": "Frozen offline install with pinned lockfile",
+   "status": "PASS",
+   "candidate": "fb6bd051fe83392530d8679d68edb2f7a5777828",
+   "tree": "8d740bdcef1a3fb648659dbd9d031d8c9f122f8b",
+   "command": "pnpm install --offline --frozen-lockfile --store-dir /private/tmp/pellum-v2-review-20260920/pnpm-store",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) one loopback evidence cluster, database and all application roles dropped and recreated before each run (SysV budget refuses further initdb); Docker 29.7.2 pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-24T03:41:52Z",
+   "result": "exit 0",
+   "artifact": "cand-fb6bd05/frozen.log",
+   "artifactSha256": "de7a3a0fb5f449c6639413175bdab58b4a0664f0b8f510f9ee7dd7902d013faf",
+   "limitations": "Offline store populated by earlier sessions; integrity of store contents relies on pnpm verification"
+  },
+  {
+   "id": "LOCAL-BUILD",
+   "requirement": "Full build",
+   "status": "PASS",
+   "candidate": "fb6bd051fe83392530d8679d68edb2f7a5777828",
+   "tree": "8d740bdcef1a3fb648659dbd9d031d8c9f122f8b",
+   "command": "pnpm exec turbo run build --force",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) one loopback evidence cluster, database and all application roles dropped and recreated before each run (SysV budget refuses further initdb); Docker 29.7.2 pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-24T03:42:41Z",
+   "result": "exit 0",
+   "artifact": "cand-fb6bd05/build.log",
+   "artifactSha256": "a52962e3cd14c09e9693c3d98604b7437320e03919a731ca6e6246ffee1c06cc",
+   "limitations": "Local macOS build; hosted build not exercised"
+  },
+  {
+   "id": "LOCAL-TYPECHECK",
+   "requirement": "Typecheck (turbo)",
+   "status": "PASS",
+   "candidate": "fb6bd051fe83392530d8679d68edb2f7a5777828",
+   "tree": "8d740bdcef1a3fb648659dbd9d031d8c9f122f8b",
+   "command": "pnpm exec turbo run typecheck --force",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) one loopback evidence cluster, database and all application roles dropped and recreated before each run (SysV budget refuses further initdb); Docker 29.7.2 pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-24T03:43:00Z",
+   "result": "exit 0",
+   "artifact": "cand-fb6bd05/typecheck.log",
+   "artifactSha256": "b39b4d3b5551db861ecd1b0eb2b93320164f2313ba4bc00a2d8389a01b3f3c84",
+   "limitations": "Scripts/tests outside package tsconfigs are not covered by this step"
+  },
+  {
+   "id": "LOCAL-LINT",
+   "requirement": "Lint",
+   "status": "PASS",
+   "candidate": "fb6bd051fe83392530d8679d68edb2f7a5777828",
+   "tree": "8d740bdcef1a3fb648659dbd9d031d8c9f122f8b",
+   "command": "pnpm lint",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) one loopback evidence cluster, database and all application roles dropped and recreated before each run (SysV budget refuses further initdb); Docker 29.7.2 pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-24T03:43:13Z",
+   "result": "exit 0",
+   "artifact": "cand-fb6bd05/lint.log",
+   "artifactSha256": "a472412173795d68b7133dc0c014d7240001bd27a42b66c9d265f75fef3b01e8",
+   "limitations": "0 errors; 13 pre-existing no-console warnings"
+  },
+  {
+   "id": "LOCAL-UNIT",
+   "requirement": "Full unit suite",
+   "status": "PASS",
+   "candidate": "fb6bd051fe83392530d8679d68edb2f7a5777828",
+   "tree": "8d740bdcef1a3fb648659dbd9d031d8c9f122f8b",
+   "command": "pnpm exec turbo run test --force",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) one loopback evidence cluster, database and all application roles dropped and recreated before each run (SysV budget refuses further initdb); Docker 29.7.2 pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-24T03:44:05Z",
+   "result": "2002 passed, 0 failed",
+   "artifact": "cand-fb6bd05/unit.log",
+   "artifactSha256": "62e00b41840e70b73f9760770f0b1a8fb9018cec19be829cc5a2d17ca72c1489",
+   "limitations": ""
+  },
+  {
+   "id": "LOCAL-CONTROLS",
+   "requirement": "Local control tests (scripts/*.test.mjs)",
+   "status": "PASS",
+   "candidate": "fb6bd051fe83392530d8679d68edb2f7a5777828",
+   "tree": "8d740bdcef1a3fb648659dbd9d031d8c9f122f8b",
+   "command": "node --test scripts/*.test.mjs",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) one loopback evidence cluster, database and all application roles dropped and recreated before each run (SysV budget refuses further initdb); Docker 29.7.2 pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-24T03:44:07Z",
+   "result": "206 passed, 0 failed",
+   "artifact": "cand-fb6bd05/controls.log",
+   "artifactSha256": "1d37dfe18653e61967d7a3d7ddfa05381e559739193b8a764cb17832a3a1fc6d",
+   "limitations": ""
+  },
+  {
+   "id": "LOCAL-GUARDS",
+   "requirement": "CI architecture guardrail steps",
+   "status": "PASS",
+   "candidate": "fb6bd051fe83392530d8679d68edb2f7a5777828",
+   "tree": "8d740bdcef1a3fb648659dbd9d031d8c9f122f8b",
+   "command": "node /private/tmp/claude-501/-Users-michalkuderski-Desktop-Pellum-current-source/60e4b5ed-8af3-43a7-8072-559bb123c399/scratchpad/guards.mjs",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) one loopback evidence cluster, database and all application roles dropped and recreated before each run (SysV budget refuses further initdb); Docker 29.7.2 pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-24T03:44:08Z",
+   "result": "exit 0",
+   "artifact": "cand-fb6bd05/guards.log",
+   "artifactSha256": "3f4cbc0632cbc9f168c2236e9955a37d255e391c867c0e612f6fa5f35eb0752c",
+   "limitations": "Runs the CI guardrails job steps locally"
+  },
+  {
+   "id": "DB-MIGRATE-FRESH",
+   "requirement": "Fresh install of the full migration chain",
+   "status": "PASS",
+   "candidate": "fb6bd051fe83392530d8679d68edb2f7a5777828",
+   "tree": "8d740bdcef1a3fb648659dbd9d031d8c9f122f8b",
+   "command": "pnpm --filter @autobureau/db exec prisma migrate deploy",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) one loopback evidence cluster, database and all application roles dropped and recreated before each run (SysV budget refuses further initdb); Docker 29.7.2 pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-24T03:44:11Z",
+   "result": "exit 0",
+   "artifact": "cand-fb6bd05/integration-admin-migrate.log",
+   "artifactSha256": "e246162940b776688170eb5a480804d6f82c9d7f6d797483953b9deb9eaa8f70",
+   "limitations": "PostgreSQL 18 only in this step; PG16 in upgrade evidence; PG17 not available locally"
+  },
+  {
+   "id": "DB-INTEGRATION",
+   "requirement": "Restricted-role PostgreSQL/RLS integration suite",
+   "status": "PASS",
+   "candidate": "fb6bd051fe83392530d8679d68edb2f7a5777828",
+   "tree": "8d740bdcef1a3fb648659dbd9d031d8c9f122f8b",
+   "command": "pnpm --filter @autobureau/db test:integration",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) one loopback evidence cluster, database and all application roles dropped and recreated before each run (SysV budget refuses further initdb); Docker 29.7.2 pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-24T03:44:59Z",
+   "result": "367 passed, 0 failed",
+   "artifact": "cand-fb6bd05/integration-db.log",
+   "artifactSha256": "922f0dd2319893a518dc3271c6c75c4dc2407c1bd14dd8a32247b72f4ffdb7ec",
+   "limitations": "Assertions run as app_user and dedicated runtime roles; admin only seeds"
+  },
+  {
+   "id": "HTTP-INTEGRATION",
+   "requirement": "Restricted-role HTTP integration suite",
+   "status": "PASS",
+   "candidate": "fb6bd051fe83392530d8679d68edb2f7a5777828",
+   "tree": "8d740bdcef1a3fb648659dbd9d031d8c9f122f8b",
+   "command": "pnpm --filter @autobureau/web test:integration",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) one loopback evidence cluster, database and all application roles dropped and recreated before each run (SysV budget refuses further initdb); Docker 29.7.2 pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-24T03:45:44Z",
+   "result": "495 passed, 0 failed",
+   "artifact": "cand-fb6bd05/integration-web.log",
+   "artifactSha256": "1acfdc53b252fa00ebd39e192df9b572370ba1a47f54ef05b3ba916d6fbf7e26",
+   "limitations": "Local synthetic issuer/JWKS; not hosted auth"
+  },
+  {
+   "id": "DB-POSTURE",
+   "requirement": "Migration checksums, RLS, policies, roles, grants, triggers readback",
+   "status": "PASS",
+   "candidate": "fb6bd051fe83392530d8679d68edb2f7a5777828",
+   "tree": "8d740bdcef1a3fb648659dbd9d031d8c9f122f8b",
+   "command": "python3 /private/tmp/claude-501/-Users-michalkuderski-Desktop-Pellum-current-source/60e4b5ed-8af3-43a7-8072-559bb123c399/scratchpad/readback.py /private/tmp/claude-501/-Users-michalkuderski-Desktop-Pellum-current-source/60e4b5ed-8af3-43a7-8072-559bb123c399/scratchpad/ev/cand-fb6bd05/posture.json /private/tmp/claude-501/-Users-michalkuderski-Desktop-Pellum-current-source/60e4b5ed-8af3-43a7-8072-559bb123c399/scratchpad/posture.sql",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) one loopback evidence cluster, database and all application roles dropped and recreated before each run (SysV budget refuses further initdb); Docker 29.7.2 pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-24T03:45:45Z",
+   "result": "39 checksum-matching migrations, 47 forced-RLS tables, 67 policies, SECURITY DEFINER [], runtime-owned tables [], memberships [], runtime schema CREATE [], 44 guards pin pg_temp last, TEST activation False",
+   "artifact": "cand-fb6bd05/integration-admin-readback.log",
+   "artifactSha256": "176ecf66c12460c39c0096532010bd3b5e58d777e4b7d965b4ad876f619424e8",
+   "limitations": "Local fresh cluster; hosted readback is a separate gate"
+  },
+  {
+   "id": "SCANNER-PROOF",
+   "requirement": "Composed real-ClamAV document lifecycle proof",
+   "status": "PASS",
+   "candidate": "fb6bd051fe83392530d8679d68edb2f7a5777828",
+   "tree": "8d740bdcef1a3fb648659dbd9d031d8c9f122f8b",
+   "command": "pnpm --filter @autobureau/db exec vitest run --config vitest.document-proof.config.ts",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) one loopback evidence cluster, database and all application roles dropped and recreated before each run (SysV budget refuses further initdb); Docker 29.7.2 pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-24T03:46:17Z",
+   "result": "exit 0",
+   "artifact": "cand-fb6bd05/integration-local-scanner-proof.log",
+   "artifactSha256": "51cb9e80c31d57765865c0fbc4c080b5610af92a195e1d3a8b63bbd468d20c6f",
+   "limitations": "Isolated local run; historical contention-sensitive queued failure retained as unresolved reliability observation; not hosted Linux"
+  },
+  {
+   "id": "GUARD-MUTATIONS",
+   "requirement": "Selected security mutations of Plaid and document-cancellation guards are detected",
+   "status": "PARTIAL",
+   "candidate": null,
+   "tree": null,
+   "command": "plaid-mutations.py (fresh DB per mutation; serial suites)",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) one loopback evidence cluster, database and all application roles dropped and recreated before each run (SysV budget refuses further initdb); Docker 29.7.2 pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": null,
+   "result": "16/16 detected by real assertion failures with 0 skipped, but NOT at this candidate: 1dc268d (dirty worktree); 535e0b3 (dirty worktree); 9f866d7 (clean); c81c570 (dirty worktree)",
+   "artifact": "runs.jsonl (integration-mutation-plaid-*)",
+   "artifactSha256": "915ae4cb01b889cf24285de0130179de2662453966a53511e9e78b8139b40ffc",
+   "runs": [
+    {
+     "mutation": "data-without-lease",
+     "head": "1dc268df51143d95562105899c96ce3615f49ba7",
+     "dirtyWorktree": true,
+     "suiteExit": 1,
+     "utc": "2026-09-23T21:30:03Z",
+     "logSha256": "63f0beb94be03240c800428ccae18ed62c5f751bf9e7b5afacd350f37e8a17db"
+    },
+    {
+     "mutation": "commit-without-held-token",
+     "head": "1dc268df51143d95562105899c96ce3615f49ba7",
+     "dirtyWorktree": true,
+     "suiteExit": 1,
+     "utc": "2026-09-23T21:30:17Z",
+     "logSha256": "ff81beae4b9ceeca1606a72f48c9e52a0658787481e8f6ee07b7c101d05dda58"
+    },
+    {
+     "mutation": "removed-keeps-custody",
+     "head": "1dc268df51143d95562105899c96ce3615f49ba7",
+     "dirtyWorktree": true,
+     "suiteExit": 1,
+     "utc": "2026-09-23T21:30:31Z",
+     "logSha256": "6e738566ef6462bc4880cd42f2c9b7ba9cf20fbe87b277553a0466647c1d718e"
+    },
+    {
+     "mutation": "route-enumeration",
+     "head": "1dc268df51143d95562105899c96ce3615f49ba7",
+     "dirtyWorktree": true,
+     "suiteExit": 1,
+     "utc": "2026-09-23T21:30:44Z",
+     "logSha256": "bffcdd1c35e2b587ef849ac2890b6875dc33ad875741e8d0f0ed6528722360fd"
+    },
+    {
+     "mutation": "reconcile-claims-acknowledgement",
+     "head": "1dc268df51143d95562105899c96ce3615f49ba7",
+     "dirtyWorktree": true,
+     "suiteExit": 1,
+     "utc": "2026-09-23T21:31:00Z",
+     "logSha256": "9e16fb04b0125e2b516eb3ba8e9a01d144608c100aefac416a95ba40f67e3132"
+    },
+    {
+     "mutation": "webhook-after-watermark",
+     "head": "1dc268df51143d95562105899c96ce3615f49ba7",
+     "dirtyWorktree": true,
+     "suiteExit": 1,
+     "utc": "2026-09-23T21:31:16Z",
+     "logSha256": "c41cbe06ba243df6d3330d01bf73004a3f2f08025a63fd4c41198111c24b5e19"
+    },
+    {
+     "mutation": "sync-lease-takeover",
+     "head": "1dc268df51143d95562105899c96ce3615f49ba7",
+     "dirtyWorktree": true,
+     "suiteExit": 1,
+     "utc": "2026-09-23T21:31:31Z",
+     "logSha256": "468ebc5a6ca5059ea5de1f8b93be571f009d172b3e7e0dd3f79748ff84c15880"
+    },
+    {
+     "mutation": "custody-delete-any-state",
+     "head": "1dc268df51143d95562105899c96ce3615f49ba7",
+     "dirtyWorktree": true,
+     "suiteExit": 1,
+     "utc": "2026-09-23T21:31:45Z",
+     "logSha256": "228b7c23d2d5c19058d29acd79b23e5aa23a1340ab8e260d8f06e75776c9d747"
+    },
+    {
+     "mutation": "rotation-skips-revision",
+     "head": "1dc268df51143d95562105899c96ce3615f49ba7",
+     "dirtyWorktree": true,
+     "suiteExit": 1,
+     "utc": "2026-09-23T21:31:59Z",
+     "logSha256": "88996299db18498bceb34ea3ebeb5e5e681a006435c379d6344605d88da74a0f"
+    },
+    {
+     "mutation": "fence-ignored-for-sync",
+     "head": "1dc268df51143d95562105899c96ce3615f49ba7",
+     "dirtyWorktree": true,
+     "suiteExit": 1,
+     "utc": "2026-09-23T21:32:13Z",
+     "logSha256": "5f7aa40c0aea20419be74442a398d4e62319a8d9f4b330b31362197b174ba152"
+    },
+    {
+     "mutation": "suspension-fence-removed",
+     "head": "c81c570f8befcd55a765c17fdfd284e730ae0f7b",
+     "dirtyWorktree": true,
+     "suiteExit": 1,
+     "utc": "2026-09-24T02:43:49Z",
+     "logSha256": "3857c966ff5c2ad00137bceef1c0c1cc8a6127c333f9071406a48c960e78c9c5"
+    },
+    {
+     "mutation": "history-deleted-before-removal",
+     "head": "535e0b385bffa113625f6edf5f1ada8625a91d0f",
+     "dirtyWorktree": true,
+     "suiteExit": 1,
+     "utc": "2026-09-24T03:13:24Z",
+     "logSha256": "4bc076053e20a3f7dcfdee409f0a84670b982e8839ee178112406df25890732c"
+    },
+    {
+     "mutation": "removed-keeps-chosen-history",
+     "head": "535e0b385bffa113625f6edf5f1ada8625a91d0f",
+     "dirtyWorktree": true,
+     "suiteExit": 1,
+     "utc": "2026-09-24T03:14:20Z",
+     "logSha256": "c494c6c41f0aa99bf7b6bacc554940d6040a6a7dc3fb6d4c62a922dff151b1d4"
+    },
+    {
+     "mutation": "owner-cancels-reserved-work",
+     "head": "9f866d72ba62a399a9b2760f615da232bfc29a14",
+     "dirtyWorktree": false,
+     "suiteExit": 1,
+     "utc": "2026-09-24T03:36:16Z",
+     "logSha256": "372b24bafdb3adb8c2474a7f37de22ab7820aa91acfc04b56080da0b3d0d9e82"
+    },
+    {
+     "mutation": "owner-cancels-custody-under-started-work",
+     "head": "9f866d72ba62a399a9b2760f615da232bfc29a14",
+     "dirtyWorktree": false,
+     "suiteExit": 1,
+     "utc": "2026-09-24T03:36:26Z",
+     "logSha256": "a68ec137df98421a726df2a0067a4e3728f45461943f1c6d439deb77eb04aeec"
+    },
+    {
+     "mutation": "viewer-may-cancel",
+     "head": "9f866d72ba62a399a9b2760f615da232bfc29a14",
+     "dirtyWorktree": false,
+     "suiteExit": 1,
+     "utc": "2026-09-24T03:36:36Z",
+     "logSha256": "0c586bdc71c8d00ec78d0d6477b61541bcb37645b044bd45a7b7264ca4875f17"
+    }
+   ],
+   "limitations": "Could not be rerun at the candidate: the host SysV shared-memory budget refuses to start PostgreSQL. Targeted guard SQL for the 3 document mutations is unchanged from 9f866d7 to the candidate (only an ADR and a test-count pin changed). The previous receipt attributed 10/10 to 5bc8fe7 although the runs were recorded on a dirty 1dc268d worktree; corrected here."
+  },
+  {
+   "id": "EXPORT-COMPLETE-LOCAL",
+   "requirement": "User-accessible complete export: originals + JSONL + manifest, integrity-verified, bounded",
+   "status": "PASS (LOCAL SYNTHETIC)",
+   "candidate": "fb6bd05",
+   "result": "Covered by DB/HTTP integration and UI suites at the candidate; browser-verified on an earlier tree of the same feature (10a655a/535e0b3): archive 19 members, 17 categories, application/zip no-store",
+   "limitations": "Local synthetic vault mount only; no hosted object storage, KMS or retention; identifier values omitted by design (count only) pending the reviewed reveal boundary"
+  },
+  {
+   "id": "DELETION-WORKFLOW-LOCAL",
+   "requirement": "User deletion request, undo window, fence, manifest-bound erasure, honest status",
+   "status": "PASS (LOCAL); FINAL RECEIPT DISABLED",
+   "candidate": "fb6bd05",
+   "result": "Request/undo/status routes and UI; erasure stages incl. members/entitlements/idempotency; finalReceiptIssuable=false",
+   "limitations": "Provider (Supabase auth user, Stripe, Plaid, storage) and backup erasure unverified; household deletion is not account deletion; fenced household status is not visible from an account-level surface"
+  },
+  {
+   "id": "JOURNAL-RETIREMENT",
+   "requirement": "Bounded, hold-aware journal retirement",
+   "status": "NOT-IMPLEMENTED (BLOCKED BY ADR-019)",
+   "candidate": null,
+   "result": "Protected journals retained as suppression evidence",
+   "limitations": "ADR-019 forbids purges until independent authority and holds are approved"
+  },
+  {
+   "id": "ADR019-RESTORE-AUTHORITY",
+   "requirement": "Independent enrollment/restore authority",
+   "status": "NOT-IMPLEMENTED (EXTERNAL)",
+   "candidate": null,
+   "result": "Local verifier/checkpoint port only; activationAllowed:false; unknown subjects refused",
+   "limitations": "Requires a separately operated authority, provider selection and approved packet; not substitutable locally"
+  },
+  {
+   "id": "PLAID-ADMIN-SUSPENSION-RACE",
+   "requirement": "Suspension during in-flight sync cannot commit data",
+   "status": "PASS (LOCAL)",
+   "candidate": "fb6bd05",
+   "result": "Both orderings tested; mutation suspension-fence-removed detected (at c81c570, dirty worktree)",
+   "limitations": "Local DB only"
+  },
+  {
+   "id": "PLAID-DERIVED-RETENTION",
+   "requirement": "History retention after unlink encoded",
+   "status": "PASS (LOCAL); PRODUCT DEFAULT NEEDS PRD 21",
+   "candidate": "fb6bd05",
+   "result": "Owner choice delete (default)/retain; deferred commit check",
+   "limitations": "Default is an engineering privacy choice pending PRD change control"
+  },
+  {
+   "id": "PLAID-CONSENT-UX",
+   "requirement": "Consent, reconnect, disconnect UX",
+   "status": "PASS (LOCAL COMPONENT/HTTP)",
+   "candidate": "fb6bd05",
+   "result": "Owner-only, recent-auth for changes; connect disabled honestly",
+   "limitations": "No hosted Link token flow; no browser pass of this screen"
+  },
+  {
+   "id": "PLAID-OPERATIONAL-KEK",
+   "requirement": "Operational KMS custody",
+   "status": "NOT-IMPLEMENTED (SEAM ONLY)",
+   "candidate": "fb6bd05",
+   "result": "KMS-shaped seam with binding encryption context, fake-port tests",
+   "limitations": "No KMS SDK/key/IAM; envelope v2 needs credential-schema amendment; not KMS evidence"
+  },
+  {
+   "id": "PLAID-PROVIDER-SANDBOX",
+   "requirement": "Plaid Sandbox lifecycle",
+   "status": "BLOCKED-EXTERNAL",
+   "candidate": null,
+   "result": "Not run",
+   "limitations": "Needs operator authorization for provider writes"
+  },
+  {
+   "id": "DOC-CANCELLATION",
+   "requirement": "Owner/member cancellation of unstarted document work",
+   "status": "PASS (LOCAL)",
+   "candidate": "fb6bd05",
+   "result": "DB (restricted roles, race, fence), HTTP and UI tests at candidate",
+   "limitations": "No browser pass of the drawer control"
+  },
+  {
+   "id": "DOC-OLD-PERIOD",
+   "requirement": "Old-period result resolution",
+   "status": "BLOCKED-DECISION",
+   "candidate": null,
+   "result": "Fail-closed; owner resolution read exists",
+   "limitations": "Cross-period reuse needs PRD 21 policy"
+  },
+  {
+   "id": "REMINDER-GRACE-SCREENS",
+   "requirement": "Reminder and billing-grace screens",
+   "status": "NOT-IMPLEMENTED",
+   "candidate": null,
+   "result": "",
+   "limitations": ""
+  },
+  {
+   "id": "MFA-RECOVERY-BROWSER",
+   "requirement": "MFA/recovery browser lifecycle",
+   "status": "NOT-VERIFIED",
+   "candidate": null,
+   "result": "Controllers covered by HTTP integration only",
+   "limitations": "Local issuer lacks factor/recovery endpoints; not done"
+  },
+  {
+   "id": "A11Y-SCREEN-READER-XBROWSER",
+   "requirement": "Screen-reader and cross-browser passes",
+   "status": "NOT-VERIFIED",
+   "candidate": null,
+   "result": "Chromium keyboard/contrast/focus checks only",
+   "limitations": "No VoiceOver/NVDA, Safari or Firefox run"
+  },
+  {
+   "id": "STRIPE-TEST-PROVIDER",
+   "requirement": "Stripe TEST lifecycle with provider",
+   "status": "BLOCKED-EXTERNAL",
+   "candidate": null,
+   "result": "Not run",
+   "limitations": ""
+  },
+  {
+   "id": "DB-PG17-STAGING",
+   "requirement": "PG17 staging preflight and migration",
+   "status": "BLOCKED-EXTERNAL",
+   "candidate": null,
+   "result": "Not run",
+   "limitations": "No PG17 locally (download not authorized); no staging write authorization"
+  },
+  {
+   "id": "HOSTED-STAGING",
+   "requirement": "Exact-SHA hosted acceptance",
+   "status": "BLOCKED-EXTERNAL",
+   "candidate": null,
+   "result": "Not run",
+   "limitations": "No push/remote/deploy authorization"
+  },
+  {
+   "id": "SUPABASE-504",
+   "requirement": "Supabase 504 causality and credential containment",
+   "status": "BLOCKED-EXTERNAL",
+   "candidate": null,
+   "result": "Packet prepared, NOT SENT",
+   "limitations": "Provider correlation, historical token invalidation and OAuth revocation confirmation open"
+  },
+  {
+   "id": "LEGAL-OPERATOR",
+   "requirement": "Legal operator, jurisdiction, contacts, ToS/privacy, DPAs",
+   "status": "BLOCKED-EXTERNAL",
+   "candidate": null,
+   "result": "",
+   "limitations": ""
+  },
+  {
+   "id": "SECURITY-REVIEW",
+   "requirement": "External security review, incident response/on-call, backup/restore drills",
+   "status": "BLOCKED-EXTERNAL",
+   "candidate": null,
+   "result": "",
+   "limitations": ""
+  }
+ ],
+ "decision": "NO-GO",
+ "decisionBasis": "Local exact-candidate verification passes (13/13 steps). Hosted/provider, independent ADR-019 authority, operational KMS custody, legal/operator, incident and several product/UI gates remain unmet; guard mutations were not rerun at this candidate.",
+ "privateEvidenceDirectory": "/private/tmp/claude-501/-Users-michalkuderski-Desktop-Pellum-current-source/60e4b5ed-8af3-43a7-8072-559bb123c399/scratchpad/ev",
+ "failedOrInvalidRunsRetainedSeparately": [
+  "cand-522bf87: integration-db failed on the guard-inventory pin (43 vs 44, expected after the new guard); proof cluster could not be created (SysV budget)",
+  "cand-fb6bd05 harness: evidence cluster could not be restarted after the final step (SysV budget); candidate.json written from clean-tree step records",
+  "prior receipt 5bc8fe7 PLAID-MUTATIONS attribution corrected (runs were on dirty 1dc268d worktree)",
+  "prior-session 57d0790 queued ClamAV proof failure (contention observation, unresolved)"
+ ]
+}
