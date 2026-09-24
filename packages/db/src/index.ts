@@ -44,6 +44,8 @@ export * from "./deletion-journal.js";
 export * from "./document-cancellation.js";
 export * from "./document-period.js";
 export * from "./journal-retirement.js";
+export * from "./privacy-coverage.js";
+export * from "./billing-status.js";
 
 export * from "./local-erasure.js";
 

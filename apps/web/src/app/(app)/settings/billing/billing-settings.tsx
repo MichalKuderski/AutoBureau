@@ -6,6 +6,8 @@ import { Chip } from "@/components/ui/chip";
 import { Icon } from "@/components/ui/icon";
 import { useHousehold } from "@/providers/household-provider";
 import { cn } from "@/lib/cn";
+import { Alert } from "@/components/ui/alert";
+import { describeBilling, useBillingStatus } from "@/components/patterns/billing-status";
 
 /** PRD §21.2 provisional catalog copy. Billing changes remain disabled; no
  * checkout success page grants access. No usage meter until successful-processing
@@ -34,12 +36,33 @@ const PLANS = [
   },
 ] as const;
 
+/** The owner's current billing state, from durable backend state only (see describeBilling). */
+function BillingStatusCard() {
+  const status = useBillingStatus();
+  if (status.isPending || status.isError) return null;
+  const b = status.data, d = describeBilling(b);
+  const needsPayment = b.state === "grace" || b.state === "past_due" || b.state === "blocked";
+  return (
+    <section aria-label="Billing status" className="flex flex-col gap-3">
+      {d ? <Alert tone={d.tone} title={d.title}>{d.body}</Alert> : <p className="text-sm text-ink-secondary">Your household is on Free.</p>}
+      {needsPayment ? (
+        <div className="flex flex-col gap-1">
+          <div><Button variant="secondary" size="sm" disabled aria-describedby="payment-update-unavailable">Update payment method</Button></div>
+          <p id="payment-update-unavailable" className="text-xs text-ink-tertiary">Payment updates aren't available in this preview yet. Nothing is charged here.</p>
+        </div>
+      ) : null}
+      {b.testMode ? <p className="text-xs text-ink-tertiary">Billing runs in TEST mode: no real payments are taken.</p> : null}
+    </section>
+  );
+}
+
 export function BillingSettings() {
   const { household } = useHousehold();
   const plan = household.plan;
 
   return (
     <div className="flex flex-col gap-6">
+      {household.role === "owner" ? <BillingStatusCard /> : null}
       <div className="grid gap-4 sm:grid-cols-2">
         {PLANS.map((p) => {
           const current = plan === p.id;

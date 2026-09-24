@@ -65,6 +65,8 @@ export const MOUNTED_ROUTE_MATRIX: Readonly<Record<string, Readonly<Record<strin
   "v1/documents/[id]/work": { GET: "registry.read" },
   "v1/documents/[id]/cancel": { POST: "document.upload" },
   "v1/documents/[id]/result": { GET: "document.resolve" },
+  "v1/households/[id]/billing": { GET: "settings.manage" },
+  "v1/obligations/[id]/reminders": { GET: "registry.read" },
   "v1/documents/[id]/result/apply": { POST: "document.resolve" },
   "v1/documents/[id]/result/discard": { POST: "document.resolve" },
   "v1/items": { GET: "registry.read", POST: "item.write" },

@@ -6,7 +6,7 @@ const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]
 function refuse():never{throw new Error('Local financial operation refused');}
 export interface LocalPlaidClaim {id:string;householdId:string;incarnationId:string;leaseToken:string}
 export interface LocalPlaidEnvelope {version:1;keyVersion:number;nonce:string;wrapNonce:string;wrappedKey:string;ciphertext:string}
-/** ADR-022 v2: KMS-shaped envelope (services/plaid/src/kms-custody.ts). Storage contract only. */
+/** ADR-022 v2: KMS-shaped envelope produced by the isolated Plaid custody seam. Storage contract only. */
 export interface KmsPlaidEnvelope {version:2;keyId:string;wrappedKey:string;nonce:string;ciphertext:string}
 export type PlaidCredentialEnvelope=LocalPlaidEnvelope|KmsPlaidEnvelope;
 /** Column values for either envelope; the database's coupling CHECK is the authority. */

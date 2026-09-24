@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { SidebarNav, MobileTabBar, NAV_ITEMS } from "./nav";
 import { TopBar } from "./top-bar";
+import { BillingBanner } from "@/components/patterns/billing-status";
 
 /**
  * The authenticated shell.
@@ -65,6 +66,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             tabIndex={-1}
             className="flex-1 px-4 pb-24 pt-5 outline-none sm:px-6 lg:px-8 lg:pb-10"
           >
+            <BillingBanner />
             {children}
           </main>
         </div>

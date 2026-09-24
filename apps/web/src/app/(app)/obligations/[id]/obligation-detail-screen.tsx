@@ -18,6 +18,7 @@ import { Icon } from "@/components/ui/icon";
 import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { Skeleton, SkeletonGroup } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
+import { ReminderStatus } from "./reminder-status";
 import { ReviewPanel } from "@/components/patterns/review-panel";
 import { ObligationForm } from "@/components/patterns/obligation-form";
 import { OutcomeDialog } from "./outcome-dialog";
@@ -238,6 +239,7 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
           </Card>
 
           <ProvenanceCard obligation={obligation} onOpenSource={() => setSourceOpen(true)} />
+          <ReminderStatus obligationId={obligation.id} />
         </div>
 
         <div className="flex flex-col gap-6">

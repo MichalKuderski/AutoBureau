@@ -44,6 +44,8 @@ const sources = {
 } as const;
 export type PrivacyInventorySource = keyof typeof sources;
 export const PRIVACY_INVENTORY_SOURCES = Object.freeze(Object.keys(sources) as PrivacyInventorySource[]);
+/** Tables named by the closed inventory projections (for the completeness control). */
+export const PRIVACY_INVENTORY_TABLES = Object.freeze([...new Set(Object.values(sources).map(([, q]) => /\bFROM\s+([a-z_]+)/.exec(q.sql)![1]!))]);
 const refuse = () => { throw new Error("Privacy inventory refused"); };
 function sourceOf(source: unknown) {
   if (typeof source !== "string" || !Object.hasOwn(sources, source)) return refuse();

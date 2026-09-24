@@ -177,3 +177,35 @@ it("reconciles custody/work inventory without granting storage or lease visibili
   expect(await db.withHousehold(f.hh,tx=>tx.$queryRaw`SELECT id FROM document_processing WHERE household_id=${g.hh}::uuid`)).toEqual([]);
  }
 });
+
+import { readFileSync, readdirSync } from "node:fs";
+import { resolve } from "node:path";
+import { DELETION_INVENTORY_EXCLUSIONS, EXPORT_COVERAGE } from "../../src/privacy-coverage.js";
+import { PRIVACY_INVENTORY_TABLES } from "../../src/privacy-inventory.js";
+import { EXPORT_V3_CATEGORIES } from "@autobureau/contracts";
+it("every household table has exactly one deletion answer and an export answer (completeness control)", async () => {
+  const tables = (await admin.$queryRaw<Array<{ t: string }>>`SELECT c.relname AS t FROM pg_class c JOIN pg_attribute a ON a.attrelid=c.oid
+    AND a.attname='household_id' AND NOT a.attisdropped WHERE c.relnamespace='public'::regnamespace AND c.relkind IN ('r','p') ORDER BY 1`).map(r => r.t);
+  expect(tables.length).toBeGreaterThan(40);
+  const inventoried = new Set(PRIVACY_INVENTORY_TABLES);
+  const deletionGaps = tables.filter(t => inventoried.has(t) === (t in DELETION_INVENTORY_EXCLUSIONS));
+  expect(deletionGaps).toEqual([]);
+  expect(tables.filter(t => !/^(category|omitted):/.test(EXPORT_COVERAGE[t] ?? ""))).toEqual([]);
+  // No stale answers for tables that no longer exist.
+  expect(Object.keys({ ...DELETION_INVENTORY_EXCLUSIONS, ...EXPORT_COVERAGE }).filter(t => !tables.includes(t))).toEqual([]);
+  const categories = new Set(Object.values(EXPORT_COVERAGE).filter(v => v.startsWith("category:")).map(v => v.slice(9)));
+  expect([...categories].filter(c => !(EXPORT_V3_CATEGORIES as readonly string[]).includes(c))).toEqual([]);
+  // An exported table must actually be read by the v3 snapshot statement.
+  const src = readFileSync(resolve(__dirname, "../../src/privacy-export.ts"), "utf8");
+  const v3 = src.slice(src.indexOf("export async function readOwnerExportSnapshotV3"));
+  const read = new Set([...v3.slice(0, v3.indexOf("\nexport", 10)).matchAll(/\b(?:FROM|JOIN)\s+(?:public\.)?([a-z_]+)/g)].map(m => m[1]));
+  expect(Object.entries(EXPORT_COVERAGE).filter(([t, v]) => v.startsWith("category:") && !read.has(t)).map(([t]) => t)).toEqual([]);
+});
+it("the no-writer exception for inbound email stays true until intake gets deletion coverage", () => {
+  const root = resolve(__dirname, "../../../..");
+  const files = (dir: string): string[] => readdirSync(resolve(root, dir), { withFileTypes: true }).flatMap(e =>
+    e.name === "node_modules" || e.name === "dist" || e.name === ".next" ? [] : e.isDirectory() ? files(`${dir}/${e.name}`) : /\.(ts|tsx|mjs|js)$/.test(e.name) ? [`${dir}/${e.name}`] : []);
+  const writers = ["apps/web/src", "packages/db/src", "services", "scripts"].flatMap(files)
+    .filter(f => !/\.test\.|privacy-coverage\.ts$/.test(f) && /inbound_emails|inboundEmail/.test(readFileSync(resolve(root, f), "utf8")));
+  expect(writers).toEqual([]);
+});
