@@ -52,7 +52,8 @@
     "PlaidLocalCursor": "provider-references",
     "PlaidLocalWebhook": "provider-references",
     "PlaidLocalAccount": "provider-references",
-    "PlaidLocalTransaction": "provider-references"
+    "PlaidLocalTransaction": "provider-references",
+    "DocumentPeriodDecision": "derived-records"
   },
   "external": [
     "documents",

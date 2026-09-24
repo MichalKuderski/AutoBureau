@@ -104,6 +104,7 @@ export const DOC_STATUS_TONE: Record<string, ChipTone> = {
   processed: "success",
   rejected: "critical",
   failed: "critical",
+  discarded: "neutral",
 };
 
 export const DOC_STATUS_LABEL: Record<string, string> = {
@@ -115,4 +116,5 @@ export const DOC_STATUS_LABEL: Record<string, string> = {
   processed: "Filed",
   rejected: "Rejected",
   failed: "Failed",
+  discarded: "Discarded",
 };

@@ -251,3 +251,42 @@ ceiling must be measured against X5/X7 infrastructure/model/support COGS; existi
 are unchanged. Pending latency and cap warnings are additional evidence, never reasons
 to relax provenance, deletion, redaction or quarantine safety. No Production, deployment,
 Live Stripe, real documents or provider activation follows from this amendment.
+
+### 21.3 Version 1.3 — old-period document results
+
+**Decision and approval:** the founder's explicit product decision on September 24, 2026,
+given in the engineering conversation, resolves the old-period result case left open in
+ADR-021 and `pending-custody-policy-decision-20260921.md`. This written amendment records
+that decision without claiming any other person's sign-off, pricing validation or release
+authorization.
+
+Scope: a document successfully processed under a valid reservation in a previous
+entitlement month, whose result could not be finalized (reviewed and filed) before the UTC
+month rolled over.
+
+- The provider/model processing is **never repeated automatically**.
+- The closed historical month is **never silently charged**, and neither is the new month.
+- The immutable result and its provenance stay available in an **action-required** state.
+- The owner may explicitly choose **Apply this result this month**. Applying consumes exactly
+  one current-month processing slot if current capacity permits, reuses the existing
+  immutable result and repeats no provider processing. If current capacity is unavailable,
+  the result stays held.
+- The owner may instead **discard** the derived result. Discarding never charges any month
+  and never deletes the original uploaded document.
+- Reuse preserves the original source hash, scan provenance, parser/redactor versions,
+  citations and review history. The same result can never consume more than one
+  current-month slot.
+- Deletion fences, account suspension and custody expiration continue to fail closed.
+
+Acceptance: the owner's choice is an explicit, immutable, audited decision bound to the exact
+work and result; concurrent or replayed apply requests charge at most once; an apply racing
+the last current-month reservation leaves exactly one winner; a discard and an apply cannot
+both succeed; capacity exhaustion, fence, suspension and custody expiry refuse without
+losing the result. No owner action is silent: the interface states which month is charged
+and that the original is kept.
+
+Metric impact: M4/M5 count an applied result once, in the month it is applied; a discarded
+result is not a processed document. Old-period holds are reported as action required, not as
+processed or failed. X5/X7 cost accounting records the provider cost of the original
+processing even when the result is discarded; no target in §§10–11 changes. No Production,
+real documents, provider activation or intake activation follows from this amendment.

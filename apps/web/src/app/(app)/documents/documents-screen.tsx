@@ -18,6 +18,7 @@ import { UploadDropzone } from "@/components/ui/upload";
 import { useHousehold } from "@/providers/household-provider";
 import { QuotaPanel } from "./quota-panel";
 import { DocumentWorkPanel } from "./document-work-panel";
+import { DocumentResultPanel } from "./document-result-panel";
 import { useDocumentQuota, useDocuments, useSummary } from "@/lib/domain/queries";
 import { formatBytes, formatDate } from "@/lib/format";
 import type { DocumentView } from "@/lib/domain/types";
@@ -190,6 +191,7 @@ export function DocumentsScreen({ initialStatus = "all" }: { initialStatus?: Len
         {reviewing ? (
           <>
             <DocumentWorkPanel documentId={reviewing.id} />
+            <DocumentResultPanel documentId={reviewing.id} />
             <ReviewPanel document={reviewing} onDone={() => setReviewing(null)} />
           </>
         ) : null}

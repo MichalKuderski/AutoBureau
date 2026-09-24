@@ -1,5 +1,5 @@
 import { recordAudit, currentActor, runAsSystem } from "./audit.js";
-import type { Database } from "./scoped.js";
+import type { Database, ScopedClient } from "./scoped.js";
 import { outbox } from "./outbox.js";
 
 export interface SyntheticResult { id:string; processingId:string; leaseToken:string; sourceSha256:string; citationStart:number; citationEnd:number; dueDate:string }
@@ -34,7 +34,11 @@ export async function publishSyntheticResult(db:Database,hh:string,input:Synthet
 export async function approveSyntheticResult(db:Database,hh:string,resultId:string,confirmation:'APPROVE PUBLIC SYNTHETIC DATE'){
  const actor=currentActor();if(actor?.type!=='user'||confirmation!=='APPROVE PUBLIC SYNTHETIC DATE'||!uuid.test(resultId))refuse();
  const owner=actor.userId;
- return db.withHousehold(hh,async tx=>{
+ return db.withHousehold(hh,tx=>approveSyntheticResultInTransaction(tx,hh,owner,resultId));
+}
+/** The approval unit of work, shared with the PRD §21.3 current-month apply path, which
+ * records the owner's decision in the SAME transaction first. Caller supplies the owner. */
+export async function approveSyntheticResultInTransaction(tx:ScopedClient,hh:string,owner:string,resultId:string){
   await tx.$executeRaw`SELECT app.assert_household_open(${hh}::uuid)`;
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`processing-quota:${hh}`},0))`;
   if(!await tx.householdUser.findFirst({where:{householdId:hh,userId:owner,role:'owner'}}))refuse();
@@ -53,5 +57,4 @@ export async function approveSyntheticResult(db:Database,hh:string,resultId:stri
   await outbox(tx).emit({event_type:'item.created',aggregate_type:'item',aggregate_id:item.id,household_id:hh});
   await outbox(tx).emit({event_type:'obligation.created',aggregate_type:'obligation',aggregate_id:obligation.id,household_id:hh});
   return {itemId:item.id,obligationId:obligation.id,replayed:false};
- });
 }

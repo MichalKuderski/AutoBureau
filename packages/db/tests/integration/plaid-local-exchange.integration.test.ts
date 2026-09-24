@@ -93,5 +93,5 @@ it('runtime cannot create objects in trusted schemas and all reviewed guards sea
  const [permissions]=await runtime.$queryRaw<Array<{public_create:boolean;app_create:boolean}>>`SELECT has_schema_privilege(current_user,'public','CREATE') AS public_create,has_schema_privilege(current_user,'app','CREATE') AS app_create`;
  expect(permissions).toEqual({public_create:false,app_create:false});
  const guards=await runtime.$queryRaw<Array<{proconfig:string[];prosecdef:boolean}>>`SELECT proconfig,prosecdef FROM pg_proc WHERE pronamespace='app'::regnamespace AND proconfig IS NOT NULL`;
- expect(guards).toHaveLength(44);for(const guard of guards)expect(guard).toEqual({proconfig:['search_path=pg_catalog, public, app, pg_temp'],prosecdef:false});
+ expect(guards).toHaveLength(45);for(const guard of guards)expect(guard).toEqual({proconfig:['search_path=pg_catalog, public, app, pg_temp'],prosecdef:false});
 });

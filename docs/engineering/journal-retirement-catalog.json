@@ -72,7 +72,8 @@
       "id": "results",
       "models": [
         "DocumentResult",
-        "DocumentResultReview"
+        "DocumentResultReview",
+        "DocumentPeriodDecision"
       ],
       "purpose": "Cited provenance and owner approval",
       "personalData": true,

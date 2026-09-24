@@ -294,6 +294,7 @@ enum DocStatus {
   processed
   rejected
   failed
+  discarded
 }
 
 model Document {
@@ -1058,6 +1059,22 @@ model DocumentResultReview {
   @@unique([id,householdId])
   @@index([householdId,id],map:"reviews_household")
   @@map("document_result_reviews")
+}
+
+// PRD §21.3 owner decision for finished-but-unfiled work. Immutable; SQL owns guards/FKs.
+model DocumentPeriodDecision {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  processingId String @unique @map("processing_id") @db.Uuid
+  resultId String @unique @map("result_id") @db.Uuid
+  ownerId String @map("owner_id") @db.Uuid
+  decision String
+  fromPeriodStart DateTime @map("from_period_start") @db.Timestamptz
+  toPeriodStart DateTime? @map("to_period_start") @db.Timestamptz
+  decidedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("decided_at") @db.Timestamptz
+  @@unique([id,householdId])
+  @@index([householdId,decidedAt,id],map:"period_decisions_household")
+  @@map("document_period_decisions")
 }
 
 // ADR-022 local-only journals. SQL owns composite FKs, guards and column grants.

@@ -31,8 +31,11 @@ Every `/v1` request resolves `RequestContext {user_id, household_id, role}`:
 | Delete household / export data | ✅ | ❌ | ❌ |
 | View connected financial accounts (`financial.read`) | ✅ | ❌ | ❌ |
 | Disconnect/reconnect financial accounts (`financial.manage`, recent auth) | ✅ | ❌ | ❌ |
+| Apply or discard a finished-but-unfiled document result (`document.resolve`) | ✅ | ❌ | ❌ |
 
 Financial capabilities (added September 30, ADR-022) are owner-only: the product has one account holder and a financial connection is that person's consent. Linking itself stays unmounted until the provider runtime is activated.
+
+`document.resolve` (added October 1, PRD §21.3) is owner-only and session-lived: applying a held result consumes one of the household's processing slots, and the database independently requires the active owner, an explicit recorded decision and current capacity.
 
 \* Owners can restrict approvals to owner-only per household (settings toggle). Viewer exists for the "let my accountant look" case.
 

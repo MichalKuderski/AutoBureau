@@ -46,6 +46,9 @@ export const CAPABILITIES = {
   "financial.read": ["owner"],
   /** Disconnect or reconnect a financial connection. Recent authentication required. */
   "financial.manage": ["owner"],
+  /** Decide a finished-but-unfiled document result (PRD §21.3): apply it this month
+   *  (consumes one processing slot) or discard it. Owner-only, like the reviewed approval. */
+  "document.resolve": ["owner"],
 } as const satisfies Record<string, readonly HouseholdRole[]>;
 
 export type Capability = keyof typeof CAPABILITIES;

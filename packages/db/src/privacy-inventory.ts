@@ -18,6 +18,7 @@ const sources = {
   "plaid-transactions": ["provider-references", Prisma.sql`SELECT id::text AS key,household_id FROM plaid_local_transactions`],
   results: ["derived-records", Prisma.sql`SELECT id::text AS key,household_id FROM document_results`],
   "result-reviews": ["derived-records", Prisma.sql`SELECT id::text AS key,household_id FROM document_result_reviews`],
+  "period-decisions": ["derived-records", Prisma.sql`SELECT id::text AS key,household_id FROM document_period_decisions`],
   custodies: ["documents", Prisma.sql`SELECT id::text AS key,household_id FROM document_custodies`],
   processing: ["job-artifacts", Prisma.sql`SELECT id::text AS key,household_id FROM document_processing`],
   documents: ["documents", Prisma.sql`SELECT id::text AS key,household_id FROM documents`],

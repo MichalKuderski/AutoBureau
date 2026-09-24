@@ -28,6 +28,7 @@ const EXPECTED: Record<Capability, Array<"owner" | "member" | "viewer">> = {
   "household.export": ["owner"],
   "financial.read": ["owner"],
   "financial.manage": ["owner"],
+  "document.resolve": ["owner"],
 };
 
 describe("the matrix matches doc 06 §3", () => {

@@ -7,7 +7,7 @@ export const MemberKindSchema = z.enum(["adult", "child", "dependent", "pet", "e
 
 export const DocSourceSchema = z.enum(["upload", "email", "api"]);
 export const DocStatusSchema = z.enum([
-  "queued", "received", "scanning", "processing", "needs_review", "processed", "rejected", "failed",
+  "queued", "received", "scanning", "processing", "needs_review", "processed", "rejected", "failed", "discarded",
 ]);
 
 /** The 8 launch doc types (PRD F7 — frozen; swap only via PRD §4.1/§21). */

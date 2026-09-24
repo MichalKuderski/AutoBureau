@@ -116,7 +116,8 @@ export async function observeLocalDeletionResource(db: Database, householdId: st
         (SELECT count(*) FROM obligations WHERE household_id=${householdId}::uuid)+
         (SELECT count(*) FROM document_chunks WHERE household_id=${householdId}::uuid)+
         (SELECT count(*) FROM document_results WHERE household_id=${householdId}::uuid)+
-        (SELECT count(*) FROM document_result_reviews WHERE household_id=${householdId}::uuid) AS count`;
+        (SELECT count(*) FROM document_result_reviews WHERE household_id=${householdId}::uuid)+
+        (SELECT count(*) FROM document_period_decisions WHERE household_id=${householdId}::uuid) AS count`;
       remaining = Number(row!.count); completeLocalScope = true;
     } else if (resource.component === "identifier-secrets") {
       const [row] = await tx.$queryRaw<Array<{ count: bigint }>>`SELECT count(*) AS count FROM item_secrets s
