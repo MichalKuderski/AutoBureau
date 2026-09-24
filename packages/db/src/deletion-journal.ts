@@ -213,9 +213,27 @@ export async function readHouseholdDeletionStatus(db: Database, householdId: str
       SELECT coalesce(o.state,'not-observed') AS state,count(*) AS n FROM deletion_resources d
       LEFT JOIN LATERAL (SELECT state FROM deletion_observations x WHERE x.resource_id=d.id ORDER BY observed_at DESC,id LIMIT 1) o ON true
       WHERE d.deletion_id=${r.id}::uuid AND d.household_id=${householdId}::uuid GROUP BY 1`;
+    // Provider-held copies: never reported as erased without independent provider evidence.
+    const [p] = await tx.$queryRaw<Array<{ billing: bigint; financial: bigint; financial_removed: bigint }>>`SELECT
+      (SELECT count(*) FROM stripe_test_bindings WHERE household_id=${householdId}::uuid) AS billing,
+      (SELECT count(*) FROM plaid_local_items WHERE household_id=${householdId}::uuid) AS financial,
+      (SELECT count(*) FROM plaid_local_items WHERE household_id=${householdId}::uuid AND state='removed') AS financial_removed`;
+    const retained = await tx.$queryRaw<Array<{ class_id: string; reasons: string[]; retained_rows: bigint | null }>>`
+      SELECT d.class_id,d.reasons,o.retained_rows FROM journal_retirement_runs x
+      JOIN journal_retirement_decisions d ON d.run_id=x.id AND d.household_id=x.household_id
+      LEFT JOIN journal_retirement_observations o ON o.run_id=x.id AND o.class_id=d.class_id AND o.household_id=x.household_id
+      WHERE x.deletion_id=${r.id}::uuid AND x.household_id=${householdId}::uuid AND x.state='planned' ORDER BY d.class_id`;
     return { request: { id: r.id, state: r.state, requestedAt: r.requested_at, undoUntil: r.undo_until, fencedAt: r.fenced_at,
       undoAvailable: r.state === "grace" && r.undo_until > r.now },
       resources: Object.fromEntries(counts.map(c => [c.state, Number(c.n)])),
+      // Household deletion never deletes the sign-in account: that is a separate, account-level scope.
+      scope: { household: true as const, signInAccount: "not-in-scope" as const },
+      providers: {
+        billing: Number(p!.billing) ? "unverified" as const : "none" as const,
+        financial: !Number(p!.financial) ? "none" as const : Number(p!.financial_removed) === Number(p!.financial) ? "provider-removal-recorded" as const : "unverified" as const,
+      },
+      // Journals kept as ADR-019 restore/suppression evidence: codes and counts only, never content.
+      retainedEvidence: retained.map(x => ({ classId: x.class_id, reasons: x.reasons, retainedRows: x.retained_rows === null ? null : Number(x.retained_rows) })),
       finalReceiptIssuable: false as const, providerErasure: "unverified" as const, backupExpiry: "unverified" as const };
   });
 }

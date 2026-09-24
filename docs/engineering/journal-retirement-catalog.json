@@ -22,7 +22,12 @@
         "replay",
         "content",
         "restore"
-      ]
+      ],
+      "replayWindowAfterManifestDays": {
+        "days": 7,
+        "status": "engineering-proposal",
+        "basis": "ADR-019 seven-day post-settlement diagnostic interval proposal for synthetic/local jobs"
+      }
     },
     {
       "id": "custody",
@@ -44,7 +49,12 @@
         "accounting",
         "content",
         "restore"
-      ]
+      ],
+      "replayWindowAfterManifestDays": {
+        "days": null,
+        "status": "no-fixed-period",
+        "basis": "Class closes only on independent dependency closure; no fixed permanent period"
+      }
     },
     {
       "id": "processing",
@@ -66,7 +76,12 @@
         "accounting",
         "provider",
         "restore"
-      ]
+      ],
+      "replayWindowAfterManifestDays": {
+        "days": null,
+        "status": "no-fixed-period",
+        "basis": "Class closes only on independent dependency closure; no fixed permanent period"
+      }
     },
     {
       "id": "results",
@@ -90,7 +105,12 @@
         "accounting",
         "content",
         "restore"
-      ]
+      ],
+      "replayWindowAfterManifestDays": {
+        "days": null,
+        "status": "no-fixed-period",
+        "basis": "Class closes only on independent dependency closure; no fixed permanent period"
+      }
     },
     {
       "id": "outbox",
@@ -114,7 +134,12 @@
         "provider",
         "restore",
         "content"
-      ]
+      ],
+      "replayWindowAfterManifestDays": {
+        "days": 14,
+        "status": "engineering-proposal",
+        "basis": "ADR-017 Standard queues: 7-day main + 14-day DLQ retention; ADR-019 retain through at least 14 days after capability settlement"
+      }
     },
     {
       "id": "account-security",
@@ -134,7 +159,12 @@
       "dependencies": [
         "replay",
         "restore"
-      ]
+      ],
+      "replayWindowAfterManifestDays": {
+        "days": null,
+        "status": "no-fixed-period",
+        "basis": "Class closes only on independent dependency closure; no fixed permanent period"
+      }
     },
     {
       "id": "exports",
@@ -155,7 +185,12 @@
         "replay",
         "content",
         "restore"
-      ]
+      ],
+      "replayWindowAfterManifestDays": {
+        "days": null,
+        "status": "no-fixed-period",
+        "basis": "Class closes only on independent dependency closure; no fixed permanent period"
+      }
     },
     {
       "id": "stripe",
@@ -180,7 +215,12 @@
         "accounting",
         "provider",
         "restore"
-      ]
+      ],
+      "replayWindowAfterManifestDays": {
+        "days": null,
+        "status": "no-fixed-period",
+        "basis": "Class closes only on independent dependency closure; no fixed permanent period"
+      }
     },
     {
       "id": "plaid",
@@ -211,7 +251,12 @@
         "provider",
         "content",
         "restore"
-      ]
+      ],
+      "replayWindowAfterManifestDays": {
+        "days": null,
+        "status": "no-fixed-period",
+        "basis": "Class closes only on independent dependency closure; no fixed permanent period"
+      }
     },
     {
       "id": "deletion",
@@ -219,7 +264,11 @@
         "HouseholdDeletion",
         "DeletionResource",
         "DeletionAttempt",
-        "DeletionObservation"
+        "DeletionObservation",
+        "JournalRetirementHold",
+        "JournalRetirementRun",
+        "JournalRetirementDecision",
+        "JournalRetirementObservation"
       ],
       "purpose": "Scope, fence, attempted erasure and independent evidence",
       "personalData": true,
@@ -236,7 +285,12 @@
         "provider",
         "restore",
         "audit"
-      ]
+      ],
+      "replayWindowAfterManifestDays": {
+        "days": null,
+        "status": "no-fixed-period",
+        "basis": "Class closes only on independent dependency closure; no fixed permanent period"
+      }
     },
     {
       "id": "audit",
@@ -259,11 +313,18 @@
         "restore",
         "audit",
         "content"
-      ]
+      ],
+      "replayWindowAfterManifestDays": {
+        "days": null,
+        "status": "no-fixed-period",
+        "basis": "Class closes only on independent dependency closure; no fixed permanent period"
+      }
     }
   ],
   "unclassifiedMeans": "blocked",
   "maximumBatch": 100,
   "finalReceiptIssuable": false,
-  "operationalRetirementAuthorized": false
+  "operationalRetirementAuthorized": false,
+  "restoreAuthority": "absent",
+  "plannerContract": "packages/db/src/journal-retirement.ts; database refuses eligible=true (CHECK NOT eligible) until a reviewed migration and a verified ADR-019 authority"
 }

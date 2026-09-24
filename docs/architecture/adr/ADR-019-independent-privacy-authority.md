@@ -210,3 +210,32 @@ empty domain-table count may hide them. This correction changes evidence, not de
 authority. Actual content-free accounting/suppression transfer and destructive journal
 retirement remain separate local implementation work; no operational authority is
 activated by the dependency evaluator.
+
+## October 1 retirement planning increment (local, no purge)
+
+Migration `20261001000002_journal_retirement_planning` implements only the locally safe part
+of journal retirement; it grants no DELETE on any journal and activates no authority.
+
+- **Holds** (`journal_retirement_holds`) are an operator control outside the application
+  authority: no runtime role can write them. A hold names a class (or `all`), a household
+  (or every household), a closed reason (`incident|legal|security|dispute`) and a ticket
+  reference, never free text. An unreleased hold past its review date stays open and adds
+  `hold-review-overdue`: expiry is unknown, never clearance.
+- **Planning** (`journal_retirement_runs` / `_decisions`) runs as the retention worker only
+  after the deletion manifest is sealed (`verifying`). A 60-second DB-time lease is claimed in
+  its own transaction; a crashed planner's lease can be taken over only after expiry, with a
+  fresh token, at most three times (then `exhausted` for an operator). All eleven class
+  decisions and the database-computed plan digest commit together under the live lease. The
+  database requires `adr019-restore-authority-absent` in every decision, refuses a decision
+  that omits an open hold, and **refuses `eligible=true` outright (`CHECK (NOT eligible)`)**.
+  Engineering-proposal replay windows from this ADR (outbox 14 days, scan 7 days after the
+  manifest) add `replay-window-open`; they are recorded in the catalog as proposals, not
+  provider policy, and closing them does not make anything eligible.
+- **Observation** (`journal_retirement_observations`): after planning, the independent
+  verifier records its own retained-row count per class (identifiers only). The owner's
+  deletion status shows class codes, reasons and counts, never content.
+
+Deliberately still blocked: any purge, pseudonymization, identity-link removal or final
+receipt. Enabling execution requires a reviewed migration removing the `NOT eligible` check
+together with a verified independent restore authority, approved holds, and an approved
+content-minimization design per class.

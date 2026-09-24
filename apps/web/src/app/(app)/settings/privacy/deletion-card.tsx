@@ -65,7 +65,8 @@ export function DeletionCard() {
           <>
             <Alert tone="warning" title="Deletion scheduled">
               Requested {when(current.requestedAt)}. Nothing has been erased yet. You can undo until {when(current.undoUntil)};
-              after that, erasure starts and can no longer be reversed.
+              after that, erasure starts and can no longer be reversed. Your sign-in account is separate and is not deleted
+              by this.
             </Alert>
             {undo.isError ? <Alert tone="critical" title="Couldn't undo">{failure(undo.error)}</Alert> : null}
             <div>
@@ -84,7 +85,8 @@ export function DeletionCard() {
             <p className="text-sm text-ink-secondary">
               After you request deletion you have 14 days to change your mind. Then your household's data is erased.
               Copies held in backups and by service providers are removed on their own schedules; we'll tell you plainly
-              what has and hasn't been confirmed.
+              what has and hasn't been confirmed. Some records, like the audit trail and billing records, are kept as
+              evidence that the deletion happened. Deleting the household doesn't delete your sign-in account.
             </p>
             <div>
               <Button ref={requestRef} variant="danger" disabled={status.isPending} onClick={() => setOpen(true)}>Delete household…</Button>

@@ -1205,3 +1205,54 @@ model PlaidLocalTransaction {
  @@index([householdId,itemId,postedOn],map:"plaid_transaction_scope")
  @@map("plaid_local_transactions")
 }
+
+// ADR-019 retirement PLANNING (no purge). SQL owns guards, grants, FKs and the NOT-eligible rule.
+model JournalRetirementHold {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String? @map("household_id") @db.Uuid
+  classId String @map("class_id")
+  reason String
+  reference String
+  placedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("placed_at") @db.Timestamptz
+  reviewBy DateTime @map("review_by") @db.Timestamptz
+  releasedAt DateTime? @map("released_at") @db.Timestamptz
+  @@map("journal_retirement_holds")
+}
+model JournalRetirementRun {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  deletionId String @unique @map("deletion_id") @db.Uuid
+  catalogVersion Int @map("catalog_version")
+  state String @default("leased")
+  leaseToken String? @map("lease_token") @db.Uuid
+  leaseUntil DateTime? @map("lease_until") @db.Timestamptz
+  attempts Int @default(1)
+  startedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("started_at") @db.Timestamptz
+  plannedAt DateTime? @map("planned_at") @db.Timestamptz
+  planSha256 String? @map("plan_sha256")
+  @@unique([id,householdId])
+  @@map("journal_retirement_runs")
+}
+model JournalRetirementDecision {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  runId String @map("run_id") @db.Uuid
+  classId String @map("class_id")
+  eligible Boolean @default(false)
+  reasons String[]
+  decidedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("decided_at") @db.Timestamptz
+  @@unique([runId,classId])
+  @@unique([id,householdId])
+  @@map("journal_retirement_decisions")
+}
+model JournalRetirementObservation {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  householdId String @map("household_id") @db.Uuid
+  runId String @map("run_id") @db.Uuid
+  classId String @map("class_id")
+  retainedRows BigInt @map("retained_rows")
+  observedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("observed_at") @db.Timestamptz
+  @@unique([runId,classId])
+  @@unique([id,householdId])
+  @@map("journal_retirement_observations")
+}

@@ -43,6 +43,7 @@ export * from "./document-scans.js";
 export * from "./deletion-journal.js";
 export * from "./document-cancellation.js";
 export * from "./document-period.js";
+export * from "./journal-retirement.js";
 
 export * from "./local-erasure.js";
 
