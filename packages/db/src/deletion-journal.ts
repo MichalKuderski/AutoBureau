@@ -187,3 +187,23 @@ export async function readDeletionProgress(db: Database, householdId: string, re
       nextCursor: resources.length > 250 ? { householdId,requestId,after:resources[249]!.id } : null };
   });
 }
+/** Owner-facing status of the household's current (non-cancelled) deletion request.
+ * Content-free: states, times and per-state resource counts only. The final receipt,
+ * provider erasure and backup expiry are reported unverified until an independent
+ * ADR-019 authority exists; nothing here can turn a request into an erasure claim. */
+export async function readHouseholdDeletionStatus(db: Database, householdId: string) {
+  return db.withHousehold(householdId, async tx => {
+    const [r] = await tx.$queryRaw<Array<{ id: string; state: string; requested_at: Date; undo_until: Date; fenced_at: Date | null; completed_at: Date | null; now: Date }>>`
+      SELECT id::text,state,requested_at,undo_until,fenced_at,completed_at,clock_timestamp() AS now FROM household_deletions
+      WHERE household_id=${householdId}::uuid AND state<>'cancelled' ORDER BY requested_at DESC LIMIT 1`;
+    if (!r) return { request: null, finalReceiptIssuable: false as const };
+    const counts = await tx.$queryRaw<Array<{ state: string; n: bigint }>>`
+      SELECT coalesce(o.state,'not-observed') AS state,count(*) AS n FROM deletion_resources d
+      LEFT JOIN LATERAL (SELECT state FROM deletion_observations x WHERE x.resource_id=d.id ORDER BY observed_at DESC,id LIMIT 1) o ON true
+      WHERE d.deletion_id=${r.id}::uuid AND d.household_id=${householdId}::uuid GROUP BY 1`;
+    return { request: { id: r.id, state: r.state, requestedAt: r.requested_at, undoUntil: r.undo_until, fencedAt: r.fenced_at,
+      undoAvailable: r.state === "grace" && r.undo_until > r.now },
+      resources: Object.fromEntries(counts.map(c => [c.state, Number(c.n)])),
+      finalReceiptIssuable: false as const, providerErasure: "unverified" as const, backupExpiry: "unverified" as const };
+  });
+}

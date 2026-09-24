@@ -2,8 +2,8 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Alert } from "@/components/ui/alert";
 import { Icon } from "@/components/ui/icon";
+import { DeletionCard } from "./deletion-card";
 
 /**
  * Privacy & data — export and deletion as product surface, not compliance fine print.
@@ -92,33 +92,7 @@ export function PrivacySettings() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2">Delete your account</CardTitle>
-          <CardDescription>
-            Everything goes: documents, registry, reminders, and history.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {/*
-           * Blueprint P0-04. The alert used to describe a 14-day grace period and a
-           * 35-day backup expiry as though that policy were already enforced, and
-           * confirming used to toast "Deletion scheduled — we've emailed you the
-           * details." None of it was real: no deletion cascade, no scheduling, no
-           * email. The button is disabled and the confirm dialog is gone — there is
-           * nothing yet for a confirmation to gate.
-           */}
-          <Alert tone="warning" title="Not available yet">
-            Account deletion isn't implemented yet. The button below does nothing — no
-            request is sent, and nothing is scheduled.
-          </Alert>
-          <div>
-            <Button variant="danger" disabled>
-              Delete account
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <DeletionCard />
     </div>
   );
 }

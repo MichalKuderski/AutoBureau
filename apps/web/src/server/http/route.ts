@@ -2,7 +2,7 @@ import { createAccountProvider } from "../auth/account-provider";
 import { withHouseholdSession } from "../auth/household-session";
 import { RecentAuthenticationRequired } from "../auth/recent-auth";
 import { ProviderError } from "../auth/provider";
-import { AccountSecurityRefused, type Database } from "@autobureau/db";
+import { AccountSecurityRefused, HouseholdFenced, type Database } from "@autobureau/db";
 import { createJwtVerifier, VerificationUnavailableError, type VerifiedPrincipal } from "../auth/jwt";
 import { AuthConfigError, authConfigFromEnv, type AuthConfig } from "../auth/config";
 import { DatabaseConfigError, getDatabase } from "../db";
@@ -249,6 +249,9 @@ function toProblem(cause: unknown, context: ProblemContext): Response {
   if (cause instanceof Error && ["PrismaClientUnknownRequestError","PrismaClientKnownRequestError"].includes(cause.name)
     && cause.message.includes("Managed member allowance reached")) {
     return problemResponse("cap-exceeded", { detail: "Your plan’s managed-person allowance has been reached. Existing people and records remain safe." });
+  }
+  if (cause instanceof HouseholdFenced) {
+    return problemResponse("forbidden", { detail: "This household is being deleted and can no longer be used." });
   }
   if (cause instanceof AccountSecurityRefused || cause instanceof RecentAuthenticationRequired) {
     return problemResponse("forbidden", { detail: "Verify your account security to continue." });

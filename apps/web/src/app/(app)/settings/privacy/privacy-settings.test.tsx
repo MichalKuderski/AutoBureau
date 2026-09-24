@@ -1,8 +1,20 @@
-import { describe, expect, it } from "vitest";
-import { screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderScreen } from "@/test/render";
 import { PrivacySettings } from "./privacy-settings";
+
+// Deletion is now a real workflow backed by /households/:id/deletion; every test gets a
+// fresh "no request yet" status unless it installs its own responses.
+let fetchMock: ReturnType<typeof vi.fn>;
+let statusBody: unknown = { request: null, finalReceiptIssuable: false };
+beforeEach(() => {
+  statusBody = { request: null, finalReceiptIssuable: false };
+  fetchMock = vi.fn(async (_path: string, options: RequestInit = {}) =>
+    options.method === "POST" ? Response.json(statusBody, { status: 202 }) : Response.json(statusBody));
+  vi.stubGlobal("fetch", fetchMock);
+});
+afterEach(() => vi.unstubAllGlobals());
 
 /**
  * Blueprint P0-04.
@@ -44,38 +56,51 @@ describe("Test A · export cannot claim success", () => {
   });
 });
 
-describe("Test B · deletion cannot claim success", () => {
-  it("renders the delete control disabled with truthful, non-alarming copy", () => {
+describe("Test B · deletion is real, reversible for 14 days, and never claims erasure", () => {
+  it("offers deletion behind a typed confirmation and sends nothing until the phrase matches", async () => {
     renderScreen(<PrivacySettings />);
-
-    const button = screen.getByRole("button", { name: /delete account/i });
-    expect(button).toBeDisabled();
-    // Both the export and delete cards now say "Not available yet" — consistent
-    // language, so this asserts it appears at least once rather than exactly once.
-    expect(screen.getAllByText(/not available yet/i).length).toBeGreaterThanOrEqual(1);
-    expect(
-      screen.getByText(/account deletion isn't implemented yet/i),
-    ).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: /delete household/i }));
+    const dialog = screen.getByRole("dialog", { name: /delete this household/i });
+    const confirm = within(dialog).getByRole("button", { name: /schedule deletion/i });
+    expect(confirm).toBeDisabled();
+    await userEvent.type(within(dialog).getByLabelText(/type delete household to confirm/i), "delete household");
+    expect(confirm).toBeDisabled();
+    expect(fetchMock.mock.calls.some(([, o]) => o?.method === "POST")).toBe(false);
   });
 
-  it("produces no confirmation dialog and no schedule/success toast when activated", async () => {
+  it("schedules with the exact phrase and then shows the undo window, not a completion", async () => {
     renderScreen(<PrivacySettings />);
-
-    await userEvent.click(screen.getByRole("button", { name: /delete account/i }));
-
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.queryByText(/deletion scheduled/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/we've emailed you the details/i)).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: /delete household/i }));
+    const dialog = screen.getByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText(/type delete household to confirm/i), "DELETE HOUSEHOLD");
+    statusBody = { request: { id: "5f0a6c1e-9e2b-4b7a-8c1d-2b1e3f4a5b6c", state: "grace", requestedAt: "2026-09-23T12:00:00Z", undoUntil: "2026-10-07T12:00:00Z", undoAvailable: true }, finalReceiptIssuable: false };
+    await userEvent.click(within(dialog).getByRole("button", { name: /schedule deletion/i }));
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/deletion$/), expect.objectContaining({ method: "POST", body: JSON.stringify({ confirmation: "DELETE HOUSEHOLD" }) }));
+    expect(await screen.findByText("Deletion scheduled")).toBeInTheDocument();
+    expect(screen.getByText(/nothing has been erased yet/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /undo deletion/i })).toBeEnabled();
+    expect(screen.queryByText(/permanently deleted|deletion complete|receipt/i)).not.toBeInTheDocument();
   });
 
-  it("does not describe a grace period or backup policy as though it were enforced", () => {
+  it("asks for step-up authentication instead of pretending success when the server refuses", async () => {
+    fetchMock.mockImplementation(async (_p: string, o: RequestInit = {}) => o.method === "POST"
+      ? Response.json({ type: "https://autobureau.com/problems/forbidden", title: "Forbidden", status: 403, detail: "Verify your account security to continue." }, { status: 403 })
+      : Response.json(statusBody));
     renderScreen(<PrivacySettings />);
+    await userEvent.click(await screen.findByRole("button", { name: /delete household/i }));
+    const dialog = screen.getByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText(/type delete household to confirm/i), "DELETE HOUSEHOLD");
+    await userEvent.click(within(dialog).getByRole("button", { name: /schedule deletion/i }));
+    expect(await within(dialog).findByText(/sign in again/i)).toBeInTheDocument();
+    expect(screen.queryByText("Deletion scheduled")).not.toBeInTheDocument();
+  });
 
-    // The exact false claims this task exists to remove: a 14-day grace period and a
-    // 35-day backup expiry presented as live policy, with no cascade behind either.
-    expect(screen.queryByText(/14 days/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/35 days/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/permanently delete/i)).not.toBeInTheDocument();
+  it("describes a started deletion without claiming verified completion", async () => {
+    statusBody = { request: { id: "5f0a6c1e-9e2b-4b7a-8c1d-2b1e3f4a5b6c", state: "fenced", requestedAt: "2026-09-01T12:00:00Z", undoUntil: "2026-09-15T12:00:00Z", undoAvailable: false }, finalReceiptIssuable: false };
+    renderScreen(<PrivacySettings />);
+    expect(await screen.findByText("Deletion in progress")).toBeInTheDocument();
+    expect(screen.getByText(/can't give you that confirmation yet/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("button", { name: /undo deletion/i })).not.toBeInTheDocument());
   });
 });
 
@@ -95,26 +120,18 @@ describe("Test C · unrelated privacy content remains intact", () => {
     expect(screen.getByRole("heading", { name: "Export everything" })).toBeInTheDocument();
     expect(screen.getByText(/original documents plus every record/i)).toBeInTheDocument();
 
-    expect(screen.getByRole("heading", { name: "Delete your account" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Delete your household" })).toBeInTheDocument();
     expect(screen.getByText(/documents, registry, reminders, and history/i)).toBeInTheDocument();
   });
 });
 
-describe("Test D · no fake asynchronous behavior remains", () => {
-  it("has exactly the two controls on the page, both disabled", () => {
+describe("Test D · export still cannot claim success", () => {
+  it("keeps the export control disabled with no pending state", async () => {
     renderScreen(<PrivacySettings />);
-
-    const buttons = screen.getAllByRole("button");
-    expect(buttons).toHaveLength(2);
-    for (const button of buttons) expect(button).toBeDisabled();
-  });
-
-  it("shows no loading/pending state, because there is nothing to wait for", () => {
-    renderScreen(<PrivacySettings />);
-
-    for (const button of screen.getAllByRole("button")) {
-      expect(button).not.toHaveAttribute("aria-busy", "true");
-    }
+    const exportButton = screen.getByRole("button", { name: /request export/i });
+    expect(exportButton).toBeDisabled();
+    expect(exportButton).not.toHaveAttribute("aria-busy", "true");
+    await waitFor(() => expect(screen.getByRole("button", { name: /delete household/i })).toBeEnabled());
   });
 });
 
@@ -179,10 +196,10 @@ describe("P0-10 Test C · the rest of the privacy page is untouched", () => {
     expect(container.querySelectorAll("li")).toHaveLength(5);
   });
 
-  it("still leaves export and deletion disabled with their own P0-04 copy", () => {
+  it("keeps export honestly disabled and deletion behind its own confirmation flow", async () => {
     renderScreen(<PrivacySettings />);
     expect(screen.getByRole("button", { name: /request export/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /delete account/i })).toBeDisabled();
     expect(screen.getByText("Not available yet.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: /delete household/i })).toBeEnabled());
   });
 });

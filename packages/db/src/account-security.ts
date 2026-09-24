@@ -3,6 +3,9 @@ import { currentActor, recordAudit } from "./audit.js";
 import type { Database, ScopedClient } from "./scoped.js";
 
 export class AccountSecurityRefused extends Error { constructor() { super("Account security refused"); } }
+/** Still a refusal (every AccountSecurityRefused check holds); it only lets the caller say
+ * truthfully that the household is being deleted instead of asking for re-verification. */
+export class HouseholdFenced extends AccountSecurityRefused {}
 const refuse = (): never => { throw new AccountSecurityRefused(); };
 async function member(tx: ScopedClient, householdId: string, userId: string, role: "owner"|"member"|"viewer") {
   const actor = currentActor(); if (actor?.type !== "user" || actor.userId !== userId) return refuse();
@@ -12,7 +15,7 @@ async function member(tx: ScopedClient, householdId: string, userId: string, rol
   catch(e) {
     // SQLSTATE from the fixed privacy gate only; never parse an arbitrary message.
     if(e && typeof e==="object" && "code" in e && e.code==="P2010" && "meta" in e &&
-      e.meta && typeof e.meta==="object" && "code" in e.meta && e.meta.code==="55000")return refuse();
+      e.meta && typeof e.meta==="object" && "code" in e.meta && e.meta.code==="55000")throw new HouseholdFenced();
     throw e;
   }
   const active = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM users WHERE id=${userId}::uuid AND status='active' FOR SHARE`;

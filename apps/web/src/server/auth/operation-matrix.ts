@@ -74,6 +74,8 @@ export const MOUNTED_ROUTE_MATRIX: Readonly<Record<string, Readonly<Record<strin
   "v1/onboarding": { GET: "settings.manage", PATCH: "settings.manage" },
   "v1/households/current": { GET: "registry.read" },
   "v1/households/[id]": { PATCH: "settings.manage" },
+  "v1/households/[id]/deletion": { GET: "settings.manage", POST: "household.delete" },
+  "v1/households/[id]/deletion/undo": { POST: "household.delete" },
   "v1/households/[id]/members": { GET: "registry.read", POST: "member.manage" },
   "v1/households/[id]/members/[mid]": { PATCH: "member.manage", DELETE: "member.manage" },
   "v1/households/[id]/members/[mid]/restore": { POST: "member.manage" },
