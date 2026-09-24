@@ -228,3 +228,23 @@ Old-period evidence remains held and uncharged; the status requests a product de
 before any cross-period reuse/charge rule. No provider repeat, new-period charge,
 cancellation or retirement is inferred from viewing the result. This local seam is
 not mounted as an HTTP route or claimed as authenticated browser evidence.
+
+### Owner cancellation of unstarted work (September 23, local only)
+
+Migration `20260930000003_owner_document_cancellation` gives `app_user` column UPDATE on
+`state` of `document_custodies` and `document_processing`, guarded by the invoker trigger
+`app.guard_owner_document_cancel` (search path pinned, `pg_temp` last). An active owner or
+member of an open household may move processing `waiting` (no lease) → `cancelled` and
+custody `copying|ready|held` → `cancelled` when no processing row is outside
+`cancelled|failed`, under the same `processing-quota` advisory lock as reservation. Every
+other column change, a reserved/started/indeterminate row, a viewer, a stranger or a fenced
+household is refused. `guard_reviewed_processing` admits exactly that transition in addition
+to reviewed completion. Rationale: a reservation may already be calling the processing
+provider; cancelling underneath it would strand a result that can never commit.
+
+Cancellation keeps bytes, custody accounting (it still counts toward the 20-object /
+500 MiB local bound until absence) and journals; it performs no deletion, capacity release,
+retry, refund or provider call. Owners see it as "Stop processing" in the document drawer.
+Abandonment outcomes and the pending/retained product limits remain the founder decision in
+`pending-custody-policy-decision-20260921.md`; cross-period reuse of completed old-period
+results still requires that PRD §21 policy and remains fail-closed.
