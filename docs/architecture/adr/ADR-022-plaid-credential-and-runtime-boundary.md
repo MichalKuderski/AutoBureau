@@ -251,3 +251,44 @@ change control decides; export classifies them under the existing `provider-data
 Sync is audited per committed operation (cursor revision), not per transaction row. The
 administrative suspension race, operational KEK custody, hosted process isolation, provider
 Sandbox lifecycle evidence, consent UI and ADR-019 restore admission remain launch blockers.
+
+### Suspension fence, history decision and owner surface (September 23, local only)
+
+Closes three of the limits above locally; none is hosted or provider evidence.
+
+- **Administrative suspension race** (migration `20260929000000_financial_account_status_fence`).
+  A `BEFORE UPDATE OF status OR DELETE` trigger on `users` takes the exclusive transaction
+  advisory lock `account-status:<user>`; `assert_plaid_binding` and `guard_plaid_local` take
+  the shared form for the bound owner before checking status. A suspension committing during
+  an in-flight sync therefore either commits first (the sync commit sees `suspended` and
+  refuses) or waits for the sync transaction; there is no interleaving in which a suspended
+  owner's Item commits new data. Tested in both orders with a `pg_stat_activity` wait probe.
+- **Transaction history after unlink** (migration `20260930000002_plaid_history_decision`).
+  The undecided-policy limit is replaced by an explicit owner choice recorded with the unlink
+  intent: `history_after_removal` `delete` (default) or `retain`. Runtime cannot change it.
+  When removal (or reconciliation establishing absence) completes for `delete`, accounts and
+  transactions are erased in the same transaction as removal evidence; a deferred commit check
+  refuses a `removed`+`delete` Item with remaining rows. `retain` keeps records read-only and
+  never re-synced. Export v3 now includes connections, accounts and transactions (without
+  provider identifiers) instead of classifying them as a `provider-data` omission. Whether
+  `delete` is the right product default remains a PRD §21 decision; it is the privacy-
+  preserving choice until then.
+- **Owner surface.** Capabilities `financial.read` (owner, session) and `financial.manage`
+  (owner, recent authentication) gate `GET financial-connections`, `POST …/{item}/reconnect`
+  and `POST …/{item}/unlink {history}`. Settings › Connected accounts shows the consent
+  terms (read-only, no money movement, Pellum never sees bank passwords or full account
+  numbers), per-connection state, reconnect, and a disconnect dialog with the history choice.
+  Connecting a new account is disabled: there is no hosted Link token path.
+- **KMS-shaped custody seam** (`services/plaid/src/kms-custody.ts`). Data keys come from an
+  injected key-management port; the full binding (environment, household, incarnation, Item,
+  provider Item, revision) is the encryption context and the GCM AAD, so a transplanted
+  wrapped key cannot be unwrapped. One bounded attempt, no retries, provider error text never
+  escapes, plaintext keys zeroed, CAS rotation to revision+1 only. Tested against a fake port
+  that enforces context binding. **This is not KMS evidence**: no KMS SDK, key, IAM policy or
+  credential exists. Persisting its envelope (`version 2`, variable-length wrapped key, key ID)
+  requires a reviewed amendment of `plaid_local_credentials`, whose constraints pin the local
+  64-character wrapped-key format, and a migration plan for existing version-1 envelopes.
+
+Remaining launch blockers for this boundary: operational KMS key/IAM/rotation custody and
+envelope-v2 schema amendment, hosted process isolation of the runtime role, Plaid Sandbox
+lifecycle evidence, a hosted Link token flow, and ADR-019 restore admission.
