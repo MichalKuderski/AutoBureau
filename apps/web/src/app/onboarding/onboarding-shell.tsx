@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
 import { OnboardingProvider, ONBOARDING_STEPS } from "./onboarding-provider";
 
@@ -23,6 +24,17 @@ export function OnboardingShell({ children }: { children: React.ReactNode }) {
     0,
     ONBOARDING_STEPS.findIndex((s) => s.href === pathname),
   );
+  // A client-side step change replaces the page content without a document load, so focus
+  // would otherwise fall back to <body>. Move it to the new step's heading instead (not on
+  // the first render, where the browser's own focus handling applies).
+  const mainRef = useRef<HTMLElement>(null), previous = useRef<string | null>(null);
+  useEffect(() => {
+    if (previous.current !== null && previous.current !== pathname) {
+      const heading = mainRef.current?.querySelector("h1");
+      if (heading) { heading.setAttribute("tabindex", "-1"); heading.focus(); }
+    }
+    previous.current = pathname;
+  }, [pathname]);
 
   return (
     <OnboardingProvider>
@@ -68,7 +80,7 @@ export function OnboardingShell({ children }: { children: React.ReactNode }) {
           </ol>
         </nav>
 
-        <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
+        <main ref={mainRef} id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
           {children}
         </main>
       </div>

@@ -117,6 +117,9 @@ export async function GET(request: Request): Promise<Response> {
     return new Response(null, { status: 303, headers: { location: new URL(SIGN_IN_PATH, url.origin).toString(), "cache-control": "no-store", "referrer-policy": "no-referrer" } });
   }
 
+  // Redirect against this deployment's CONFIGURED origin, never the Host-derived request URL
+  // (Next's dev server rewrites 127.0.0.1 to localhost; a proxy may pass any Host).
+  const origin = config.allowedOrigins[0] ?? url.origin;
   const failed = (): Response =>
     withTraceHeader(
       appendCookies(linkFailedResponse(), clearedSessionCookies(config)),
@@ -166,7 +169,7 @@ export async function GET(request: Request): Promise<Response> {
         headers: {
           // The credential does not survive into the next request: the destination is a
           // validated same-origin path, never this URL with its hash still attached.
-          location: new URL(safeDestination(url.searchParams.get("next")), url.origin).toString(),
+          location: new URL(safeDestination(url.searchParams.get("next")), origin).toString(),
           "cache-control": "no-store",
           "referrer-policy": "no-referrer",
         },

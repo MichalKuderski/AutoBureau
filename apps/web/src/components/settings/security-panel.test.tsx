@@ -26,3 +26,12 @@ it("provider failure reports uncertainty without automatic retry or success",asy
  const fetcher=vi.fn().mockRejectedValue(new Error('synthetic'));vi.stubGlobal('fetch',fetcher);const user=userEvent.setup();render(<SecurityPanel/>);
  await user.click(screen.getByRole('button',{name:'Refresh factors'}));expect(await screen.findByRole('status')).toHaveTextContent('could not be confirmed');expect(fetcher).toHaveBeenCalledTimes(1);
 });
+it("after a keyboard action the pressed (disabled-while-busy) button's focus moves to the announcing status, never to <body>",async()=>{
+ let resolve!:(r:Response)=>void;vi.stubGlobal('fetch',vi.fn(()=>new Promise<Response>(r=>{resolve=r;})));const user=userEvent.setup();render(<SecurityPanel/>);
+ await user.tab();await user.keyboard('{Enter}');
+ // Browsers blur a focused control when it becomes disabled; jsdom does not, so do it here.
+ (document.activeElement as HTMLElement).blur();expect(document.body).toHaveFocus();
+ resolve(Response.json(inventory));
+ const status=await screen.findByText('Factor list refreshed.');
+ await waitFor(()=>expect(status).toHaveFocus());
+});

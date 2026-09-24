@@ -41,12 +41,15 @@ export async function GET(request: Request): Promise<Response> {
     return Response.redirect(new URL(SIGN_IN_PATH, url.origin), 303);
   }
 
+  // Redirect against this deployment's CONFIGURED origin, never the Host-derived request URL
+  // (Next's dev server rewrites 127.0.0.1 to localhost; a proxy may pass any Host).
+  const origin = config.allowedOrigins[0] ?? url.origin;
   const abandon = (): Response =>
     appendCookies(
       new Response(null, {
         status: 303,
         headers: {
-          location: new URL(SIGN_IN_PATH, url.origin).toString(),
+          location: new URL(SIGN_IN_PATH, origin).toString(),
           "cache-control": "no-store",
         },
       }),
@@ -89,7 +92,7 @@ export async function GET(request: Request): Promise<Response> {
         headers: {
           // Re-validated here even though it was validated when stored: the cookie is
           // same-origin state, but a destination is worth checking at the moment it is used.
-          location: new URL(safeDestination(pending.next), url.origin).toString(),
+          location: new URL(safeDestination(pending.next), origin).toString(),
           "cache-control": "no-store",
         },
       }),

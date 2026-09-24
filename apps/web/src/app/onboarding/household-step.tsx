@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,15 @@ export function HouseholdStep() {
     useOnboarding();
 
   const namedCount = members.filter((m) => m.displayName.trim()).length;
+  // Adding a person moves focus into the new person's name field; removing one returns
+  // focus to "Add someone" — never to <body>.
+  const listRef = useRef<HTMLUListElement>(null), addRef = useRef<HTMLButtonElement>(null);
+  const pendingFocus = useRef<null | "new" | "add">(null);
+  useEffect(() => {
+    if (pendingFocus.current === "new") listRef.current?.querySelector<HTMLInputElement>("li:last-child input:not([type=checkbox])")?.focus();
+    if (pendingFocus.current === "add") addRef.current?.focus();
+    pendingFocus.current = null;
+  }, [members.length]);
 
   return (
     <>
@@ -102,7 +112,7 @@ export function HouseholdStep() {
             email address, or to know this exists.
           </p>
 
-          <ul className="mt-4 flex flex-col gap-3">
+          <ul ref={listRef} className="mt-4 flex flex-col gap-3">
             {members.map((member, index) => (
               <li
                 key={member.id}
@@ -136,7 +146,7 @@ export function HouseholdStep() {
                       variant="ghost"
                       size="sm"
                       disabled={member.memberId !== null || saving}
-                      onClick={() => removeMember(member.id)}
+                      onClick={() => { pendingFocus.current = "add"; removeMember(member.id); }}
                       aria-label={`Remove ${member.displayName.trim() || `person ${index + 1}`}`}
                     >
                       <Icon.Close className="size-4" />
@@ -154,7 +164,8 @@ export function HouseholdStep() {
             size="sm"
             className="mt-3"
             iconLeft={<Icon.Plus className="size-4" />}
-            onClick={() => addMember({ displayName: "", kind: "adult" })}
+            ref={addRef}
+            onClick={() => { pendingFocus.current = "new"; addMember({ displayName: "", kind: "adult" }); }}
             disabled={saving}
           >
             Add someone

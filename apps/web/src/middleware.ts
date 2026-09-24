@@ -152,7 +152,11 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
         return NextResponse.next({ request: { headers } });
       }
       case "redirect":
-        return NextResponse.redirect(new URL(decision.to, request.nextUrl.origin));
+        // Resolve against this deployment's CONFIGURED origin (APP_ORIGIN, or the platform-
+        // injected preview URL), never the Host-derived `nextUrl.origin`: Next's dev server
+        // rewrites 127.0.0.1 to localhost, which moved a signed-out loopback session to
+        // another origin (no cookies, failed CSRF). Next requires an absolute URL here.
+        return NextResponse.redirect(new URL(decision.to, deps()?.config.allowedOrigins[0] ?? request.nextUrl.origin));
       case "unauthorized":
         return NextResponse.json(problem("unauthorized", { detail: "Sign in to continue." }), {
           status: 401,
