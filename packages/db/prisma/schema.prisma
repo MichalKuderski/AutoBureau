@@ -1127,7 +1127,8 @@ model PlaidLocalCredential {
  version Int
  keyVersion Int @map("key_version")
  nonce String
- wrapNonce String @map("wrap_nonce")
+ keyId String? @map("key_id")
+ wrapNonce String? @map("wrap_nonce")
  wrappedKey String @map("wrapped_key")
  ciphertext String
  createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz

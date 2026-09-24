@@ -6,6 +6,15 @@ const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]
 function refuse():never{throw new Error('Local financial operation refused');}
 export interface LocalPlaidClaim {id:string;householdId:string;incarnationId:string;leaseToken:string}
 export interface LocalPlaidEnvelope {version:1;keyVersion:number;nonce:string;wrapNonce:string;wrappedKey:string;ciphertext:string}
+/** ADR-022 v2: KMS-shaped envelope (services/plaid/src/kms-custody.ts). Storage contract only. */
+export interface KmsPlaidEnvelope {version:2;keyId:string;wrappedKey:string;nonce:string;ciphertext:string}
+export type PlaidCredentialEnvelope=LocalPlaidEnvelope|KmsPlaidEnvelope;
+/** Column values for either envelope; the database's coupling CHECK is the authority. */
+export function credentialColumns(e:PlaidCredentialEnvelope){
+ if(e?.version===1)return{version:1,keyVersion:e.keyVersion,keyId:null as string|null,nonce:e.nonce,wrapNonce:e.wrapNonce as string|null,wrappedKey:e.wrappedKey,ciphertext:e.ciphertext};
+ if(e?.version===2&&typeof e.keyId==='string')return{version:2,keyVersion:1,keyId:e.keyId as string|null,nonce:e.nonce,wrapNonce:null as string|null,wrappedKey:e.wrappedKey,ciphertext:e.ciphertext};
+ throw new Error('Local financial operation refused');
+}
 /** No HTTP route. The eventual route must enter the existing sensitive-session scope.
  * Neither public token nor provider credential is ever persisted in operation intent. */
 export async function requestLocalPlaidExchange(db:Database,hh:string,id:string,consent:'READ ONLY PUBLIC SYNTHETIC ACCOUNTS'){
@@ -37,8 +46,9 @@ export async function claimLocalPlaidExchange(db:Database,hh:string,id:string):P
 }
 /** Called only by the isolated synthetic runtime after sealing outside the DB TX.
  * Idempotent completion cannot repeat exchange or change the immutable binding. */
-export async function completeLocalPlaidExchange(db:Database,claim:LocalPlaidClaim,providerItemId:string,envelope:LocalPlaidEnvelope){
- if(!/^public-fixture-item-[a-f0-9-]{36}$/.test(providerItemId)||envelope.version!==1)refuse();
+export async function completeLocalPlaidExchange(db:Database,claim:LocalPlaidClaim,providerItemId:string,envelope:PlaidCredentialEnvelope){
+ if(!/^public-fixture-item-[a-f0-9-]{36}$/.test(providerItemId)||(envelope?.version!==1&&envelope?.version!==2))refuse();
+ const k=credentialColumns(envelope);
  try{return await runAsSystem('Publish bound local financial custody',()=>db.withHousehold(claim.householdId,async tx=>{
   const hh=claim.householdId;await tx.$executeRaw`SELECT app.assert_household_open(${hh}::uuid)`;
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`plaid-local:${hh}`},0))`;
@@ -51,7 +61,7 @@ export async function completeLocalPlaidExchange(db:Database,claim:LocalPlaidCla
   if(e.state!=='started'||old)refuse();
   await tx.$executeRaw`SELECT set_config('request.plaid_lease',${claim.leaseToken},true)`;
   await tx.$executeRaw`INSERT INTO plaid_local_items(id,household_id,exchange_id,provider_item_id) VALUES(${claim.id}::uuid,${hh}::uuid,${claim.id}::uuid,${providerItemId})`;
-  await tx.$executeRaw`INSERT INTO plaid_local_credentials(id,household_id,version,key_version,nonce,wrap_nonce,wrapped_key,ciphertext) VALUES(${claim.id}::uuid,${hh}::uuid,1,${envelope.keyVersion},${envelope.nonce},${envelope.wrapNonce},${envelope.wrappedKey},${envelope.ciphertext})`;
+  await tx.$executeRaw`INSERT INTO plaid_local_credentials(id,household_id,version,key_version,key_id,nonce,wrap_nonce,wrapped_key,ciphertext) VALUES(${claim.id}::uuid,${hh}::uuid,${k.version},${k.keyVersion},${k.keyId},${k.nonce},${k.wrapNonce},${k.wrappedKey},${k.ciphertext})`;
   await tx.$executeRaw`UPDATE plaid_local_exchanges SET state='completed' WHERE id=${claim.id}::uuid AND household_id=${hh}::uuid`;
   await tx.$executeRaw`INSERT INTO outbox_events(household_id,event_type,aggregate_type,aggregate_id,payload) VALUES(${hh}::uuid,'plaid.local_item_activated','plaid-local-item',${claim.id}::uuid,jsonb_build_object('version',1,'operation_id',${claim.id}::text))`;
   return{id:claim.id,replayed:false};

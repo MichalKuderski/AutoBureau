@@ -292,3 +292,26 @@ Closes three of the limits above locally; none is hosted or provider evidence.
 Remaining launch blockers for this boundary: operational KMS key/IAM/rotation custody and
 envelope-v2 schema amendment, hosted process isolation of the runtime role, Plaid Sandbox
 lifecycle evidence, a hosted Link token flow, and ADR-019 restore admission.
+
+### Reviewed persistent credential format v2 (October 1, local storage contract)
+
+Migration `20261001000003_plaid_credential_envelope_v2` makes the credential table able to
+hold the KMS-shaped envelope produced by `services/plaid/src/kms-custody.ts`, without changing
+any existing row. A single coupling constraint (`plaid_credential_envelope`) admits exactly:
+
+- **v1** (local): no key ID, 16-character wrap nonce, 64-character wrapped key — today's shape.
+- **v2** (KMS-shaped): key ID (1–256 of `[A-Za-z0-9:/_.-]`), no wrap nonce, wrapped key = the
+  key service's ciphertext blob (22–1366 base64url characters), `key_version` fixed at 1
+  (key versions belong to the key service), 12-byte GCM nonce as before.
+
+The full Item binding (environment, household, incarnation, Item, provider Item, revision)
+is the key service's encryption context and the GCM AAD, so a wrapped key or ciphertext moved
+to another binding or revision cannot be opened. Rotation stays compare-and-swap to exactly
+the next revision and may move custody from v1 to v2, never back: the custody guard refuses
+`NEW.version < OLD.version`. The runtime role gains column rights only for `key_id` (and
+`version` on rotation). The local synthetic runtime composition (`scripts/local-plaid-*.ts`)
+holds only the local keyring and refuses v2 envelopes explicitly.
+
+This is a storage and binding contract tested with a fake key service. It is **not**
+operational KMS evidence: no key, key policy, IAM role, grant, rotation schedule or audit
+trail exists, and none can be verified from this environment.

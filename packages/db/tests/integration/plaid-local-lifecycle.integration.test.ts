@@ -1,13 +1,14 @@
-import {createHash,generateKeyPairSync,randomUUID,sign} from 'node:crypto';
+import {createHash,createCipheriv,createDecipheriv,generateKeyPairSync,randomBytes,randomUUID,sign} from 'node:crypto';
 import {PrismaClient} from '@prisma/client';
 import {beforeAll,afterAll,it,expect,describe} from 'vitest';
 import {Database} from '../../src/scoped.js';
 import {runAsUser} from '../../src/audit.js';
 import {requestLocalPlaidExchange} from '../../src/plaid-local-exchange.js';
-import {claimLocalPlaidOperation,commitLocalPlaidSync,localPlaidRouteDigest,readLocalPlaidConnections,requestLocalPlaidReconnect,requestLocalPlaidUnlink,
+import {claimLocalPlaidOperation,commitLocalPlaidRotation,commitLocalPlaidSync,localPlaidRouteDigest,readLocalPlaidConnections,requestLocalPlaidReconnect,requestLocalPlaidUnlink,
  type LocalPlaidSyncPage,type LocalPlaidTransaction} from '../../src/plaid-local-lifecycle.js';
 import {inventoryLocalDeletionPage,reconcileLocalDeletionInventory,PRIVACY_INVENTORY_SOURCES} from '../../src/privacy-inventory.js';
 import {createLocalPlaidCustody} from '../../../../services/plaid/src/local-custody.js';
+import {createKmsCustody,type KmsPort} from '../../../../services/plaid/src/kms-custody.js';
 import {runLocalPlaidExchange} from '../../../../scripts/local-plaid-exchange.js';
 import {LocalPlaidProviderSignal,runLocalPlaidReconcile,runLocalPlaidRemoval,runLocalPlaidRotation,runLocalPlaidSync,runLocalPlaidWebhook} from '../../../../scripts/local-plaid-lifecycle.js';
 import {createPlaidWebhookVerifier} from '../../../../apps/web/src/server/plaid/webhook.js';
@@ -399,5 +400,43 @@ describe('deletion fence, owner continuity and roles',()=>{
   // Only the two context readers (no table lookups) are exempt; every other function is pinned.
   expect(fns.filter(f=>!f.proconfig).map(f=>f.fn)).toEqual(['app.current_household()','app.current_user_id()']);
   for(const f of fns.filter(x=>x.proconfig))expect(f.proconfig).toEqual(['search_path=pg_catalog, public, app, pg_temp']);
+ });
+});
+
+/* Fake key service with the one property that matters: a wrapped key unwraps only under the
+ * identical key ID and encryption context. A test double — NOT evidence of any real KMS. */
+function fakeKms():KmsPort{const master=randomBytes(32);
+ const aad=(keyId:string,c:Readonly<Record<string,string>>)=>Buffer.concat([Buffer.from(keyId),Buffer.from(JSON.stringify(Object.keys(c).sort().map(k=>[k,c[k]])))]);
+ return{async generateDataKey({keyId,encryptionContext}){const pt=randomBytes(32),n=randomBytes(12),c=createCipheriv('aes-256-gcm',master,n);c.setAAD(aad(keyId,encryptionContext));
+   return{plaintext:Uint8Array.from(pt),ciphertext:Buffer.concat([n,c.update(pt),c.final(),c.getAuthTag()]),keyId};},
+  async decrypt({keyId,ciphertext,encryptionContext}){const b=Buffer.from(ciphertext),d=createDecipheriv('aes-256-gcm',master,b.subarray(0,12));d.setAAD(aad(keyId,encryptionContext));d.setAuthTag(b.subarray(-16));
+   return{plaintext:Uint8Array.from(Buffer.concat([d.update(b.subarray(12,-16)),d.final()])),keyId};}};}
+describe('reviewed credential envelope v2 (KMS-shaped; fake key service, not KMS evidence)',()=>{
+ it('rotation moves custody from the local envelope to v2 by compare-and-swap, and never back',async()=>{const f=await connected();
+  const keyId='alias/pellum-test-financial',kms=createKmsCustody(fakeKms(),keyId);
+  const claim=(await claimLocalPlaidOperation(db,f.hh,f.item,'rotate'))!;
+  let token='';f.keyring.use(claim.binding,claim.envelope as never,t=>{token=t;});
+  const v2=await kms.seal({...claim.binding,revision:claim.credentialRevision+1},token);
+  expect(await commitLocalPlaidRotation(db,claim,v2)).toEqual({credentialRevision:2});
+  expect(await admin.plaidLocalCredential.findUniqueOrThrow({where:{id:f.item}})).toMatchObject({version:2,keyId,wrapNonce:null,keyVersion:1,revision:2});
+  const next=(await claimLocalPlaidOperation(db,f.hh,f.item,'sync'))!;
+  expect(next.envelope).toMatchObject({version:2,keyId});
+  expect(await kms.useAsync(next.binding,next.envelope as never,async t=>t===f.token)).toBe(true);
+  // The previous-revision binding cannot open the new envelope.
+  await expect(kms.useAsync({...next.binding,revision:1},next.envelope as never,async()=>true)).rejects.toThrow();
+  // The local synthetic runtime refuses a v2 envelope rather than guessing at it.
+  await admin.plaidLocalCursor.update({where:{id:f.item},data:{opUntil:new Date(0)}});
+  await expect(runLocalPlaidSync(db,f.hh,f.item,f.keyring,bank(f.token,new Map()))).rejects.toThrow();
+  // Custody never weakens: a rotation back to a local v1 envelope is refused by the database.
+  await admin.plaidLocalCursor.update({where:{id:f.item},data:{opUntil:new Date(0)}});
+  const back=(await claimLocalPlaidOperation(db,f.hh,f.item,'rotate'))!;
+  const v1=f.keyring.seal({...back.binding,revision:back.credentialRevision+1} as never,f.token);
+  await expect(commitLocalPlaidRotation(db,back,v1)).rejects.toThrow(refused);
+  expect(await admin.plaidLocalCredential.findUniqueOrThrow({where:{id:f.item},select:{version:true,revision:true}})).toEqual({version:2,revision:2});
+ });
+ it('the database refuses mixed or malformed envelopes whatever the writer',async()=>{const f=await connected();
+  for(const data of [{version:2},{keyId:'alias/x'},{version:2,keyId:'alias/x'},{version:2,keyId:'alias/x',wrapNonce:null,keyVersion:1,wrappedKey:'short'},{version:3}])
+   await expect(admin.plaidLocalCredential.update({where:{id:f.item},data})).rejects.toThrow(/plaid_credential_envelope|check constraint/);
+  expect(await admin.plaidLocalCredential.findUniqueOrThrow({where:{id:f.item},select:{version:true,keyId:true}})).toEqual({version:1,keyId:null});
  });
 });

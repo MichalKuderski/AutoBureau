@@ -2,6 +2,7 @@ import {createHash} from 'node:crypto';
 import type {Database} from '../packages/db/src/scoped.js';
 import {acceptLocalPlaidWebhook,claimLocalPlaidOperation,commitLocalPlaidSync,releaseLocalPlaidSync,completeLocalPlaidRemoval,completeLocalPlaidReconcile,
  commitLocalPlaidRotation,type LocalPlaidSyncPage,type VerifiedLocalPlaidNotice} from '../packages/db/src/plaid-local-lifecycle.js';
+import type {PlaidCredentialEnvelope,LocalPlaidEnvelope} from '../packages/db/src/plaid-local-exchange.js';
 import {createLocalPlaidCustody} from '../services/plaid/src/local-custody.js';
 
 /** Local deterministic composition of the isolated financial runtime. Never mounted or
@@ -14,6 +15,9 @@ export class LocalPlaidProviderSignal extends Error {
 }
 const signalOf=(e:unknown)=>e instanceof LocalPlaidProviderSignal?e.signal:'unavailable' as const;
 function refuse():never{throw new Error('Local financial operation refused');}
+/** This composition holds only the local synthetic keyring: a KMS-shaped v2 envelope needs the
+ * separately configured KMS custody and is refused here, never guessed at. */
+const v1=(e:PlaidCredentialEnvelope):LocalPlaidEnvelope=>e.version===1?e:refuse();
 
 /** Raw bytes + signature header in; only the verified closed notice and its body digest
  * reach the database. Same acknowledgement whether or not the Item is known here. */
@@ -29,7 +33,7 @@ export async function runLocalPlaidWebhook(db:Database,verify:(raw:Uint8Array,he
 export async function runLocalPlaidSync(db:Database,hh:string,itemId:string,keyring:Keyring,
  provider:{sync:(token:string,cursor:string|null)=>Promise<LocalPlaidSyncPage>},budget={pages:8,restarts:3}){
  const claim=await claimLocalPlaidOperation(db,hh,itemId,'sync');if(!claim)return{status:'not-claimable' as const};
- const collected=await keyring.useAsync(claim.binding,claim.envelope,async token=>{
+ const collected=await keyring.useAsync(claim.binding,v1(claim.envelope),async token=>{
   for(let restart=0;restart<=budget.restarts;restart++){
    const pages:LocalPlaidSyncPage[]=[];let cursor=claim.cursor;
    try{
@@ -48,7 +52,7 @@ export async function runLocalPlaidSync(db:Database,hh:string,itemId:string,keyr
  * keeps encrypted custody for reconciliation; it is never retried automatically. */
 export async function runLocalPlaidRemoval(db:Database,hh:string,itemId:string,keyring:Keyring,provider:{remove:(token:string)=>Promise<void>}){
  const claim=await claimLocalPlaidOperation(db,hh,itemId,'remove');if(!claim)return{status:'not-claimable' as const};
- const outcome=await keyring.useAsync(claim.binding,claim.envelope,async token=>{
+ const outcome=await keyring.useAsync(claim.binding,v1(claim.envelope),async token=>{
   try{await provider.remove(token);return'provider-acknowledged' as const;}
   catch(e){return signalOf(e)==='item-not-found'?'provider-invalid' as const:'indeterminate' as const;}
  }).catch(()=>'indeterminate' as const);
@@ -58,7 +62,7 @@ export async function runLocalPlaidRemoval(db:Database,hh:string,itemId:string,k
 /** Non-mutating status read after an indeterminate removal. */
 export async function runLocalPlaidReconcile(db:Database,hh:string,itemId:string,keyring:Keyring,provider:{status:(token:string)=>Promise<'present'>}){
  const claim=await claimLocalPlaidOperation(db,hh,itemId,'reconcile');if(!claim)return{status:'not-claimable' as const};
- const outcome=await keyring.useAsync(claim.binding,claim.envelope,async token=>{
+ const outcome=await keyring.useAsync(claim.binding,v1(claim.envelope),async token=>{
   try{await provider.status(token);return'present' as const;}catch(e){return signalOf(e)==='item-not-found'?'absent' as const:null;}
  }).catch(()=>null);
  // An unavailable read establishes nothing; the lease simply expires with no change.
@@ -69,6 +73,6 @@ export async function runLocalPlaidReconcile(db:Database,hh:string,itemId:string
 /** Envelope rotation to the keyring's current wrapping key, compare-and-swap on revision. */
 export async function runLocalPlaidRotation(db:Database,hh:string,itemId:string,keyring:Keyring){
  const claim=await claimLocalPlaidOperation(db,hh,itemId,'rotate');if(!claim)return{status:'not-claimable' as const};
- let envelope;try{envelope=keyring.rewrap(claim.binding,claim.envelope,claim.credentialRevision+1);}catch{refuse();}
+ let envelope;try{envelope=keyring.rewrap(claim.binding,v1(claim.envelope),claim.credentialRevision+1);}catch{refuse();}
  return{status:'rotated' as const,...await commitLocalPlaidRotation(db,claim,envelope)};
 }

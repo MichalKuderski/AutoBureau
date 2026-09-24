@@ -2,7 +2,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {currentActor,runAsSystem} from './audit.js';
 import type {Database,ScopedClient} from './scoped.js';
 import {outbox} from './outbox.js';
-import type {LocalPlaidEnvelope} from './plaid-local-exchange.js';
+import {credentialColumns,type PlaidCredentialEnvelope} from './plaid-local-exchange.js';
 
 /* ADR-022 durable LOCAL synthetic lifecycle. No HTTP route, provider transport or key
  * access lives here: the isolated runtime composes these DB steps around provider I/O
@@ -55,7 +55,7 @@ export async function acceptLocalPlaidWebhook(db:Database,notice:VerifiedLocalPl
 
 export type LocalPlaidOpKind='sync'|'remove'|'reconcile'|'rotate';
 export interface LocalPlaidBinding {environment:'local-synthetic-sandbox';householdId:string;incarnationId:string;itemId:string;providerItemId:string;revision:number}
-export interface LocalPlaidOpClaim {kind:LocalPlaidOpKind;householdId:string;itemId:string;token:string;cursor:string|null;cursorRevision:number;credentialRevision:number;binding:LocalPlaidBinding;envelope:LocalPlaidEnvelope}
+export interface LocalPlaidOpClaim {kind:LocalPlaidOpKind;householdId:string;itemId:string;token:string;cursor:string|null;cursorRevision:number;credentialRevision:number;binding:LocalPlaidBinding;envelope:PlaidCredentialEnvelope}
 
 /** One DB-time 60s lease per Item. Sync/rotation are READS of custody and may be taken
  * over after expiry; removal is single-attempt: an expired removal becomes
@@ -84,14 +84,15 @@ export async function claimLocalPlaidOperation(db:Database,hh:string,itemId:stri
   await tx.$executeRaw`UPDATE plaid_local_cursors SET op=${kind},op_token=${token}::uuid WHERE id=${itemId}::uuid AND household_id=${hh}::uuid`;
   await tx.$executeRaw`SELECT set_config('request.plaid_op',${token},true)`;
   if(kind==='remove'&&item.state!=='unlinking')await tx.$executeRaw`UPDATE plaid_local_items SET state='unlinking' WHERE id=${itemId}::uuid AND household_id=${hh}::uuid`;
-  const [r]=await tx.$queryRaw<Array<{provider_item_id:string;incarnation_id:string;credential_revision:number;cursor:string|null;revision:bigint;key_version:number;nonce:string;wrap_nonce:string;wrapped_key:string;ciphertext:string;k_revision:number}>>`
-   SELECT i.provider_item_id,i.incarnation_id::text,i.credential_revision,c.cursor,c.revision,k.key_version,k.nonce,k.wrap_nonce,k.wrapped_key,k.ciphertext,k.revision AS k_revision
+  const [r]=await tx.$queryRaw<Array<{provider_item_id:string;incarnation_id:string;credential_revision:number;cursor:string|null;revision:bigint;version:number;key_id:string|null;key_version:number;nonce:string;wrap_nonce:string|null;wrapped_key:string;ciphertext:string;k_revision:number}>>`
+   SELECT i.provider_item_id,i.incarnation_id::text,i.credential_revision,c.cursor,c.revision,k.version,k.key_id,k.key_version,k.nonce,k.wrap_nonce,k.wrapped_key,k.ciphertext,k.revision AS k_revision
    FROM plaid_local_items i JOIN plaid_local_cursors c ON c.id=i.id AND c.household_id=i.household_id JOIN plaid_local_credentials k ON k.id=i.id AND k.household_id=i.household_id
    WHERE i.id=${itemId}::uuid AND i.household_id=${hh}::uuid`;
   if(!r||r.k_revision!==r.credential_revision)refuse();
   return{kind,householdId:hh,itemId,token,cursor:r.cursor,cursorRevision:Number(r.revision),credentialRevision:r.credential_revision,
    binding:{environment:'local-synthetic-sandbox',householdId:hh,incarnationId:r.incarnation_id,itemId,providerItemId:r.provider_item_id,revision:r.credential_revision},
-   envelope:{version:1,keyVersion:r.key_version,nonce:r.nonce,wrapNonce:r.wrap_nonce,wrappedKey:r.wrapped_key,ciphertext:r.ciphertext}};
+   envelope:(r.version===2?{version:2,keyId:r.key_id!,wrappedKey:r.wrapped_key,nonce:r.nonce,ciphertext:r.ciphertext}
+    :{version:1,keyVersion:r.key_version,nonce:r.nonce,wrapNonce:r.wrap_nonce!,wrappedKey:r.wrapped_key,ciphertext:r.ciphertext}) as PlaidCredentialEnvelope};
  }));
 }
 
@@ -253,15 +254,16 @@ export async function completeLocalPlaidReconcile(db:Database,claim:LocalPlaidOp
 
 /** Compare-and-swap envelope rotation: revision N -> N+1 with the new envelope sealed
  * outside the transaction under the N+1 binding. Losing any race changes nothing. */
-export async function commitLocalPlaidRotation(db:Database,claim:LocalPlaidOpClaim,envelope:LocalPlaidEnvelope){
- if(claim.kind!=='rotate'||envelope?.version!==1)refuse();
+export async function commitLocalPlaidRotation(db:Database,claim:LocalPlaidOpClaim,envelope:PlaidCredentialEnvelope){
+ if(claim.kind!=='rotate'||(envelope?.version!==1&&envelope?.version!==2))refuse();
+ const k=credentialColumns(envelope);
  try{return await runAsSystem('Rotate one local financial custody envelope',()=>db.withHousehold(claim.householdId,async tx=>{
   const hh=claim.householdId,item=claim.itemId;
   if(await lock(tx,hh)!=='open')refuse();
   const i=await held(tx,claim);if(i.credential_revision!==claim.credentialRevision)refuse();
   const next=claim.credentialRevision+1;
   await tx.$executeRaw`UPDATE plaid_local_items SET credential_revision=${next} WHERE id=${item}::uuid AND household_id=${hh}::uuid AND credential_revision=${claim.credentialRevision}`;
-  await tx.$executeRaw`UPDATE plaid_local_credentials SET key_version=${envelope.keyVersion},nonce=${envelope.nonce},wrap_nonce=${envelope.wrapNonce},wrapped_key=${envelope.wrappedKey},ciphertext=${envelope.ciphertext},revision=${next}
+  await tx.$executeRaw`UPDATE plaid_local_credentials SET version=${k.version},key_id=${k.keyId},key_version=${k.keyVersion},nonce=${k.nonce},wrap_nonce=${k.wrapNonce},wrapped_key=${k.wrappedKey},ciphertext=${k.ciphertext},revision=${next}
    WHERE id=${item}::uuid AND household_id=${hh}::uuid AND revision=${claim.credentialRevision}`;
   await tx.$executeRaw`UPDATE plaid_local_cursors SET op=NULL,op_token=NULL,last_outcome='rotated' WHERE id=${item}::uuid AND household_id=${hh}::uuid`;
   return{credentialRevision:next};
