@@ -210,6 +210,12 @@ export function authenticated(
  * body at all, which is what the status means.
  */
 function toResponse(payload: unknown): Response {
+  // Binary household data (export archive download). Never cacheable, never sniffed.
+  if (payload instanceof Response) {
+    payload.headers.set("cache-control", "no-store, private");
+    payload.headers.set("x-content-type-options", "nosniff");
+    return payload;
+  }
   if (!(payload instanceof RouteResponse)) return jsonResponse(payload ?? null);
   if (payload.status === 204) {
     return new Response(null, {

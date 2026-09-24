@@ -1,9 +1,9 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { DeletionCard } from "./deletion-card";
+import { ExportCard } from "./export-card";
 
 /**
  * Privacy & data — export and deletion as product surface, not compliance fine print.
@@ -68,29 +68,7 @@ export function PrivacySettings() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2">Export everything</CardTitle>
-          <CardDescription>
-            Your original documents plus every record we've built from them, in open formats.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          <div>
-            {/*
-             * Blueprint P0-04. This used to fire a toast claiming "Export started —
-             * We'll email you a download link" on click, with no export job, no email,
-             * and no file behind it. No export backend exists yet, so the control is
-             * disabled rather than pretending otherwise.
-             */}
-            <Button variant="secondary" disabled>
-              <Icon.Upload className="size-4 rotate-180" />
-              Request export
-            </Button>
-          </div>
-          <p className="text-xs text-ink-tertiary">Not available yet.</p>
-        </CardContent>
-      </Card>
+      <ExportCard />
 
       <DeletionCard />
     </div>

@@ -8,10 +8,13 @@ import { PrivacySettings } from "./privacy-settings";
 // fresh "no request yet" status unless it installs its own responses.
 let fetchMock: ReturnType<typeof vi.fn>;
 let statusBody: unknown = { request: null, finalReceiptIssuable: false };
+let exportBody: unknown = { available: false, latest: null };
 beforeEach(() => {
   statusBody = { request: null, finalReceiptIssuable: false };
-  fetchMock = vi.fn(async (_path: string, options: RequestInit = {}) =>
-    options.method === "POST" ? Response.json(statusBody, { status: 202 }) : Response.json(statusBody));
+  exportBody = { available: false, latest: null };
+  fetchMock = vi.fn(async (path: string, options: RequestInit = {}) =>
+    String(path).includes("/exports") ? Response.json(exportBody)
+      : options.method === "POST" ? Response.json(statusBody, { status: 202 }) : Response.json(statusBody));
   vi.stubGlobal("fetch", fetchMock);
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -29,12 +32,25 @@ afterEach(() => vi.unstubAllGlobals());
  */
 
 describe("Test A · export cannot claim success", () => {
-  it("renders the export control disabled with a truthful description", () => {
+  it("renders the export control disabled with a truthful description where no storage is mounted", async () => {
     renderScreen(<PrivacySettings />);
 
     const button = screen.getByRole("button", { name: /request export/i });
     expect(button).toBeDisabled();
-    expect(screen.getByText("Not available yet.")).toBeInTheDocument();
+    expect(await screen.findByText("Not available yet.")).toBeInTheDocument();
+  });
+
+  it("prepares a real export where available and repeats only the archive's own completeness verdict", async () => {
+    exportBody = { available: true, latest: null };
+    renderScreen(<PrivacySettings />);
+    await waitFor(() => expect(screen.getByRole("button", { name: /request export/i })).toBeEnabled());
+    exportBody = { available: true, latest: { requestId: "5f0a6c1e-9e2b-4b7a-8c1d-2b1e3f4a5b6c", requestedAt: "2026-09-23T12:00:00Z", expiresAt: "2026-09-26T12:00:00Z", state: "ready", complete: false, bytes: 20480 } };
+    fetchMock.mockImplementationOnce(async () => Response.json((exportBody as { latest: unknown }).latest));
+    await userEvent.click(screen.getByRole("button", { name: /request export/i }));
+    expect(await screen.findByText("Your export is ready, with gaps")).toBeInTheDocument();
+    expect(screen.getByText(/manifest.json in the download lists each one/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /download export/i })).toBeEnabled();
+    expect(screen.queryByText(/everything we hold/i)).not.toBeInTheDocument();
   });
 
   it("produces no toast when activated", async () => {
@@ -199,7 +215,7 @@ describe("P0-10 Test C · the rest of the privacy page is untouched", () => {
   it("keeps export honestly disabled and deletion behind its own confirmation flow", async () => {
     renderScreen(<PrivacySettings />);
     expect(screen.getByRole("button", { name: /request export/i })).toBeDisabled();
-    expect(screen.getByText("Not available yet.")).toBeInTheDocument();
+    expect(await screen.findByText("Not available yet.")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("button", { name: /delete household/i })).toBeEnabled());
   });
 });

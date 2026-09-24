@@ -234,3 +234,20 @@ export async function readOwnerExportOriginalRefs(db: Database, householdId: str
       custodyState: r.state }));
   });
 }
+/** Owner's most recent unexpired export request and its archive publication, if any. */
+export async function readLatestOwnerExport(db: Database, householdId: string) {
+  if (!uuid.safeParse(householdId).success) return refuse();
+  return db.withHousehold(householdId, async tx => {
+    const userId = await owner(tx, householdId);
+    const [r] = await tx.$queryRaw<Array<{ request_id: string; created_at: Date; expires_at: Date; state: string | null; complete: boolean | null; size_bytes: number | null }>>`
+      SELECT e.aggregate_id::text AS request_id,e.created_at,e.created_at+interval '72 hours' AS expires_at,a.state,a.complete,a.size_bytes
+      FROM outbox_events e LEFT JOIN local_export_artifacts a ON a.household_id=e.household_id AND a.request_id=e.aggregate_id AND a.format='archive-v3'
+      WHERE e.household_id=${householdId}::uuid AND e.event_type='export.requested' AND e.aggregate_type='export'
+        AND e.payload=jsonb_build_object('version',1,'requested_by',${userId}::text) AND e.created_at+interval '72 hours'>clock_timestamp()
+      ORDER BY e.created_at DESC,e.id DESC LIMIT 1`;
+    if (!r) return null;
+    return { requestId: r.request_id, requestedAt: r.created_at, expiresAt: r.expires_at,
+      state: r.state === null ? "requested" as const : r.state === "partial" ? "ready" as const : "revoked" as const,
+      complete: r.complete ?? false, bytes: r.size_bytes };
+  });
+}
