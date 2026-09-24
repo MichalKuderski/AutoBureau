@@ -69,3 +69,4 @@ export * from "./document-processing.js";
 export {readDocumentQuota} from './document-quota.js';
 export * from "./local-export-archive.js";
 export { localCleanCustody } from "./local-clean-custody.js";
+export { readLocalPlaidConnections, requestLocalPlaidUnlink, requestLocalPlaidReconnect } from "./plaid-local-lifecycle.js";

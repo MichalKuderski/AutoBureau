@@ -9,6 +9,7 @@ const SECTIONS = [
   { href: "/settings/profile", label: "Your profile" },
   { href: "/settings/notifications", label: "Notifications" },
   { href: "/settings/billing", label: "Plan & billing" },
+  { href: "/settings/connections", label: "Connected accounts" },
   { href: "/settings/privacy", label: "Privacy & data" },
 ] as const;
 

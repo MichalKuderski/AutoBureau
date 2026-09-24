@@ -18,7 +18,7 @@ export const CAPABILITY_SESSION_POLICY = {
   "member-session":"session", "registry.read":"session", "document.upload":"session",
   "document.review":"session", "item.write":"session", "obligation.write":"session",
   "member.manage":"session", "settings.manage":"session", "secret.reveal":"recent",
-  "household.delete":"recent", "household.export":"recent",
+  "household.delete":"recent", "household.export":"recent", "financial.read":"session", "financial.manage":"recent",
 } as const satisfies Record<Capability|"member-session","session"|"recent">;
 
 export async function withHouseholdSession<T>(db:Database,ctx:RequestContext,principal:VerifiedPrincipal,

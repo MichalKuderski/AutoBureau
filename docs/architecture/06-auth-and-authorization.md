@@ -29,6 +29,10 @@ Every `/v1` request resolves `RequestContext {user_id, household_id, role}`:
 | Manage email alias, notification defaults | ✅ | ❌ | ❌ |
 | Read `item_secrets` (reveal full value) | ✅ | ✅ | ❌ |
 | Delete household / export data | ✅ | ❌ | ❌ |
+| View connected financial accounts (`financial.read`) | ✅ | ❌ | ❌ |
+| Disconnect/reconnect financial accounts (`financial.manage`, recent auth) | ✅ | ❌ | ❌ |
+
+Financial capabilities (added September 30, ADR-022) are owner-only: the product has one account holder and a financial connection is that person's consent. Linking itself stays unmounted until the provider runtime is activated.
 
 \* Owners can restrict approvals to owner-only per household (settings toggle). Viewer exists for the "let my accountant look" case.
 

@@ -42,6 +42,10 @@ export const CAPABILITIES = {
   "settings.manage": ["owner"],
   "household.delete": ["owner"],
   "household.export": ["owner"],
+  /** Read connected financial accounts (safe projection only). */
+  "financial.read": ["owner"],
+  /** Disconnect or reconnect a financial connection. Recent authentication required. */
+  "financial.manage": ["owner"],
 } as const satisfies Record<string, readonly HouseholdRole[]>;
 
 export type Capability = keyof typeof CAPABILITIES;
