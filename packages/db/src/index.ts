@@ -41,6 +41,7 @@ export type { PrismaClient } from "@prisma/client";
 export * from "./jobs.js";
 export * from "./document-scans.js";
 export * from "./deletion-journal.js";
+export * from "./document-cancellation.js";
 
 export * from "./local-erasure.js";
 

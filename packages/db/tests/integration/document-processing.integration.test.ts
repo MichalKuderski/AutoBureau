@@ -148,3 +148,52 @@ it('current journal binding cannot be rewritten to a different document or stora
  await expect(db.withHousehold(hh,tx=>tx.$executeRaw`UPDATE document_custodies SET object_id=${randomUUID()}::uuid WHERE id=${f.custody.id}::uuid`)).rejects.toThrow();
  await expect(db.withHousehold(hh,tx=>tx.$executeRaw`UPDATE document_processing SET custody_id=${randomUUID()}::uuid WHERE id=${f.id}::uuid`)).rejects.toThrow();
 });
+
+import { cancelDocumentWork,readDocumentWork,DocumentWorkNotCancellable } from "../../src/document-cancellation.js";
+it('owner cancels unstarted work: claims stop, bytes/accounting kept, idempotent',async()=>{
+ const{hh,owner}=await household(),f=await ready(hh);
+ expect(await runAsUser(owner,()=>readDocumentWork(appDb,hh,f.doc))).toMatchObject({state:'waiting',cancellable:true});
+ expect(await runAsUser(owner,()=>cancelDocumentWork(appDb,hh,f.doc))).toMatchObject({state:'stopped',cancellable:false});
+ expect(await runAsUser(owner,()=>cancelDocumentWork(appDb,hh,f.doc))).toMatchObject({state:'stopped'});
+ expect(await reserveDocumentProcessing(db,hh,f.id).catch(()=>null)).toBeNull();
+ const kept=await admin.documentCustody.findUniqueOrThrow({where:{id:f.custody.id}});expect(kept.state).toBe('cancelled');expect(Buffer.from(kept.sha256).equals(f.hash)).toBe(true);
+ expect(await admin.document.findUniqueOrThrow({where:{id:f.doc}})).toMatchObject({sizeBytes:BigInt(f.bytes.length)});
+ expect(await readDocumentProcessingUsage(appDb,hh)).toEqual({completed:0,reserved:0,pending:0});
+ expect(await admin.auditLog.count({where:{householdId:hh,targetType:'document_custodies',targetId:f.custody.id,actorType:'user',actorId:owner}})).toBeGreaterThan(0);
+});
+it('owner cannot cancel reserved, started or indeterminate work, even by direct SQL',async()=>{
+ const{hh,owner}=await household(),f=await reserved(hh);
+ await expect(runAsUser(owner,()=>cancelDocumentWork(appDb,hh,f.doc))).rejects.toBeInstanceOf(DocumentWorkNotCancellable);
+ for(const sql of [`UPDATE document_processing SET state='cancelled' WHERE id='${f.id}'`,`UPDATE document_custodies SET state='cancelled' WHERE id='${f.custody.id}'`])
+  await expect(runAsUser(owner,()=>appDb.withHousehold(hh,tx=>tx.$executeRawUnsafe(sql)))).rejects.toThrow(/cannot be cancelled/);
+ await startDocumentProcessing(db,hh,f.id,f.lease.lease_token);
+ expect(await runAsUser(owner,()=>readDocumentWork(appDb,hh,f.doc))).toMatchObject({state:'working',cancellable:false});
+ await expect(runAsUser(owner,()=>cancelDocumentWork(appDb,hh,f.doc))).rejects.toBeInstanceOf(DocumentWorkNotCancellable);
+ expect(await admin.documentProcessing.findUniqueOrThrow({where:{id:f.id}})).toMatchObject({state:'started'});
+});
+it('runtime role may change only the state column to cancelled, and viewers/strangers cannot cancel',async()=>{
+ const{hh,owner}=await household(),f=await ready(hh),viewer=randomUUID();owners.push(viewer);
+ await admin.user.create({data:{id:viewer,email:`${viewer}@example.test`}});await admin.householdUser.create({data:{householdId:hh,userId:viewer,role:'viewer'}});
+ await expect(runAsUser(viewer,()=>cancelDocumentWork(appDb,hh,f.doc))).rejects.toThrow(/refused/);
+ await expect(runAsUser(owner,()=>appDb.withHousehold(hh,tx=>tx.$executeRawUnsafe(`UPDATE document_processing SET attempts=0 WHERE id='${f.id}'`)))).rejects.toThrow(/permission denied/);
+ await expect(runAsUser(owner,()=>appDb.withHousehold(hh,tx=>tx.$executeRawUnsafe(`UPDATE document_custodies SET state='ready' WHERE id='${f.custody.id}'`)))).rejects.toThrow(/cannot be cancelled/);
+ const other=await household();
+ expect(await runAsUser(other.owner,()=>cancelDocumentWork(appDb,other.hh,f.doc))).toBeNull();
+ expect(await admin.documentCustody.findUniqueOrThrow({where:{id:f.custody.id}})).toMatchObject({state:'ready'});
+});
+it('a concurrent reservation and cancellation serialize: exactly one wins',async()=>{
+ for(let i=0;i<4;i++){
+  const{hh,owner}=await household(),f=await ready(hh);
+  const [claim,cancel]=await Promise.allSettled([reserveDocumentProcessing(db,hh,f.id),runAsUser(owner,()=>cancelDocumentWork(appDb,hh,f.doc))]);
+  const p=await admin.documentProcessing.findUniqueOrThrow({where:{id:f.id}}),c=await admin.documentCustody.findUniqueOrThrow({where:{id:f.custody.id}});
+  if(p.state==='reserved'){expect(c.state).toBe('ready');expect(cancel.status).toBe('rejected');}
+  else{expect(p.state).toBe('cancelled');expect(c.state).toBe('cancelled');expect(claim.status==='rejected'||(claim.status==='fulfilled'&&claim.value===null)).toBe(true);}
+ }
+});
+it('a deletion fence refuses owner cancellation',async()=>{
+ const{hh,owner}=await household(),f=await ready(hh);
+ await admin.householdDeletion.create({data:{householdId:hh,requestedBy:owner,requestedAt:new Date(0),undoUntil:new Date(14*86400000),state:'fenced',fencedAt:new Date(),settleUntil:new Date(Date.now()+900000)}});
+ const refused=await runAsUser(owner,()=>cancelDocumentWork(appDb,hh,f.doc)).catch(e=>e);
+ expect(refused).toBeInstanceOf(Error);expect(refused).not.toBeInstanceOf(DocumentWorkNotCancellable);
+ expect(await admin.documentCustody.findUniqueOrThrow({where:{id:f.custody.id}})).toMatchObject({state:'ready'});
+});
