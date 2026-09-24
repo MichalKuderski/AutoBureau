@@ -52,3 +52,44 @@ export async function eraseLocalDocumentBatch(db: Database, householdId: string,
     return { stage: stages.length, count: 0, onlineRowsDrained: true, finalReceiptIssuable: false as const };
   }));
 }
+/** Household-record stage (component 'account-household'): idempotency records, household
+ * members and entitlements, one bounded batch per call. Runs only after derived records
+ * are gone, so member FKs never cascade into records this worker may not update. The
+ * household row, memberships, account identity and protected journals stay: they are
+ * ADR-019 suppression evidence, not erasable by this worker, and never a final receipt. */
+export async function eraseLocalHouseholdRecordsBatch(db: Database, householdId: string, requestId: string,
+  claim: Readonly<{ id: string; token: string; operationId: string }>) {
+  return runAsSystem("Erase bounded manifested household records", () => db.withHousehold(householdId, async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`privacy-fence:${householdId}`},0))`;
+    const request = await tx.householdDeletion.findFirst({ where: { id: requestId, householdId, state: "verifying" }, select: { id: true } });
+    if (!request || !claim) throw new Error("Local erasure refused");
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`deletion-resource:${claim.operationId}`},0))`;
+    const [attempt] = await tx.$queryRaw<Array<{ id: string }>>`SELECT a.id FROM deletion_attempts a
+      JOIN deletion_resources r ON r.id=a.resource_id WHERE a.id=${claim.id}::uuid AND a.household_id=${householdId}::uuid
+      AND r.household_id=${householdId}::uuid AND r.deletion_id=${requestId}::uuid AND r.id=${claim.operationId}::uuid
+      AND r.component='account-household' AND a.lease_token=${claim.token}::uuid
+      AND a.lease_until>clock_timestamp() AND a.completed_at IS NULL FOR UPDATE OF a`;
+    if (!attempt) throw new Error("Local erasure lease refused");
+    // Derived records reference members (ON DELETE SET NULL). Refuse rather than let a
+    // cascade try to rewrite rows this worker has no authority to update.
+    const [derived] = await tx.$queryRaw<Array<{ n: bigint }>>`SELECT (SELECT count(*) FROM items WHERE household_id=${householdId}::uuid)
+      +(SELECT count(*) FROM obligations WHERE household_id=${householdId}::uuid) AS n`;
+    if (Number(derived!.n) !== 0) throw new Error("Local erasure ordering refused");
+    await tx.$executeRaw`SELECT set_config('request.erasure_attempt',${claim.id},true),set_config('request.erasure_token',${claim.token},true)`;
+    const stages = [
+      () => tx.$executeRaw`DELETE FROM idempotency_keys WHERE id IN (SELECT id FROM idempotency_keys WHERE household_id=${householdId}::uuid ORDER BY id LIMIT 100)`,
+      () => tx.$executeRaw`DELETE FROM household_members WHERE id IN (SELECT id FROM household_members WHERE household_id=${householdId}::uuid ORDER BY id LIMIT 100)`,
+      () => tx.$executeRaw`DELETE FROM entitlements WHERE household_id=${householdId}::uuid`,
+    ];
+    for (let stage = 0; stage < stages.length; stage++) {
+      const count = await stages[stage]!();
+      if (count) {
+        await tx.$executeRaw`INSERT INTO audit_log(household_id,actor_type,action,target_type,target_id,meta)
+          VALUES(${householdId}::uuid,'system','privacy.local_batch_erased','household_deletion',${requestId}::uuid,
+          jsonb_build_object('stage',${100 + stage}::int,'count',${count}::int,'attempt',${claim.id}::uuid,'resource',${claim.operationId}::uuid))`;
+        return { stage, count, onlineRowsDrained: false, finalReceiptIssuable: false as const };
+      }
+    }
+    return { stage: stages.length, count: 0, onlineRowsDrained: true, finalReceiptIssuable: false as const };
+  }));
+}

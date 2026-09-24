@@ -132,6 +132,17 @@ export async function observeLocalDeletionResource(db: Database, householdId: st
         (SELECT count(*) FROM notifications WHERE household_id=${householdId}::uuid)+
         (SELECT count(*) FROM notification_deliveries x JOIN notifications n ON n.id=x.notification_id WHERE n.household_id=${householdId}::uuid) AS count`;
       remaining = Number(row!.count); // Email/provider copies are a separate unresolved scope.
+    } else if (resource.component === "account-household") {
+      // Erasable household records plus the retained anchors (memberships, auth challenges)
+      // that ADR-019 keeps; the account identity and provider auth record are out of scope,
+      // so this component can never read as complete.
+      const [row] = await tx.$queryRaw<Array<{ count: bigint }>>`SELECT
+        (SELECT count(*) FROM household_members WHERE household_id=${householdId}::uuid)+
+        (SELECT count(*) FROM entitlements WHERE household_id=${householdId}::uuid)+
+        (SELECT count(*) FROM idempotency_keys WHERE household_id=${householdId}::uuid)+
+        (SELECT count(*) FROM household_users WHERE household_id=${householdId}::uuid)+
+        (SELECT count(*) FROM account_security_challenges WHERE household_id=${householdId}::uuid) AS count`;
+      remaining = Number(row!.count);
     } else if (resource.component === "outbox-delivery-inbox") {
       const [row] = await tx.$queryRaw<Array<{ count: bigint }>>`SELECT
         (SELECT count(*) FROM outbox_events WHERE household_id=${householdId}::uuid)+

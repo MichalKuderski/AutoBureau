@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { DELETION_COMPONENTS, encodeJobEnvelope } from "@autobureau/contracts";
-import { eraseLocalDocumentBatch, type LocalErasureClaims } from "../../src/local-erasure.js";
+import { eraseLocalDocumentBatch, eraseLocalHouseholdRecordsBatch, type LocalErasureClaims } from "../../src/local-erasure.js";
 import { Database } from "../../src/scoped.js";
 import { runAsSystem, runAsUser } from "../../src/audit.js";
 import { registerDocumentScan, claimDocumentScan, completeDocumentScan } from "../../src/document-scans.js";
@@ -307,6 +307,37 @@ describe("manifest-bound local online erasure", () => {
     await expect(deleteDb.withHousehold(a.hh, tx => tx.$executeRaw`DELETE FROM household_deletions WHERE id=${a.requestId}::uuid`)).rejects.toThrow();
     await expect(deleteDb.withHousehold(a.hh, tx => tx.$executeRaw`DELETE FROM outbox_events WHERE household_id=${a.hh}::uuid`)).rejects.toThrow();
     await expect(deleteDb.withHousehold(a.hh, tx => tx.$queryRaw`SELECT ciphertext FROM item_secrets`)).rejects.toThrow();
+  });
+  it("erases household records only after derived records, bound to its own lease, and never reports the anchors absent", async () => {
+    const a = await manifestReady(), b = await fixture(), claims = await localClaims(a);
+    const resource = a.resources.find(x => x.component === "account-household")!;
+    const own = (await claimDeletionAttempt(deleteDb, a.hh, resource.id))!;
+    await admin.entitlement.create({ data: { householdId: a.hh, periodStart: new Date() } });
+    await admin.entitlement.create({ data: { householdId: b.hh, periodStart: new Date() } });
+    const member = await admin.householdMember.create({ data: { householdId: a.hh, displayName: "PUBLIC member", kind: "adult" } });
+    await admin.householdMember.create({ data: { householdId: b.hh, displayName: "PUBLIC other", kind: "adult" } });
+    await admin.item.create({ data: { householdId: a.hh, kind: "subscription", name: "PUBLIC item", memberId: member.id } });
+    await admin.idempotencyKey.create({ data: { householdId: a.hh, userId: owner, key: randomUUID(), method: "POST", path: "/v1/items", fingerprint: "0".repeat(64), state: "completed", responseStatus: 201, responseBody: "{\"name\":\"PUBLIC item\"}", expiresAt: new Date(Date.now() + 86400_000) } });
+    // Ordering: derived records still reference the member, so this stage refuses.
+    await expect(eraseLocalHouseholdRecordsBatch(deleteDb, a.hh, a.requestId, own)).rejects.toThrow("Local erasure ordering refused");
+    // A lease for another component cannot authorize this stage, nor a direct DELETE.
+    await expect(eraseLocalHouseholdRecordsBatch(deleteDb, a.hh, a.requestId, claims["derived-records"])).rejects.toThrow("Local erasure lease refused");
+    await expect(deleteDb.withHousehold(a.hh, tx => tx.$executeRaw`DELETE FROM household_members WHERE id=${member.id}::uuid`)).rejects.toThrow("Manifest-bound erasure required");
+    for (let i = 0; i < 12; i++) { if ((await eraseLocalDocumentBatch(deleteDb, a.hh, a.requestId, claims)).onlineRowsDrained) break; }
+    const results = [];
+    for (let i = 0; i < 6; i++) { const r = await eraseLocalHouseholdRecordsBatch(deleteDb, a.hh, a.requestId, own); results.push(r); if (r.onlineRowsDrained) break; }
+    expect(results.reduce((n, r) => n + r.count, 0)).toBe(3);
+    expect(results.at(-1)).toMatchObject({ onlineRowsDrained: true, finalReceiptIssuable: false });
+    expect(await admin.householdMember.count({ where: { householdId: a.hh } })).toBe(0);
+    expect(await admin.entitlement.count({ where: { householdId: a.hh } })).toBe(0);
+    expect(await admin.idempotencyKey.count({ where: { householdId: a.hh } })).toBe(0);
+    expect(await admin.householdMember.count({ where: { householdId: b.hh } })).toBe(1);
+    expect(await admin.entitlement.count({ where: { householdId: b.hh } })).toBe(1);
+    // Memberships and the household anchor are retained suppression evidence.
+    expect(await admin.householdUser.count({ where: { householdId: a.hh } })).toBe(2);
+    expect(await observeLocalDeletionResource(verifyDb, a.hh, resource.id)).toMatchObject({ state: "remaining", remaining: 2 });
+    await expect(deleteDb.withHousehold(a.hh, tx => tx.$executeRaw`DELETE FROM household_users WHERE household_id=${a.hh}::uuid`)).rejects.toThrow();
+    await expect(deleteDb.withHousehold(a.hh, tx => tx.$executeRaw`DELETE FROM households WHERE id=${a.hh}::uuid`)).rejects.toThrow();
   });
   it("bounds batches and tolerates duplicate/concurrent invocations", async () => {
     const f = await manifestReady(), claims = await localClaims(f);
