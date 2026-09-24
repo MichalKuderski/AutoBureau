@@ -312,6 +312,28 @@ describe('deletion fence, owner continuity and roles',()=>{
   const g=await connected(),claim=(await claimLocalPlaidOperation(db,g.hh,g.item,'sync'))!;await admin.user.update({where:{id:g.owner},data:{status:'suspended'}});
   await expect(commitLocalPlaidSync(db,claim,[page({nextCursor:'o1'})])).rejects.toThrow(refused);expect((await cursorOf(g.item)).revision).toBe(0n);
  });
+ it('an administrative suspension committing during a sync makes the financial commit wait and then refuse',async()=>{const f=await connected(),a=account();
+  const claim=(await claimLocalPlaidOperation(db,f.hh,f.item,'sync'))!;
+  let release!:()=>void;const gate=new Promise<void>(r=>{release=r;});
+  // Uncommitted suspension holds the exclusive account-status fence.
+  const suspension=admin.$transaction(async tx=>{await tx.$executeRaw`UPDATE users SET status='suspended' WHERE id=${f.owner}::uuid`;await gate;},{timeout:20000});
+  await new Promise(r=>setTimeout(r,200));
+  const commit=commitLocalPlaidSync(db,claim,[page({accounts:[{accountId:a,name:'PUBLIC Checking',kind:'depository',currentCents:1,availableCents:1}],nextCursor:'s1'})]);
+  const outcome=commit.then(()=>'committed',()=>'refused');
+  // The commit must be blocked on the fence, not racing past a stale 'active' read.
+  let waiting=0;for(let n=0;n<50&&!waiting;n++){await new Promise(r=>setTimeout(r,100));
+   const [w]=await admin.$queryRaw<Array<{n:bigint}>>`SELECT count(*) AS n FROM pg_stat_activity WHERE usename='app_plaid_sandbox' AND wait_event_type='Lock' AND wait_event='advisory'`;waiting=Number(w!.n);}
+  expect(waiting).toBe(1);
+  release();await suspension;
+  expect(await outcome).toBe('refused');
+  expect(await cursorOf(f.item)).toMatchObject({revision:0n,cursor:null});expect(await admin.plaidLocalAccount.count({where:{itemId:f.item}})).toBe(0);
+ });
+ it('a financial commit holding the fence finishes before a later suspension applies',async()=>{const f=await connected();
+  const claim=(await claimLocalPlaidOperation(db,f.hh,f.item,'sync'))!;
+  expect(await commitLocalPlaidSync(db,claim,[page({nextCursor:'t1'})])).toMatchObject({revision:1});
+  await admin.user.update({where:{id:f.owner},data:{status:'suspended'}});
+  await expect(claimLocalPlaidOperation(db,f.hh,f.item,'sync')).rejects.toThrow();
+ });
  it.each(['app_document_worker','app_job_worker','app_billing_test','app_retention_worker','app_deletion_verifier'])('%s has no financial data, cursor or inbox authority',async role=>{const f=await connected();let c:PrismaClient|undefined;
   try{await admin.$executeRawUnsafe(`ALTER ROLE ${role} LOGIN PASSWORD 'plaid_denial_local_only'`);const u=new URL(ADMIN_URL);u.username=role;u.password='plaid_denial_local_only';c=new PrismaClient({datasourceUrl:u.toString()});const other=new Database(c);
    for(const q of [tx=>tx.$queryRaw`SELECT description FROM plaid_local_transactions`,tx=>tx.$queryRaw`SELECT name FROM plaid_local_accounts`,tx=>tx.$queryRaw`SELECT cursor FROM plaid_local_cursors`,
