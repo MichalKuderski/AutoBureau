@@ -143,6 +143,14 @@ describe("ADR-018 durable scan authority", () => {
     await completeDocumentScan(scanDb, f.hh, f.id, { nonce: c.nonce, sha256: sha, verdict: "clean", failure: "none" });
     await expect(runAsSystem("Invalid history rewrite", () => scanDb.withHousehold(f.hh, tx => tx.$executeRaw`UPDATE document_scan_attempts SET verdict='rejected',failure='malware' WHERE scan_id=${f.id}::uuid`))).rejects.toThrow("Scan attempt is immutable");
   });
+  it("a terminal verdict cannot be re-queued or re-decided, even by the scanning worker", async () => {
+    const f = await registered(), c = (await claimDocumentScan(scanDb, f.hh, f.id, release))!;
+    await completeDocumentScan(scanDb, f.hh, f.id, { nonce: c.nonce, sha256: sha, verdict: "clean", failure: "none" });
+    for (const state of ["queued", "rejected", "exhausted", "cancelled"]) {
+      await expect(runAsSystem("Terminal verdict rewrite", () => scanDb.withHousehold(f.hh, tx => tx.$executeRawUnsafe(`UPDATE document_scans SET state='${state}' WHERE id='${f.id}'`)))).rejects.toThrow("Scan is terminal");
+    }
+    expect(await admin.documentScan.findUniqueOrThrow({ where: { id: f.id } })).toMatchObject({ state: "clean" });
+  });
   it("enforces worker/app/verifier separation, immutable history and actual RLS", async () => {
     const a = await registered(), b = await registered();
     expect(await scan.documentScan.findMany()).toEqual([]);
@@ -167,6 +175,16 @@ describe("ADR-018 deletion fences and evidence", () => {
     expect(await fenceHouseholdDeletion(deleteDb, f.hh, id)).toBe(false);
     expect(await runAsUser(owner, () => undoHouseholdDeletion(appDb, f.hh, id))).toBe(true);
     expect(await fenceHouseholdDeletion(deleteDb, f.hh, id)).toBe(false);
+  });
+  it("the database itself refuses a non-owner deletion request and an undo after the window", async () => {
+    const f = await fixture();
+    // Raw SQL as the restricted role: the TypeScript pre-checks are bypassed on purpose.
+    await expect(runAsUser(stranger, () => appDb.withHousehold(f.hh, tx => tx.$executeRaw`INSERT INTO household_deletions(household_id,requested_by) VALUES(${f.hh}::uuid,${stranger}::uuid)`))).rejects.toThrow("Owner authorization required");
+    expect(await admin.householdDeletion.count({ where: { householdId: f.hh } })).toBe(0);
+    const id = await requested(f.hh); await mature(id);
+    expect(await runAsUser(owner, () => undoHouseholdDeletion(appDb, f.hh, id))).toBe(false);
+    await expect(runAsUser(owner, () => appDb.withHousehold(f.hh, tx => tx.$executeRaw`UPDATE household_deletions SET state='cancelled' WHERE id=${id}::uuid`))).rejects.toThrow("Deletion undo refused");
+    expect(await admin.householdDeletion.findUniqueOrThrow({ where: { id } })).toMatchObject({ state: "grace" });
   });
   it("fence blocks raw tenant writes, scan completion and dispatch/consumption", async () => {
     const f = await registered(), claim = (await claimDocumentScan(scanDb, f.hh, f.id, release))!;

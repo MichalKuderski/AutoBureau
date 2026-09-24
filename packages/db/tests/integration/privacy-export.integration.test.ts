@@ -257,6 +257,15 @@ it("DB revocation survives lost local deny marker and restored ciphertext",async
   await expect(runAsUser(owner,()=>db.withHousehold(f.hh,tx=>tx.$executeRaw`UPDATE local_export_artifacts SET state='partial' WHERE household_id=${f.hh}::uuid`))).rejects.toThrow();
  }finally{await f.cleanup();}
 });
+it("an ordinary-role export journal row needs the owner's exact request intent and its 72-hour expiry",async()=>{
+ const f=await fixture();
+ const insert=(requestId:string,expires:Date)=>runAsUser(owner,()=>db.withHousehold(f.hh,tx=>tx.$executeRaw`INSERT INTO local_export_artifacts(household_id,request_id,owner_id,ciphertext_digest,size_bytes,snapshot_at,expires_at)
+  VALUES(${f.hh}::uuid,${requestId}::uuid,${owner}::uuid,${"a".repeat(64)},100,clock_timestamp()-interval '1 second',${expires})`));
+ await expect(insert(randomUUID(),new Date(Date.now()+3600_000))).rejects.toThrow("Export journal refused");
+ await runAsUser(owner,()=>requestOwnerExport(db,f.hh,f.requestId));
+ await expect(insert(f.requestId,new Date(Date.now()+365*86400_000))).rejects.toThrow("Export journal refused");
+ expect(await admin.localExportArtifact.count({where:{householdId:f.hh}})).toBe(0);
+});
 it("journal scope, immutable ciphertext binding and expiry resist ordinary-role writes",async()=>{
  const f=await vaultFixture();try{
   await runAsUser(owner,()=>f.vault.build(db,f.hh,f.requestId));

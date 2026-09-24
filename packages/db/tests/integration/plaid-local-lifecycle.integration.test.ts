@@ -353,12 +353,17 @@ describe('deletion fence, owner continuity and roles',()=>{
   await new Promise(r=>setTimeout(r,200));
   const commit=commitLocalPlaidSync(db,claim,[page({accounts:[{accountId:a,name:'PUBLIC Checking',kind:'depository',currentCents:1,availableCents:1}],nextCursor:'s1'})]);
   const outcome=commit.then(()=>'committed',()=>'refused');
-  // The commit must be blocked on the fence, not racing past a stale 'active' read.
-  let waiting=0;for(let n=0;n<50&&!waiting;n++){await new Promise(r=>setTimeout(r,100));
-   const [w]=await admin.$queryRaw<Array<{n:bigint}>>`SELECT count(*) AS n FROM pg_stat_activity WHERE usename='app_plaid_sandbox' AND wait_event_type='Lock' AND wait_event='advisory'`;waiting=Number(w!.n);}
-  expect(waiting).toBe(1);
-  release();await suspension;
-  expect(await outcome).toBe('refused');
+  // The suspension transaction is ALWAYS released, so a broken fence fails this assertion
+  // cleanly instead of leaving a lock that times out the suite's cleanup hooks.
+  let freed=false;const free=()=>{if(!freed){freed=true;release();}};
+  try{
+   // The commit must be blocked on the fence, not racing past a stale 'active' read.
+   let waiting=0;for(let n=0;n<50&&!waiting;n++){await new Promise(r=>setTimeout(r,100));
+    const [w]=await admin.$queryRaw<Array<{n:bigint}>>`SELECT count(*) AS n FROM pg_stat_activity WHERE usename='app_plaid_sandbox' AND wait_event_type='Lock' AND wait_event='advisory'`;waiting=Number(w!.n);}
+   expect(waiting).toBe(1);
+   free();await suspension;
+   expect(await outcome).toBe('refused');
+  }finally{free();await suspension.catch(()=>undefined);await outcome;}
   expect(await cursorOf(f.item)).toMatchObject({revision:0n,cursor:null});expect(await admin.plaidLocalAccount.count({where:{itemId:f.item}})).toBe(0);
  });
  it('a financial commit holding the fence finishes before a later suspension applies',async()=>{const f=await connected();
