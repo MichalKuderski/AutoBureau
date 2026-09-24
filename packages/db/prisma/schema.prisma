@@ -906,6 +906,8 @@ model LocalExportArtifact {
  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
  createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
  state String @default("partial")
+ format String @default("jsonl-v2")
+ complete Boolean @default(false)
  household Household @relation(fields:[householdId],references:[id],onDelete:Restrict)
  @@unique([householdId,requestId])
  @@map("local_export_artifacts")

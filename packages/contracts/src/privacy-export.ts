@@ -58,3 +58,66 @@ export function localExportOmissions(snapshot:ReadableLocalExportSnapshot):reado
  return snapshot.version===1?[...LOCAL_EXPORT_OMISSIONS,"account-and-profile","household-name","notifications-and-preferences","audit-trail","test-subscription-state","document-work-state"]
  : [...LOCAL_EXPORT_OMISSIONS,...(snapshot.testSubscription===undefined?["test-subscription-state"]:[]),...(snapshot.documentWork===undefined?["document-work-state"]:[])];
 }
+
+/* ---------- Export v3: complete household archive (originals + JSONL + manifest) ---------- */
+const json = z.unknown();
+const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const text = (max: number) => z.string().max(max);
+const many = <T extends z.ZodTypeAny>(s: T) => z.array(s).max(10000);
+/** Every category the household ledger holds, with names, free text, attributes and
+ * extracted content. Excluded by design (not user data or not exportable safely):
+ * storage paths, internal error payloads, secret ciphertext/keys, provider tokens,
+ * provider IDs, cursors, leases and transport capabilities. */
+export const ExportSnapshotV3Schema = z.object({
+  version: z.literal(3), scope: z.literal("household"),
+  householdId: PrivacyExportIdSchema, requestId: PrivacyExportIdSchema, ownerId: PrivacyExportIdSchema,
+  snapshotAt: instant, expiresAt: instant,
+  account: z.object({ email: z.string().email().max(320), status: z.enum(["active","suspended","deletion_pending"]), createdAt: instant }).strict(),
+  profile: z.object({ displayName: text(300), locale: text(35), timezone: text(100), country: z.string().length(2), onboarding: json }).strict().nullable(),
+  household: z.object({ name: text(300), emailAlias: text(320).nullable(), createdAt: instant }).strict(),
+  members: many(z.object({ id: PrivacyExportIdSchema, displayName: text(300), kind: MemberKindSchema, dateOfBirth: date.nullable(), isAccountHolder: z.boolean(), archivedAt: instant.nullable(), createdAt: instant }).strict()),
+  items: many(z.object({ id: PrivacyExportIdSchema, memberId: nullableId, kind: ItemKindSchema, name: text(1000), status: ItemStatusSchema, vendorName: text(1000).nullable(),
+    attributes: json, amountCents: money, currency, billingCycle: text(100).nullable(), validFrom: date.nullable(), expiresAt: date.nullable(),
+    verifiedAt: instant.nullable(), sourceDocumentId: nullableId, createdAt: instant, updatedAt: instant }).strict()),
+  obligations: many(z.object({ id: PrivacyExportIdSchema, itemId: nullableId, memberId: nullableId, title: text(1000), kind: ObligationKindSchema,
+    direction: z.enum(["owed_by_household","owed_to_household"]), status: ObligationStatusSchema, priority: z.number().int(), dueAt: instant,
+    windowStart: instant.nullable(), graceUntil: instant.nullable(), amountCents: money, currency, recurrence: text(200).nullable(),
+    source: z.enum(["ai","user","system"]), sourceDocumentId: nullableId, aiConfidence: z.string().regex(/^\d(\.\d{1,3})?$/).nullable(), outcome: json,
+    verifiedAt: instant.nullable(), createdAt: instant, updatedAt: instant }).strict()),
+  reminders: many(z.object({ id: PrivacyExportIdSchema, obligationId: PrivacyExportIdSchema, remindAt: instant, offsetLabel: text(100), status: ReminderStatusSchema, sentAt: instant.nullable() }).strict()),
+  documents: many(z.object({ id: PrivacyExportIdSchema, source: z.enum(["upload","email","api"]), mediaType: text(100), sizeBytes: z.string().regex(/^\d{1,19}$/),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(), status: DocStatusSchema, documentType: text(100).nullable(), title: text(1000).nullable(),
+    documentDate: date.nullable(), confidence: z.string().regex(/^\d(\.\d{1,3})?$/).nullable(), extracted: json, review: json, processedAt: instant.nullable(), createdAt: instant }).strict()),
+  documentWork: LocalExportSnapshotSchema.shape.documentWork.unwrap(),
+  notifications: many(z.object({ id: PrivacyExportIdSchema, kind: text(80), title: text(300), body: text(2000), targetType: text(32).nullable(), targetId: nullableId, createdAt: instant, readAt: instant.nullable() }).strict()),
+  notificationPreferences: many(z.object({ kind: text(80), channel: z.enum(["email","push","inapp"]), enabled: z.boolean() }).strict()),
+  auditTrail: many(z.object({ id: z.string().regex(/^\d{1,19}$/), action: text(120), targetType: text(120), targetId: nullableId, actorType: z.enum(["user","agent","system"]), createdAt: instant }).strict()),
+  financialConnections: many(z.object({ id: PrivacyExportIdSchema, state: z.enum(["active","login-required","revoked","unlinking","removal-indeterminate","removed"]), statusChangedAt: instant, createdAt: instant }).strict()),
+  financialAccounts: many(z.object({ id: PrivacyExportIdSchema, connectionId: PrivacyExportIdSchema, name: text(80), kind: z.enum(["depository","credit","loan","investment","other"]),
+    currency: z.literal("USD"), currentCents: money, availableCents: money, updatedAt: instant }).strict()),
+  financialTransactions: many(z.object({ id: PrivacyExportIdSchema, connectionId: PrivacyExportIdSchema, accountId: PrivacyExportIdSchema, postedOn: date,
+    amountCents: z.string().regex(/^-?\d{1,19}$/), currency: z.literal("USD"), description: text(120), pending: z.boolean(), updatedAt: instant }).strict()),
+  testSubscription: LocalExportSnapshotSchema.shape.testSubscription,
+  entitlements: LocalExportSnapshotSchema.shape.entitlements,
+  /** No application path writes identifier values and no reveal boundary exists (ADR-007).
+   * Count only; any nonzero count makes the export incomplete, never silently omitted. */
+  identifiers: z.object({ stored: z.number().int().nonnegative(), exported: z.literal(0) }).strict(),
+}).strict();
+export type ExportSnapshotV3 = z.infer<typeof ExportSnapshotV3Schema>;
+export const EXPORT_V3_CATEGORIES = Object.freeze(["account","profile","household","members","items","obligations","reminders","documents","documentWork","notifications",
+  "notificationPreferences","auditTrail","financialConnections","financialAccounts","financialTransactions","testSubscription","entitlements"] as const);
+const sha = z.string().regex(/^[a-f0-9]{64}$/);
+const member = z.string().regex(/^(manifest\.json|README\.txt|data\/[a-zA-Z]+\.jsonl|originals\/[a-f0-9-]{36}\.(pdf|jpg|png|heic|eml|bin))$/);
+export const ExportArchiveManifestSchema = z.object({
+  format: z.literal("pellum-household-export"), version: z.literal(3),
+  householdId: PrivacyExportIdSchema, requestId: PrivacyExportIdSchema, snapshotAt: instant, expiresAt: instant, complete: z.boolean(),
+  categories: z.array(z.object({ name: z.enum(EXPORT_V3_CATEGORIES), file: member, records: z.number().int().nonnegative(), sha256: sha, schema: z.string().regex(/^pellum\.export\.[a-zA-Z]+\.v3$/) }).strict()).max(40),
+  originals: z.object({
+    included: z.array(z.object({ documentId: PrivacyExportIdSchema, file: member, bytes: z.number().int().positive(), sha256: sha, mediaType: z.string().max(100) }).strict()).max(10000),
+    notIncluded: z.array(z.object({ documentId: PrivacyExportIdSchema, reason: z.enum(["not-scanned-clean","rejected-by-scanner","no-longer-retained","not-yet-in-custody"]) }).strict()).max(10000),
+  }).strict(),
+  omissions: z.array(z.object({ category: z.string().max(80), reason: z.string().max(300) }).strict()).max(40),
+  notHeldByPellum: z.array(z.string().max(300)).max(10),
+  integrity: z.object({ algorithm: z.literal("sha256"), note: z.string().max(300) }).strict(),
+}).strict();
+export type ExportArchiveManifest = z.infer<typeof ExportArchiveManifestSchema>;

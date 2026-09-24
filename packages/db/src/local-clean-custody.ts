@@ -24,6 +24,8 @@ export function localCleanCustody(root:string){
    try{writeFileSync(fd,bytes);fsyncSync(fd);}finally{closeSync(fd);}sync();read(r);
   },
   verify(r:Reference){read(r);return {scope:'local-synthetic' as const,exactBytes:true as const};},
+  // Owner export only: bytes are returned after size/hash verification against the custody binding.
+  readVerified(r:Reference){return Buffer.from(read(r));},
   remove(r:Reference){read(r);unlinkSync(file(r));sync();return {acknowledged:true as const,absenceProven:false as const};},
   observe(r:Reference){let path:string;try{path=file(r);}catch{return {state:'unknown' as const,finalReceiptIssuable:false as const};}
    try{const s=lstatSync(path);return {state:s.isFile()&&!s.isSymbolicLink()&&s.nlink===1?'remaining' as const:'unknown' as const,finalReceiptIssuable:false as const};}catch(e){return {state:(e as NodeJS.ErrnoException).code==='ENOENT'?'absent' as const:'unknown' as const,finalReceiptIssuable:false as const};}},
