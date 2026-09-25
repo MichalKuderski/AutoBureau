@@ -26,14 +26,19 @@ export function ExportCard() {
   const [focusNext, setFocusNext] = useState<null | "download" | "request">(null);
   const downloadRef = useRef<HTMLButtonElement>(null), requestRef = useRef<HTMLButtonElement>(null);
   const status = useQuery({ queryKey: key, queryFn: () => apiFetch<ExportStatus>(`/households/${household.id}/exports`, { householdId: household.id }) });
-  const refresh = async (latest: Latest | null) => { client.setQueryData<ExportStatus>(key, s => ({ available: s?.available ?? true, latest })); await client.invalidateQueries({ queryKey: key }); };
+  // Focus is handed to the replacement control as soon as the new state renders, not after
+  // the background refetch (which left keyboard focus on <body> for a round trip).
+  const refresh = async (latest: Latest | null, focus: "download" | "request") => {
+    client.setQueryData<ExportStatus>(key, s => ({ available: s?.available ?? true, latest })); setFocusNext(focus);
+    await client.invalidateQueries({ queryKey: key });
+  };
   const prepare = useMutation({
     mutationFn: () => apiFetch<Latest>(`/households/${household.id}/exports`, { method: "POST", householdId: household.id, body: { requestId: crypto.randomUUID() } }),
-    onSuccess: async (latest) => { await refresh(latest); setFocusNext("download"); },
+    onSuccess: async (latest) => { await refresh(latest, "download"); },
   });
   const remove = useMutation({
     mutationFn: (requestId: string) => apiFetch<Latest>(`/households/${household.id}/exports/revoke`, { method: "POST", householdId: household.id, body: { requestId } }),
-    onSuccess: async (latest) => { await refresh(latest); setFocusNext("request"); },
+    onSuccess: async (latest) => { await refresh(latest, "request"); },
   });
   const download = useMutation({
     mutationFn: async (latest: Latest) => {
@@ -73,13 +78,17 @@ export function ExportCard() {
         <div className="flex flex-wrap gap-2">
           {ready && latest ? (
             <>
-              <Button ref={downloadRef} variant="primary" disabled={download.isPending} onClick={() => download.mutate(latest)}>
+              {/* Pending is aria-disabled, not disabled: a disabled control drops keyboard focus. */}
+              <Button ref={downloadRef} variant="primary" aria-disabled={download.isPending || undefined} className="aria-disabled:opacity-55 aria-disabled:cursor-progress"
+                onClick={() => { if (!download.isPending) download.mutate(latest); }}>
                 <Icon.Upload className="size-4 rotate-180" />{download.isPending ? "Downloading…" : "Download export"}
               </Button>
-              <Button variant="ghost" disabled={remove.isPending} onClick={() => remove.mutate(latest.requestId)}>Delete this export</Button>
+              <Button variant="ghost" aria-disabled={remove.isPending || undefined} className="aria-disabled:opacity-55 aria-disabled:cursor-progress"
+                onClick={() => { if (!remove.isPending) remove.mutate(latest.requestId); }}>Delete this export</Button>
             </>
           ) : (
-            <Button ref={requestRef} variant="secondary" disabled={!status.data?.available || prepare.isPending} onClick={() => prepare.mutate()}>
+            <Button ref={requestRef} variant="secondary" disabled={!status.data?.available} aria-disabled={prepare.isPending || undefined}
+              className="aria-disabled:opacity-55 aria-disabled:cursor-progress" onClick={() => { if (!prepare.isPending) prepare.mutate(); }}>
               <Icon.Upload className="size-4 rotate-180" />{prepare.isPending ? "Preparing…" : "Request export"}
             </Button>
           )}

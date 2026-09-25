@@ -101,6 +101,33 @@ describe("Test B · deletion is real, reversible for 14 days, and never claims e
     await waitFor(() => expect(screen.getByRole("button", { name: /undo deletion/i })).toHaveFocus());
   });
 
+  it("keeps keyboard focus through a pending undo and hands it over before the refetch settles", async () => {
+    // Found by the WebKit/Firefox keyboard pass: a natively disabled pending control dropped
+    // focus to <body>, and focus moved only after a background refetch.
+    statusBody = { request: { id: "5f0a6c1e-9e2b-4b7a-8c1d-2b1e3f4a5b6c", state: "grace", requestedAt: "2026-09-23T12:00:00Z", undoUntil: "2026-10-07T12:00:00Z", undoAvailable: true }, finalReceiptIssuable: false };
+    renderScreen(<PrivacySettings />);
+    const undo = await screen.findByRole("button", { name: /undo deletion/i });
+    let releaseUndo: (() => void) | undefined, releaseRefetch: (() => void) | undefined;
+    const cleared = { request: null, finalReceiptIssuable: false };
+    fetchMock.mockImplementation(async (path: string, o: RequestInit = {}) => {
+      if (String(path).includes("/exports")) return Response.json(exportBody);
+      if (o.method === "POST") { await new Promise<void>(r => { releaseUndo = r; }); return Response.json(cleared, { status: 202 }); }
+      await new Promise<void>(r => { releaseRefetch = r; }); return Response.json(cleared);
+    });
+    undo.focus();
+    await userEvent.keyboard("{Enter}");
+    const pending = await screen.findByRole("button", { name: /undoing/i });
+    expect(pending).toHaveAttribute("aria-disabled", "true");
+    expect(pending).not.toBeDisabled();
+    expect(pending).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(fetchMock.mock.calls.filter(([, o]) => o?.method === "POST")).toHaveLength(1);
+    releaseUndo?.();
+    await waitFor(() => expect(screen.getByRole("button", { name: /delete household/i })).toHaveFocus());
+    expect(releaseRefetch).toBeDefined(); // the background refetch is still open at this point
+    releaseRefetch?.();
+  });
+
   it("asks for step-up authentication instead of pretending success when the server refuses", async () => {
     fetchMock.mockImplementation(async (_p: string, o: RequestInit = {}) => o.method === "POST"
       ? Response.json({ type: "https://autobureau.com/problems/forbidden", title: "Forbidden", status: 403, detail: "Verify your account security to continue." }, { status: 403 })

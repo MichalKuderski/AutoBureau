@@ -36,14 +36,19 @@ export function DeletionCard() {
   const [focusNext, setFocusNext] = useState<null | "undo" | "request">(null);
   const undoRef = useRef<HTMLButtonElement>(null), requestRef = useRef<HTMLButtonElement>(null);
   const status = useQuery({ queryKey: key, queryFn: () => apiFetch<DeletionStatus>(`/households/${household.id}/deletion`, { householdId: household.id }) });
-  const done = async (next: DeletionStatus) => { client.setQueryData(key, next); await client.invalidateQueries({ queryKey: key }); };
+  // Focus moves to the replacement control as soon as the new status renders. Waiting for the
+  // background refetch first left keyboard focus on <body> for a network round trip (WebKit and
+  // Firefox, found by the keyboard pass).
+  const done = async (next: DeletionStatus, focus: "undo" | "request") => {
+    client.setQueryData(key, next); setFocusNext(focus); await client.invalidateQueries({ queryKey: key });
+  };
   const request = useMutation({
     mutationFn: () => apiFetch<DeletionStatus>(`/households/${household.id}/deletion`, { method: "POST", householdId: household.id, body: { confirmation: PHRASE } }),
-    onSuccess: async (next) => { setOpen(false); setTyped(""); await done(next); setFocusNext("undo"); },
+    onSuccess: async (next) => { setOpen(false); setTyped(""); await done(next, "undo"); },
   });
   const undo = useMutation({
     mutationFn: (requestId: string) => apiFetch<DeletionStatus>(`/households/${household.id}/deletion/undo`, { method: "POST", householdId: household.id, body: { requestId } }),
-    onSuccess: async (next) => { await done(next); setFocusNext("request"); },
+    onSuccess: async (next) => { await done(next, "request"); },
   });
   const failure = (e: unknown) => e instanceof ApiError && e.status === 403
     ? "For your security, sign in again (and confirm your authenticator code if you use one), then try again."
@@ -71,7 +76,9 @@ export function DeletionCard() {
             </Alert>
             {undo.isError ? <Alert tone="critical" title="Couldn't undo">{failure(undo.error)}</Alert> : null}
             <div>
-              <Button ref={undoRef} variant="secondary" disabled={!current.undoAvailable || undo.isPending} onClick={() => undo.mutate(current.id)}>
+              {/* Pending is aria-disabled, not disabled: a disabled control drops keyboard focus. */}
+              <Button ref={undoRef} variant="secondary" disabled={!current.undoAvailable} aria-disabled={undo.isPending || undefined}
+                className="aria-disabled:opacity-55 aria-disabled:cursor-progress" onClick={() => { if (!undo.isPending) undo.mutate(current.id); }}>
                 {undo.isPending ? "Undoing…" : "Undo deletion"}
               </Button>
             </div>
@@ -107,7 +114,8 @@ export function DeletionCard() {
         footer={
           <>
             <Button variant="ghost" onClick={() => { setOpen(false); setTyped(""); request.reset(); }}>Cancel</Button>
-            <Button variant="danger" disabled={typed !== PHRASE || request.isPending} onClick={() => request.mutate()}>
+            <Button variant="danger" disabled={typed !== PHRASE} aria-disabled={request.isPending || undefined}
+              className="aria-disabled:opacity-55 aria-disabled:cursor-progress" onClick={() => { if (!request.isPending) request.mutate(); }}>
               {request.isPending ? "Scheduling…" : "Schedule deletion"}
             </Button>
           </>
