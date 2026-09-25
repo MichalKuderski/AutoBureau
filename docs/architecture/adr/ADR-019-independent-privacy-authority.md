@@ -239,3 +239,25 @@ Deliberately still blocked: any purge, pseudonymization, identity-link removal o
 receipt. Enabling execution requires a reviewed migration removing the `NOT eligible` check
 together with a verified independent restore authority, approved holds, and an approved
 content-minimization design per class.
+
+## October 2 anchor minimization (local)
+
+Staging readback and the privacy completeness review found that the household row survived
+every erasure stage with its content: the anchor that suppression evidence points at needs only
+its `id`, yet it kept the household `name` (often a family name) and inbound `email_alias`.
+Migration `20261002000001_household_anchor_minimization` gives the retention worker exactly one
+update, under the same live, manifest-bound `account-household` attempt as its deletes:
+replace the name with the fixed placeholder `Deleted household` and clear the alias, only once
+that stage's members, entitlements and idempotency records are gone, with every other column
+unchanged (compared as the whole row minus those two fields). The worker holds column-level
+`UPDATE (name, email_alias)` and still no `SELECT` on either: the write is blind. The owner's
+deletion status reports `householdAnchor: identifier-only | name-retained`, read from the row
+itself rather than inferred from progress.
+
+This minimizes content; it is not a purge and not a final receipt. Memberships
+(`household_users`), the account identity (`users`, `user_profiles`, preferences: account scope,
+outside household deletion) and the journals remain as before, and `finalReceiptIssuable`
+stays `false`. The completeness control now also enumerates every table without a
+`household_id` column: each needs a reviewed classification (`household-anchor`,
+`household-via:<parent>`, `account-scope` or `global`), and every `household-via` table must
+cascade from its parent and be enumerated by the deletion inventory.

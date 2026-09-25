@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { DELETION_COMPONENTS, encodeJobEnvelope } from "@autobureau/contracts";
 import { eraseLocalDocumentBatch, eraseLocalHouseholdRecordsBatch, type LocalErasureClaims } from "../../src/local-erasure.js";
@@ -8,7 +8,7 @@ import { runAsSystem, runAsUser } from "../../src/audit.js";
 import { registerDocumentScan, claimDocumentScan, completeDocumentScan } from "../../src/document-scans.js";
 import { requestHouseholdDeletion, undoHouseholdDeletion, fenceHouseholdDeletion, appendDeletionManifest,
   sealDeletionManifest, claimDeletionAttempt, recordDeletionAttempt, recordSyntheticDeletionObservation,
-  observeLocalDeletionResource, readDeletionProgress } from "../../src/deletion-journal.js";
+  observeLocalDeletionResource, readDeletionProgress, readHouseholdDeletionStatus } from "../../src/deletion-journal.js";
 import { discoverJobHouseholds, routeOutboxBatch, runHouseholdDispatchOnce, consumeDelivery, dispatchOne } from "../../src/jobs.js";
 import { ADMIN_URL, APP_URL, adminClient, bootstrapDatabase, grantAppUserLogin } from "./setup.js";
 const fixtures: string[] = [], owner = randomUUID(), stranger = randomUUID();
@@ -351,11 +351,41 @@ describe("manifest-bound local online erasure", () => {
     expect(await admin.idempotencyKey.count({ where: { householdId: a.hh } })).toBe(0);
     expect(await admin.householdMember.count({ where: { householdId: b.hh } })).toBe(1);
     expect(await admin.entitlement.count({ where: { householdId: b.hh } })).toBe(1);
-    // Memberships and the household anchor are retained suppression evidence.
+    // Memberships and the household anchor are retained suppression evidence; the anchor keeps
+    // only its identity (name replaced, alias cleared), and no other household is touched.
+    expect(results.at(-1)).toMatchObject({ anchorMinimized: true });
+    expect(await admin.household.findUnique({ where: { id: a.hh }, select: { name: true, emailAlias: true } })).toEqual({ name: "Deleted household", emailAlias: null });
+    expect((await admin.household.findUnique({ where: { id: b.hh }, select: { name: true } }))!.name).not.toBe("Deleted household");
+    expect(await readHouseholdDeletionStatus(appDb, a.hh)).toMatchObject({ householdAnchor: "identifier-only", finalReceiptIssuable: false });
     expect(await admin.householdUser.count({ where: { householdId: a.hh } })).toBe(2);
     expect(await observeLocalDeletionResource(verifyDb, a.hh, resource.id)).toMatchObject({ state: "remaining", remaining: 2 });
     await expect(deleteDb.withHousehold(a.hh, tx => tx.$executeRaw`DELETE FROM household_users WHERE household_id=${a.hh}::uuid`)).rejects.toThrow();
     await expect(deleteDb.withHousehold(a.hh, tx => tx.$executeRaw`DELETE FROM households WHERE id=${a.hh}::uuid`)).rejects.toThrow();
+  });
+  it("refuses anchor minimization while household records remain, unbound, or with any other content", async () => {
+    const a = await manifestReady(), claims = await localClaims(a);
+    const resource = a.resources.find(x => x.component === "account-household")!;
+    const own = (await claimDeletionAttempt(deleteDb, a.hh, resource.id))!;
+    await admin.household.update({ where: { id: a.hh }, data: { emailAlias: `alias-${a.hh.slice(0, 8)}` } });
+    await admin.householdMember.create({ data: { householdId: a.hh, displayName: "PUBLIC member", kind: "adult" } });
+    for (let i = 0; i < 12; i++) { if ((await eraseLocalDocumentBatch(deleteDb, a.hh, a.requestId, claims)).onlineRowsDrained) break; }
+    const bound = (sql: Prisma.Sql, claim = own) => deleteDb.withHousehold(a.hh, async tx => {
+      await tx.$executeRaw`SELECT set_config('request.erasure_attempt',${claim.id},true),set_config('request.erasure_token',${claim.token},true)`;
+      return tx.$executeRaw(sql);
+    });
+    // Unbound: no live attempt for this component.
+    await expect(deleteDb.withHousehold(a.hh, tx => tx.$executeRaw`UPDATE households SET name='Deleted household',email_alias=NULL WHERE id=${a.hh}::uuid`)).rejects.toThrow("Manifest-bound erasure required");
+    await expect(bound(Prisma.sql`UPDATE households SET name='Deleted household',email_alias=NULL WHERE id=${a.hh}::uuid`, claims["derived-records"])).rejects.toThrow("Manifest-bound erasure required");
+    // Bound, but the stage's records are still there.
+    await expect(bound(Prisma.sql`UPDATE households SET name='Deleted household',email_alias=NULL WHERE id=${a.hh}::uuid`)).rejects.toThrow("Anchor minimization refused");
+    for (let i = 0; i < 6; i++) { if ((await eraseLocalHouseholdRecordsBatch(deleteDb, a.hh, a.requestId, own)).onlineRowsDrained) break; }
+    await admin.household.update({ where: { id: a.hh }, data: { name: "PUBLIC household", emailAlias: `alias-${a.hh.slice(0, 8)}` } });
+    // Bound and drained: may replace the anchor content only with the fixed placeholder.
+    await expect(bound(Prisma.sql`UPDATE households SET name='Renamed by retention',email_alias=NULL WHERE id=${a.hh}::uuid`)).rejects.toThrow("Anchor minimization refused");
+    await expect(bound(Prisma.sql`UPDATE households SET name='Deleted household' WHERE id=${a.hh}::uuid`)).rejects.toThrow("Anchor minimization refused");
+    await expect(bound(Prisma.sql`UPDATE households SET created_by=${owner}::uuid WHERE id=${a.hh}::uuid`)).rejects.toThrow(/permission denied/);
+    await expect(deleteDb.withHousehold(a.hh, tx => tx.$queryRaw`SELECT name FROM households WHERE id=${a.hh}::uuid`)).rejects.toThrow(/permission denied/);
+    expect(await bound(Prisma.sql`UPDATE households SET name='Deleted household',email_alias=NULL WHERE id=${a.hh}::uuid`)).toBe(1);
   });
   it("bounds batches and tolerates duplicate/concurrent invocations", async () => {
     const f = await manifestReady(), claims = await localClaims(f);

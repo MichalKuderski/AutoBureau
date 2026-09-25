@@ -23,6 +23,28 @@ export const DELETION_INVENTORY_EXCLUSIONS: Readonly<Record<string, string>> = O
   inbound_emails: "no-writer: email intake is not built and nothing writes this table; activating intake requires inventory and erasure coverage first",
 });
 
+/**
+ * Every public table WITHOUT a household_id column, classified. `household-via:<parent>` tables hold
+ * household data through a cascading parent (the control verifies the FK, the cascade and that the
+ * deletion inventory enumerates them); `account-scope` tables belong to the sign-in account, which
+ * household deletion does not cover; `household-anchor` is the household row; `global` tables hold
+ * no personal data. A new table without an answer here fails the completeness control.
+ */
+export const NON_HOUSEHOLD_TABLES: Readonly<Record<string, string>> = Object.freeze({
+  households: "household-anchor: kept as the ADR-019 suppression anchor; name and alias replaced at the account-household stage; exported (household)",
+  item_secrets: "household-via:items: identifier-grade ciphertext (ADR-007); inventoried and erased; exported as a count only, never values",
+  document_uploads: "household-via:documents: upload intent and object key; inventoried and erased with the document",
+  notification_deliveries: "household-via:notifications: delivery transport journal; inventoried and erased",
+  users: "account-scope: sign-in identity; exported (account); outside household deletion (signInAccount not-in-scope)",
+  user_profiles: "account-scope: display name, locale, timezone, onboarding; exported (profile); outside household deletion",
+  notification_preferences: "account-scope: per-user channel settings; exported (notificationPreferences); outside household deletion",
+  vendors: "global: shared vendor rulebook; no personal data",
+  auth_rate_limits: "global: unkeyed SHA-256 bucket digests (reversible with a wordlist, documented), minutes of retention, no foreign key to accounts (ADR-013 D3)",
+  plan_catalog: "global: product plan configuration",
+  local_plan_activation: "global: local TEST activation switch",
+  _prisma_migrations: "global: migration ledger (no runtime authority)",
+});
+
 /** `category:<name>` = carried by that export v3 category; `omitted:<reason>` = deliberately not exported. */
 export const EXPORT_COVERAGE: Readonly<Record<string, string>> = Object.freeze({
   documents: "category:documents",

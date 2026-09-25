@@ -180,7 +180,7 @@ it("reconciles custody/work inventory without granting storage or lease visibili
 
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { DELETION_INVENTORY_EXCLUSIONS, EXPORT_COVERAGE } from "../../src/privacy-coverage.js";
+import { DELETION_INVENTORY_EXCLUSIONS, EXPORT_COVERAGE, NON_HOUSEHOLD_TABLES } from "../../src/privacy-coverage.js";
 import { PRIVACY_INVENTORY_TABLES } from "../../src/privacy-inventory.js";
 import { EXPORT_V3_CATEGORIES } from "@autobureau/contracts";
 it("every household table has exactly one deletion answer and an export answer (completeness control)", async () => {
@@ -200,6 +200,21 @@ it("every household table has exactly one deletion answer and an export answer (
   const v3 = src.slice(src.indexOf("export async function readOwnerExportSnapshotV3"));
   const read = new Set([...v3.slice(0, v3.indexOf("\nexport", 10)).matchAll(/\b(?:FROM|JOIN)\s+(?:public\.)?([a-z_]+)/g)].map(m => m[1]));
   expect(Object.entries(EXPORT_COVERAGE).filter(([t, v]) => v.startsWith("category:") && !read.has(t)).map(([t]) => t)).toEqual([]);
+});
+it("every table without household_id has a reviewed classification, and household-via tables cascade and are inventoried", async () => {
+  const rows = await admin.$queryRaw<Array<{ t: string }>>`SELECT c.relname AS t FROM pg_class c WHERE c.relnamespace='public'::regnamespace
+    AND c.relkind IN ('r','p') AND NOT EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid=c.oid AND a.attname='household_id' AND NOT a.attisdropped) ORDER BY 1`;
+  const tables = rows.map(r => r.t);
+  expect(tables.filter(t => !/^(household-anchor|household-via:[a-z_]+|account-scope|global):/.test(NON_HOUSEHOLD_TABLES[t] ?? ""))).toEqual([]);
+  expect(Object.keys(NON_HOUSEHOLD_TABLES).filter(t => !tables.includes(t))).toEqual([]);
+  const inventoried = new Set(PRIVACY_INVENTORY_TABLES);
+  for (const [table, answer] of Object.entries(NON_HOUSEHOLD_TABLES)) {
+    const via = /^household-via:([a-z_]+):/.exec(answer)?.[1];
+    if (!via) continue;
+    const fk = await admin.$queryRaw<Array<{ n: bigint }>>`SELECT count(*) AS n FROM pg_constraint k
+      WHERE k.contype='f' AND k.conrelid=${`public.${table}`}::regclass AND k.confrelid=${`public.${via}`}::regclass AND k.confdeltype='c'`;
+    expect({ table, cascadesFromParent: Number(fk[0]!.n) > 0, inventoried: inventoried.has(table) }).toEqual({ table, cascadesFromParent: true, inventoried: true });
+  }
 });
 it("the no-writer exception for inbound email stays true until intake gets deletion coverage", () => {
   const root = resolve(__dirname, "../../../..");

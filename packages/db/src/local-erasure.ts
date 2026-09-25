@@ -52,11 +52,15 @@ export async function eraseLocalDocumentBatch(db: Database, householdId: string,
     return { stage: stages.length, count: 0, onlineRowsDrained: true, finalReceiptIssuable: false as const };
   }));
 }
+/** The only content a minimized household anchor carries (ADR-019 amendment). */
+export const HOUSEHOLD_ANCHOR_NAME = "Deleted household";
 /** Household-record stage (component 'account-household'): idempotency records, household
  * members and entitlements, one bounded batch per call. Runs only after derived records
  * are gone, so member FKs never cascade into records this worker may not update. The
  * household row, memberships, account identity and protected journals stay: they are
- * ADR-019 suppression evidence, not erasable by this worker, and never a final receipt. */
+ * ADR-019 suppression evidence, not erasable by this worker, and never a final receipt.
+ * Once the records are gone the anchor is minimized: its name becomes the fixed placeholder
+ * and its alias is cleared, written blind (the worker cannot read what it replaces). */
 export async function eraseLocalHouseholdRecordsBatch(db: Database, householdId: string, requestId: string,
   claim: Readonly<{ id: string; token: string; operationId: string }>) {
   return runAsSystem("Erase bounded manifested household records", () => db.withHousehold(householdId, async tx => {
@@ -90,6 +94,11 @@ export async function eraseLocalHouseholdRecordsBatch(db: Database, householdId:
         return { stage, count, onlineRowsDrained: false, finalReceiptIssuable: false as const };
       }
     }
-    return { stage: stages.length, count: 0, onlineRowsDrained: true, finalReceiptIssuable: false as const };
+    const minimized = await tx.$executeRaw`UPDATE households SET name=${HOUSEHOLD_ANCHOR_NAME},email_alias=NULL WHERE id=${householdId}::uuid`;
+    if (minimized !== 1) throw new Error("Local erasure anchor refused");
+    await tx.$executeRaw`INSERT INTO audit_log(household_id,actor_type,action,target_type,target_id,meta)
+      VALUES(${householdId}::uuid,'system','privacy.local_batch_erased','household_deletion',${requestId}::uuid,
+      jsonb_build_object('stage',${100 + stages.length}::int,'count',0,'anchorMinimized',true,'attempt',${claim.id}::uuid,'resource',${claim.operationId}::uuid))`;
+    return { stage: stages.length, count: 0, onlineRowsDrained: true, anchorMinimized: true as const, finalReceiptIssuable: false as const };
   }));
 }

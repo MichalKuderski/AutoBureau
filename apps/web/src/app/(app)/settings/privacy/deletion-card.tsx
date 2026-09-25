@@ -13,6 +13,7 @@ import { useHousehold } from "@/providers/household-provider";
 const PHRASE = "DELETE HOUSEHOLD";
 interface DeletionStatus {
   request: null | { id: string; state: "grace" | "fenced" | "verifying" | "completed"; requestedAt: string; undoUntil: string; undoAvailable: boolean };
+  householdAnchor?: "identifier-only" | "name-retained";
   finalReceiptIssuable: false;
 }
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" });
@@ -79,6 +80,9 @@ export function DeletionCard() {
           <Alert tone="warning" title="Deletion in progress">
             Erasure has started and can't be undone. We'll only confirm deletion is complete once it has been independently
             verified — including provider and backup copies — and we can't give you that confirmation yet.
+            {status.data?.householdAnchor === "identifier-only"
+              ? " Your household's name and email alias have been removed from the records we keep."
+              : null}
           </Alert>
         ) : (
           <>
@@ -86,7 +90,8 @@ export function DeletionCard() {
               After you request deletion you have 14 days to change your mind. Then your household's data is erased.
               Copies held in backups and by service providers are removed on their own schedules; we'll tell you plainly
               what has and hasn't been confirmed. Some records, like the audit trail and billing records, are kept as
-              evidence that the deletion happened. Deleting the household doesn't delete your sign-in account.
+              evidence that the deletion happened; they keep codes, counts and identifiers, not your household's name.
+              Deleting the household doesn't delete your sign-in account.
             </p>
             <div>
               <Button ref={requestRef} variant="danger" disabled={status.isPending} onClick={() => setOpen(true)}>Delete household…</Button>

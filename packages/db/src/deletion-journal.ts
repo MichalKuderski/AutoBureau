@@ -1,3 +1,4 @@
+import { HOUSEHOLD_ANCHOR_NAME } from "./local-erasure.js";
 import { randomUUID } from "node:crypto";
 import { DeletionManifestSchema, SyntheticAbsenceSchema } from "@autobureau/contracts";
 import { currentActor, runAsSystem } from "./audit.js";
@@ -218,6 +219,8 @@ export async function readHouseholdDeletionStatus(db: Database, householdId: str
       (SELECT count(*) FROM stripe_test_bindings WHERE household_id=${householdId}::uuid) AS billing,
       (SELECT count(*) FROM plaid_local_items WHERE household_id=${householdId}::uuid) AS financial,
       (SELECT count(*) FROM plaid_local_items WHERE household_id=${householdId}::uuid AND state='removed') AS financial_removed`;
+    const [anchor] = await tx.$queryRaw<Array<{ minimized: boolean }>>`
+      SELECT name=${HOUSEHOLD_ANCHOR_NAME} AND email_alias IS NULL AS minimized FROM households WHERE id=${householdId}::uuid`;
     const retained = await tx.$queryRaw<Array<{ class_id: string; reasons: string[]; retained_rows: bigint | null }>>`
       SELECT d.class_id,d.reasons,o.retained_rows FROM journal_retirement_runs x
       JOIN journal_retirement_decisions d ON d.run_id=x.id AND d.household_id=x.household_id
@@ -232,6 +235,9 @@ export async function readHouseholdDeletionStatus(db: Database, householdId: str
         billing: Number(p!.billing) ? "unverified" as const : "none" as const,
         financial: !Number(p!.financial) ? "none" as const : Number(p!.financial_removed) === Number(p!.financial) ? "provider-removal-recorded" as const : "unverified" as const,
       },
+      // The household row itself stays as the ADR-019 anchor; its name and alias are replaced once
+      // the household records are erased. Reported from the row, not inferred from progress.
+      householdAnchor: anchor?.minimized ? "identifier-only" as const : "name-retained" as const,
       // Journals kept as ADR-019 restore/suppression evidence: codes and counts only, never content.
       retainedEvidence: retained.map(x => ({ classId: x.class_id, reasons: x.reasons, retainedRows: x.retained_rows === null ? null : Number(x.retained_rows) })),
       finalReceiptIssuable: false as const, providerErasure: "unverified" as const, backupExpiry: "unverified" as const };
