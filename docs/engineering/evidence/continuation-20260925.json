@@ -1,0 +1,1296 @@
+{
+ "scope": "LOCAL exact-candidate evidence plus READ-ONLY staging readback. Not hosted acceptance, provider, legal or launch evidence.",
+ "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+ "candidateTree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+ "upstreamBase": {
+  "commit": "57d079082e6a4b1854bab4d8f411300bab434f4f",
+  "tree": "a5bac62ce2a6f0ef660b6b1fe5b8a9a7c9fa2b93",
+  "note": "Local history over a byte-verified snapshot; local SHAs do not exist upstream, and 57d0790 itself is absent from MichalKuderski/AutoBureau. Map by tree hash."
+ },
+ "allLocalStepsExitZero": true,
+ "counts": {
+  "unit": 2036,
+  "unitFailed": 0,
+  "databaseIntegration": 397,
+  "httpIntegration": 500,
+  "controls": 206,
+  "guards": 7,
+  "scannerProof": 1,
+  "integrationTotal": 897
+ },
+ "items": [
+  {
+   "id": "LOCAL-LOCKFILE",
+   "requirement": "Installed dependency tree matches the pinned lockfile",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": "cmp pnpm-lock.yaml node_modules/.pnpm/lock.yaml",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) evidence cluster reset in place (~/.pellum-local/clusters/evidence); Docker pgvector pg16/pg17 images; pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-25T13:35:40Z",
+   "result": "exit 0",
+   "artifact": "cand-8882936/lockfile-consistency.log",
+   "artifactSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "limitations": "Frozen offline install impossible without the pre-reboot store; node_modules lock compared byte-for-byte instead"
+  },
+  {
+   "id": "LOCAL-BUILD",
+   "requirement": "Production build of all packages",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": "pnpm exec turbo run build --force",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) evidence cluster reset in place (~/.pellum-local/clusters/evidence); Docker pgvector pg16/pg17 images; pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-25T13:36:34Z",
+   "result": "exit 0",
+   "artifact": "cand-8882936/build.log",
+   "artifactSha256": "bbcaef93ee565af2a42cc9adaa084eb541b6c85f8db4dac9f917883cdd39b98e",
+   "limitations": ""
+  },
+  {
+   "id": "LOCAL-TYPECHECK",
+   "requirement": "Strict typecheck",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": "pnpm exec turbo run typecheck --force",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) evidence cluster reset in place (~/.pellum-local/clusters/evidence); Docker pgvector pg16/pg17 images; pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-25T13:36:57Z",
+   "result": "exit 0",
+   "artifact": "cand-8882936/typecheck.log",
+   "artifactSha256": "727574019df7e7b2e84372311601ec5048531d48430a0ef75aec2dc381a206e9",
+   "limitations": ""
+  },
+  {
+   "id": "LOCAL-LINT",
+   "requirement": "Lint (0 errors)",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": "pnpm lint",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) evidence cluster reset in place (~/.pellum-local/clusters/evidence); Docker pgvector pg16/pg17 images; pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-25T13:37:09Z",
+   "result": "exit 0",
+   "artifact": "cand-8882936/lint.log",
+   "artifactSha256": "a472412173795d68b7133dc0c014d7240001bd27a42b66c9d265f75fef3b01e8",
+   "limitations": "13 existing warnings"
+  },
+  {
+   "id": "LOCAL-UNIT",
+   "requirement": "Unit and component tests",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": "pnpm exec turbo run test --force",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) evidence cluster reset in place (~/.pellum-local/clusters/evidence); Docker pgvector pg16/pg17 images; pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-25T13:37:59Z",
+   "result": "exit 0",
+   "artifact": "cand-8882936/unit.log",
+   "artifactSha256": "3df9f266706f1247e103aab06f87060b053c810a7b01c41f8b4973ee731f166c",
+   "limitations": ""
+  },
+  {
+   "id": "LOCAL-CONTROLS",
+   "requirement": "Repository control tests",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": "sh -c node --test scripts/*.test.mjs",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) evidence cluster reset in place (~/.pellum-local/clusters/evidence); Docker pgvector pg16/pg17 images; pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-25T13:38:01Z",
+   "result": "exit 0",
+   "artifact": "cand-8882936/controls.log",
+   "artifactSha256": "0a51b2aeecbbee3f1c931d3aa453f34787ffb22319de8151774c585ff6cfdecf",
+   "limitations": ""
+  },
+  {
+   "id": "LOCAL-GUARDS",
+   "requirement": "CI guardrail steps",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": "python3 /Users/michalkuderski/Desktop/Pellum-current-source/.verification/guards.py",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) evidence cluster reset in place (~/.pellum-local/clusters/evidence); Docker pgvector pg16/pg17 images; pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-25T13:38:02Z",
+   "result": "exit 0",
+   "artifact": "cand-8882936/guards.log",
+   "artifactSha256": "5c66d9dfbd73bab2f42684427065ff2bb4ce3b7a6f8c70147ba91e5967e1d4a7",
+   "limitations": "Secret-scan step uses a hosted action and is not runnable locally"
+  },
+  {
+   "id": "DB-MIGRATE-FRESH",
+   "requirement": "Fresh migration of the full chain (PG18)",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": "pnpm --filter @autobureau/db exec prisma migrate deploy",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) evidence cluster reset in place (~/.pellum-local/clusters/evidence); Docker pgvector pg16/pg17 images; pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-25T13:38:04Z",
+   "result": "exit 0",
+   "artifact": "cand-8882936/integration-admin-migrate.log",
+   "artifactSha256": "852dcc7588f372fc855d527bb0389a0a9acae75a4f7d87c70845af06a28bc8d4",
+   "limitations": ""
+  },
+  {
+   "id": "DB-INTEGRATION",
+   "requirement": "Restricted-role DB integration",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": "pnpm --filter @autobureau/db test:integration",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) evidence cluster reset in place (~/.pellum-local/clusters/evidence); Docker pgvector pg16/pg17 images; pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-25T13:38:53Z",
+   "result": "exit 0",
+   "artifact": "cand-8882936/integration-db.log",
+   "artifactSha256": "91d26426f25b6ce8e2d85240bdacff102a65ad7a9f9d505f5cd07b0cc58e5749",
+   "limitations": ""
+  },
+  {
+   "id": "HTTP-INTEGRATION",
+   "requirement": "Restricted-role HTTP integration",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": "pnpm --filter @autobureau/web test:integration",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) evidence cluster reset in place (~/.pellum-local/clusters/evidence); Docker pgvector pg16/pg17 images; pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-25T13:39:37Z",
+   "result": "exit 0",
+   "artifact": "cand-8882936/integration-web.log",
+   "artifactSha256": "5413f38644d233f75a63bc956b5f264f686f26c85c423f40b9713ea95ad0d1d5",
+   "limitations": ""
+  },
+  {
+   "id": "DB-POSTURE",
+   "requirement": "Security posture readback invariants",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": "python3 /Users/michalkuderski/Desktop/Pellum-current-source/.verification/readback.py /Users/michalkuderski/Desktop/Pellum-current-source/.evidence/cand-8882936/posture.json /Users/michalkuderski/Desktop/Pellum-current-source/.verification/posture.sql",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) evidence cluster reset in place (~/.pellum-local/clusters/evidence); Docker pgvector pg16/pg17 images; pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-25T13:39:37Z",
+   "result": "exit 0",
+   "artifact": "cand-8882936/integration-admin-readback.log",
+   "artifactSha256": "4e143924825b4e39dd6af8c69610d7464b976e95baaeb41690fb319e8a484dda",
+   "limitations": ""
+  },
+  {
+   "id": "SCANNER-PROOF",
+   "requirement": "Composed real-ClamAV document proof",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": "pnpm --filter @autobureau/db exec vitest run --config vitest.document-proof.config.ts",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) evidence cluster reset in place (~/.pellum-local/clusters/evidence); Docker pgvector pg16/pg17 images; pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-25T13:40:03Z",
+   "result": "exit 0",
+   "artifact": "cand-8882936/integration-local-scanner-proof.log",
+   "artifactSha256": "b060e307c8756a6eafe9241310929d344f801958969cfdb8c1ea40179b7d6b7c",
+   "limitations": "Local pinned scanner image, not hosted scanning"
+  },
+  {
+   "id": "GUARD-MUTATIONS",
+   "requirement": "Every reviewed security control fails its tests when weakened, and is restored exactly",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": ".verification/mutations.py mut-8882936-sleepaware",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) evidence cluster reset in place (~/.pellum-local/clusters/evidence); Docker pgvector pg16/pg17 images; pinned local ClamAV image sha256:6fd4a9a2",
+   "utc": "2026-09-25T21:43:39Z",
+   "result": "44/44 DETECTED with exact restoration and passing positive reruns",
+   "artifact": "mut-8882936-sleepaware/mutations.json",
+   "artifactSha256": "4c2b2d7beecb1dee51e0193bb9086c59e52ba27ec9ea8755a116d88ec7910eb3",
+   "limitations": "Mutations cover database controls (guards, policies, grants, constraints, a completeness probe); application-code mutations are not part of this suite",
+   "mutations": [
+    {
+     "name": "data-without-lease",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "direct runtime SQL cannot write derived data"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 2,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "commit-without-held-token",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "advance a cursor"
+     ],
+     "expectedMatched": false,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "removed-keeps-custody",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "removal custody rules"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "route-enumeration",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "routing reveals only the digest the caller holds"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "reconcile-claims-acknowledgement",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "no acknowledgement from reconciliation"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "webhook-after-watermark",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "signals newer than the claim cannot be marked applied"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "sync-lease-takeover",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "an unexpired lease cannot be taken over"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "custody-delete-any-state",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "removal custody rules"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "rotation-skips-revision",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "rotation must move custody and Item revision together by exactly one"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "suspension-fence-removed",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "administrative suspension committing during a sync"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "history-deleted-before-removal",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "direct runtime SQL cannot write derived data"
+     ],
+     "expectedMatched": false,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "removed-keeps-chosen-history",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "cannot commit with history left behind"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "fence-ignored-for-sync",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "a fence landing mid-lease stops derived writes"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "owner-cancels-reserved-work",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "owner cannot cancel reserved, started or indeterminate work"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "owner-cancels-custody-under-started-work",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "owner cannot cancel reserved, started or indeterminate work"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 2,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "viewer-may-cancel",
+     "group": "current",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "viewers/strangers cannot cancel"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "deletion-undo-after-window",
+     "group": "extended",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "refuses a non-owner deletion request and an undo after the window"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "verifier-fabricates-final-receipt",
+     "group": "extended",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "no role can fabricate a final receipt"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "deletion-request-by-non-owner",
+     "group": "extended",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "refuses a non-owner deletion request and an undo after the window"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "household-fence-bypass",
+     "group": "extended",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "fence blocks raw tenant writes"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 2,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "retention-erasure-unbound",
+     "group": "extended",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "requires the settled manifested fence even for direct restricted-role DELETE"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 4,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "scan-verdict-rewrite",
+     "group": "extended",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "a terminal verdict cannot be re-queued or re-decided"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "challenge-replay",
+     "group": "extended",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "concurrent consume commits exactly once"
+     ],
+     "expectedMatched": false,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "export-journal-without-request",
+     "group": "extended",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "needs the owner's exact request intent"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "processing-overbook",
+     "group": "extended",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "concurrent claims cannot overbook"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 4,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "old-period-charged-silently",
+     "group": "extended",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "never charged to either month without a decision"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "apply-ignores-capacity",
+     "group": "period",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "refuses a recorded apply decision when the current month is full"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "decision-for-current-month",
+     "group": "period",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "cannot forge, redirect or pre-empt a decision"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "discard-without-decision",
+     "group": "period",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "cannot forge, redirect or pre-empt a decision"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "retirement-eligible-allowed",
+     "group": "retirement",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "no role can mark a class eligible"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "retirement-hold-omitted",
+     "group": "retirement",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "every open hold, including one past its review date"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 2,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "retirement-live-lease-takeover",
+     "group": "retirement",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "crashed lease is taken over only after expiry"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "retirement-before-manifest",
+     "group": "retirement",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "refuses to plan before the deletion manifest is sealed"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "credential-downgrade-allowed",
+     "group": "plaid-v2",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "never back"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "credential-envelope-unchecked",
+     "group": "plaid-v2",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "refuses mixed or malformed envelopes"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "forgotten-household-table",
+     "group": "privacy-coverage",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "completeness control"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "decision-by-non-owner",
+     "group": "period",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "cannot forge, redirect or pre-empt a decision"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "tenant-policy-open",
+     "group": "extended",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "cannot see another household even when explicitly filtering for it"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 8,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "audit-log-mutable",
+     "group": "extended",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "permits insert but denies update and delete"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "app-reads-plaid-custody",
+     "group": "extended",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "app_user cannot read credential custody or provider binding"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 2,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "ledger-runtime-write",
+     "group": "hardening",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "no runtime role holds any authority over the migration ledger"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "anchor-placeholder-unchecked",
+     "group": "hardening",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "refuses anchor minimization while household records remain"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "anchor-before-records",
+     "group": "hardening",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "refuses anchor minimization while household records remain"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    },
+    {
+     "name": "forgotten-non-household-table",
+     "group": "hardening",
+     "verdict": "DETECTED",
+     "expectedFailingAssertion": [
+      "every table without household_id has a reviewed classification"
+     ],
+     "expectedMatched": true,
+     "mutatedExit": 1,
+     "failedTests": 1,
+     "restoredPostureSha256": "77cbaf03a156525f5546d3a444af552b5da2336634ca37d36da839f13ee0f0c3",
+     "restorationExact": true,
+     "positiveRerunExit": 0
+    }
+   ]
+  },
+  {
+   "id": "DB-VERSION-MATRIX",
+   "requirement": "Fresh apply, staged 13->full upgrade, checksums and posture on PG16/PG17/PG18 (incl. Supabase-shaped owner)",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": ".verification/matrix.py; run.py integration suites on pg16/pg17",
+   "environment": "macOS arm64; node 22.16.0; pnpm 10.34.5; PostgreSQL 18.3 (Postgres.app) evidence cluster reset in place (~/.pellum-local/clusters/evidence); Docker pgvector pg16/pg17 images; pinned local ClamAV image sha256:6fd4a9a2",
+   "result": "{\"pg16-plain\": true, \"pg17-plain\": true, \"pg17-supabase-shape\": true, \"pg18-plain\": true, \"pg18-supabase-shape\": true}",
+   "artifact": "dbmatrix-8882936/",
+   "matrix": {
+    "pg16-plain": {
+     "server": "16.15",
+     "supabaseShape": false,
+     "freshApplyExit": 0,
+     "stagedUpgrade": {
+      "steps": [
+       {
+        "step": "stage-1-first-13",
+        "exit": 0,
+        "seconds": 1.6
+       },
+       {
+        "step": "seed",
+        "exit": 0
+       },
+       {
+        "step": "read-only upgrade preflight",
+        "exit": 0,
+        "ok": true,
+        "blocking": []
+       },
+       {
+        "step": "stage-2-remaining-32",
+        "exit": 0,
+        "seconds": 1.8
+       }
+      ],
+      "migrations": 45,
+      "source": 45,
+      "checksumOrStateMismatch": [],
+      "seededDataChanged": [],
+      "seededRows": {
+       "users": 173,
+       "user_profiles": 173,
+       "households": 173,
+       "household_users": 173,
+       "household_members": 213,
+       "entitlements": 173,
+       "audit_log": 755,
+       "auth_rate_limits": 7
+      },
+      "ok": true
+     },
+     "postureDiff": [],
+     "ok": true
+    },
+    "pg17-plain": {
+     "server": "17.11",
+     "supabaseShape": false,
+     "freshApplyExit": 0,
+     "stagedUpgrade": {
+      "steps": [
+       {
+        "step": "stage-1-first-13",
+        "exit": 0,
+        "seconds": 1.5
+       },
+       {
+        "step": "seed",
+        "exit": 0
+       },
+       {
+        "step": "read-only upgrade preflight",
+        "exit": 0,
+        "ok": true,
+        "blocking": []
+       },
+       {
+        "step": "stage-2-remaining-32",
+        "exit": 0,
+        "seconds": 1.6
+       }
+      ],
+      "migrations": 45,
+      "source": 45,
+      "checksumOrStateMismatch": [],
+      "seededDataChanged": [],
+      "seededRows": {
+       "users": 173,
+       "user_profiles": 173,
+       "households": 173,
+       "household_users": 173,
+       "household_members": 213,
+       "entitlements": 173,
+       "audit_log": 755,
+       "auth_rate_limits": 7
+      },
+      "ok": true
+     },
+     "postureDiff": [],
+     "ok": true
+    },
+    "pg17-supabase-shape": {
+     "server": "17.11",
+     "supabaseShape": true,
+     "freshApplyExit": 0,
+     "stagedUpgrade": {
+      "steps": [
+       {
+        "step": "stage-1-first-13",
+        "exit": 0,
+        "seconds": 1.5
+       },
+       {
+        "step": "seed",
+        "exit": 0
+       },
+       {
+        "step": "read-only upgrade preflight",
+        "exit": 0,
+        "ok": true,
+        "blocking": []
+       },
+       {
+        "step": "stage-2-remaining-32",
+        "exit": 0,
+        "seconds": 1.7
+       }
+      ],
+      "migrations": 45,
+      "source": 45,
+      "checksumOrStateMismatch": [],
+      "seededDataChanged": [],
+      "seededRows": {
+       "users": 173,
+       "user_profiles": 173,
+       "households": 173,
+       "household_users": 173,
+       "household_members": 213,
+       "entitlements": 173,
+       "audit_log": 755,
+       "auth_rate_limits": 7
+      },
+      "ok": true
+     },
+     "postureDiff": [],
+     "ok": true
+    },
+    "pg18-plain": {
+     "server": "18.3",
+     "supabaseShape": false,
+     "freshApplyExit": 0,
+     "stagedUpgrade": {
+      "steps": [
+       {
+        "step": "stage-1-first-13",
+        "exit": 0,
+        "seconds": 1.4
+       },
+       {
+        "step": "seed",
+        "exit": 0
+       },
+       {
+        "step": "read-only upgrade preflight",
+        "exit": 0,
+        "ok": true,
+        "blocking": []
+       },
+       {
+        "step": "stage-2-remaining-32",
+        "exit": 0,
+        "seconds": 1.7
+       }
+      ],
+      "migrations": 45,
+      "source": 45,
+      "checksumOrStateMismatch": [],
+      "seededDataChanged": [],
+      "seededRows": {
+       "users": 173,
+       "user_profiles": 173,
+       "households": 173,
+       "household_users": 173,
+       "household_members": 213,
+       "entitlements": 173,
+       "audit_log": 755,
+       "auth_rate_limits": 7
+      },
+      "ok": true
+     },
+     "postureDiff": [],
+     "ok": true
+    },
+    "pg18-supabase-shape": {
+     "server": "18.3",
+     "supabaseShape": true,
+     "freshApplyExit": 0,
+     "stagedUpgrade": {
+      "steps": [
+       {
+        "step": "stage-1-first-13",
+        "exit": 0,
+        "seconds": 1.4
+       },
+       {
+        "step": "seed",
+        "exit": 0
+       },
+       {
+        "step": "read-only upgrade preflight",
+        "exit": 0,
+        "ok": true,
+        "blocking": []
+       },
+       {
+        "step": "stage-2-remaining-32",
+        "exit": 0,
+        "seconds": 1.5
+       }
+      ],
+      "migrations": 45,
+      "source": 45,
+      "checksumOrStateMismatch": [],
+      "seededDataChanged": [],
+      "seededRows": {
+       "users": 173,
+       "user_profiles": 173,
+       "households": 173,
+       "household_users": 173,
+       "household_members": 213,
+       "entitlements": 173,
+       "audit_log": 755,
+       "auth_rate_limits": 7
+      },
+      "ok": true
+     },
+     "postureDiff": [],
+     "ok": true
+    }
+   },
+   "integrationOnOlderServers": {
+    "pg16-integration/integration-admin-migrate": {
+     "exit": 0,
+     "head": "88829364ca5bda38630573b47cd5432b43acfa2e",
+     "dirty": false,
+     "logSha256": "0445f98fddd2ba15a4edbe93360a0ea7e5d0b6ca96cc38ede02ad1be66f4486f"
+    },
+    "pg16-integration/integration-db": {
+     "exit": 0,
+     "head": "88829364ca5bda38630573b47cd5432b43acfa2e",
+     "dirty": false,
+     "logSha256": "827a77be40535365afeedbc50ecb5084c68f10beea9e11d5a85090c0ed206b69"
+    },
+    "pg16-integration/integration-web": {
+     "exit": 0,
+     "head": "88829364ca5bda38630573b47cd5432b43acfa2e",
+     "dirty": false,
+     "logSha256": "18efff55702df94fcbec984b7261ec1e33d93a18e43846091df44672a8b6406c"
+    },
+    "pg17-integration/integration-admin-migrate": {
+     "exit": 0,
+     "head": "88829364ca5bda38630573b47cd5432b43acfa2e",
+     "dirty": false,
+     "logSha256": "89f5b324902b1c7d5943b0a41f34f730204ab8864f3a45cc8c2b305b5dec543e"
+    },
+    "pg17-integration/integration-db": {
+     "exit": 0,
+     "head": "88829364ca5bda38630573b47cd5432b43acfa2e",
+     "dirty": false,
+     "logSha256": "c770778a0ee9bf0267e23352e52b69c72fd665ee9e6b34b96ab00baefd498bdb"
+    },
+    "pg17-integration/integration-web": {
+     "exit": 0,
+     "head": "88829364ca5bda38630573b47cd5432b43acfa2e",
+     "dirty": false,
+     "logSha256": "00660e90e11137e2835b6b17f99ecf26ce8e6e02f42754240f94d72cea2dbf91"
+    }
+   },
+   "limitations": "Docker pgvector images and Postgres.app, not the provider build; staging itself read only"
+  },
+  {
+   "id": "BROWSER-KEYBOARD-A11Y",
+   "requirement": "Keyboard-only MFA/recovery/onboarding/destructive-confirmation flows and automated a11y sweep on Chromium, WebKit, Firefox",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": ".verification/qa/browser-matrix.mjs",
+   "environment": "next dev over loopback TLS + local QA issuer + QA PG17; Playwright 1.63",
+   "result": "{\"chromium\": {\"passed\": 132, \"failed\": 0, \"blocked\": 0}, \"webkit\": {\"passed\": 132, \"failed\": 0, \"blocked\": 0}, \"firefox\": {\"passed\": 132, \"failed\": 0, \"blocked\": 0}}",
+   "artifact": "browser-matrix-8882936/",
+   "engines": {
+    "chromium": {
+     "version": "153.0.8010.53",
+     "passed": 132,
+     "failed": 0,
+     "blocked": 0,
+     "green": true,
+     "failures": [],
+     "observations": [],
+     "artifactSha256": "73ef88da80d0eec384504fe59cee949e92e98a40244ddee1d899076c911c2ee6",
+     "evidenceDir": "browser-matrix-8882936"
+    },
+    "webkit": {
+     "version": "26.6",
+     "passed": 132,
+     "failed": 0,
+     "blocked": 0,
+     "green": true,
+     "failures": [],
+     "observations": [],
+     "artifactSha256": "ff1a0eeaa73be7e6b6cbf326877c4767868c0998a3c306bf0cbb22dc3d6381bc",
+     "evidenceDir": "browser-matrix-8882936"
+    },
+    "firefox": {
+     "version": "155.0",
+     "passed": 132,
+     "failed": 0,
+     "blocked": 0,
+     "green": true,
+     "failures": [],
+     "observations": [],
+     "artifactSha256": "a840ee3d7b80bc317d43cc3c78f295cc685de1cf35dba9d71f9bad4e3f91c7f5",
+     "evidenceDir": "browser-matrix-8882936-firefox-rerun"
+    }
+   },
+   "limitations": "Local synthetic stack only; no screen reader; 200% zoom approximated by viewport; not WCAG conformance"
+  },
+  {
+   "id": "STAGING-READBACK",
+   "requirement": "Read-only staging schema/migration compatibility readback",
+   "status": "PASS (read-only)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "command": "one reviewed SELECT in the Supabase SQL editor (operator session)",
+   "environment": "Supabase staging (us-west-2)",
+   "utc": "2026-09-25T03:40Z",
+   "result": "13/45 applied, checksums equal source; preflight ok; 0 parity mismatches; 1 non-synthetic address",
+   "artifact": "staging-readback-20260925/",
+   "artifactSha256": "a534ad668d2946ccc39459655d5673d5790528225bca78b4895c3d0f43759421",
+   "limitations": "No hosted write; apply blocked (see report)"
+  },
+  {
+   "id": "HOSTED-STAGING-APPLY",
+   "requirement": "Apply the migration delta to staging with the matching build",
+   "status": "BLOCKED (authorization)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": "Needs push + deploy.yml dispatch authorization, history reconciliation (57d0790 absent upstream) and operator identification of the one non-synthetic account"
+  },
+  {
+   "id": "HOSTED-EXACT-SHA-ACCEPTANCE",
+   "requirement": "Stable-staging acceptance at the exact candidate SHA",
+   "status": "BLOCKED (authorization)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": "Stable staging serves the September 12 build"
+  },
+  {
+   "id": "STRIPE-TEST-PROVIDER",
+   "requirement": "Stripe TEST lifecycle against the provider",
+   "status": "BLOCKED (no session)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": "Stripe dashboard not signed in; no provider call made"
+  },
+  {
+   "id": "PLAID-SANDBOX-PROVIDER",
+   "requirement": "Plaid Sandbox lifecycle against the provider",
+   "status": "BLOCKED (no session)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": "Deterministic Sandbox-shaped adapters only"
+  },
+  {
+   "id": "PLAID-OPERATIONAL-KMS",
+   "requirement": "Operational KMS custody",
+   "status": "NOT IMPLEMENTED",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": "Envelope v2 is a reviewed format; no real key/IAM path"
+  },
+  {
+   "id": "ADR019-AUTHORITY",
+   "requirement": "Independent restore/erasure authority",
+   "status": "NOT IMPLEMENTED (external)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": "No purge, no final receipt"
+  },
+  {
+   "id": "JOURNAL-RETIREMENT-PURGE",
+   "requirement": "Journal purge after replay horizons",
+   "status": "BLOCKED (ADR-019)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": "Planning, holds, leases and observations implemented; eligibility refused by CHECK (NOT eligible)"
+  },
+  {
+   "id": "EXPORT-NOTIFICATIONS",
+   "requirement": "Owner notification when an export is ready",
+   "status": "NOT IMPLEMENTED",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": "No notification producer for exports"
+  },
+  {
+   "id": "REMINDER-DELIVERY",
+   "requirement": "Reminder scheduling and delivery pipeline",
+   "status": "NOT IMPLEMENTED",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": "UI reports delivery inactive honestly"
+  },
+  {
+   "id": "SUPABASE-AUTH-INCIDENT",
+   "requirement": "Supabase 504 disposition",
+   "status": "UNRESOLVED RELEASE BLOCKER",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": "Support packet prepared, NOT SENT; sending needs separate explicit authorization"
+  },
+  {
+   "id": "PRODUCTION-AUTH-CONFIG",
+   "requirement": "Production auth settings parity",
+   "status": "OPEN",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": "Confirmation, password minimum, secure password change, leaked-password protection (Pro), CAPTCHA, allow-list"
+  },
+  {
+   "id": "LEGAL-OPERATOR",
+   "requirement": "Legal entity, jurisdiction, contacts, ToS/privacy approval",
+   "status": "OPEN (external)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": ""
+  },
+  {
+   "id": "SECURITY-REVIEW",
+   "requirement": "Independent penetration test",
+   "status": "OPEN (external)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": ""
+  },
+  {
+   "id": "OPERATIONS",
+   "requirement": "Incident response, on-call, backup/restore drill, monitoring, cost controls, support",
+   "status": "OPEN (external)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": ""
+  },
+  {
+   "id": "PROVIDER-APPROVALS",
+   "requirement": "Subprocessor DPAs, Plaid Production review, Stripe activation, pricing/cap sign-off",
+   "status": "OPEN (external)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "tree": "a79769ae89a3fa87816d28745b1f509fab71d957",
+   "limitations": ""
+  }
+ ],
+ "decision": "NO-GO",
+ "decisionBasis": "Hosted exact-SHA acceptance, Stripe TEST and Plaid Sandbox provider lifecycles, the Supabase incident disposition, the ADR-019 authority, operational KMS and every external approval are unmet.",
+ "correctedHistory": "fb6bd05 exact-candidate mutations: 23/29 detected (6 not); local security gate FAILED at fb6bd05; retained in mut-fb6bd05.",
+ "retainedNotUsed": [
+  "mut-8882936: first mutation run at the candidate straddled four host sleeps (pmset Maintenance Sleep 927-929 s); 40 detected, 3 undetected, 1 invalid; superseded by the sleep-guarded run",
+  "browser-matrix-8882936/firefox.json: 123/132, 2 failed, 9 blocked after the product mfa.ip limiter (60 per 15 min per IP) answered 429 during back-to-back passes; Firefox rerun in a fresh window is 132/132",
+  "browser-matrix-108642c: WebKit and Firefox 131/132 (focus on <body> after Undo deletion) -> fixed in 8882936",
+  "browser-matrix-19be3a0: Firefox 124/125 (navigation timeout under host load)"
+ ],
+ "evidenceDirectory": "/Users/michalkuderski/Desktop/Pellum-current-source/.evidence"
+}

@@ -1,5 +1,7 @@
 # Pellum staging release-candidate risk register
 
+**Latest continuation (September 24–25):** [verification report](continuation-verification-20260925.md) records tested candidate `8882936` (tree `a79769ae`): all local steps pass (2,036 unit, 897 restricted-role integration, 206 controls, 7 guards, real ClamAV proof); mutations 44/44 detected at the exact candidate (sleep-guarded run; a first run that straddled host sleeps is retained, not used); the migration chain applies fresh and as the staged 13 → 45 upgrade on PG16/17/18, including as a non-superuser Supabase-shaped owner, with seeded data unchanged; keyboard MFA/recovery/destructive-confirmation flows and the accessibility sweep pass in Chrome, WebKit and Firefox on the local synthetic stack. Staging was read only: 13/45 migrations applied with checksums equal to source, preflight OK, one non-synthetic user address to identify, Data API exposing nothing. Hosted acceptance, Stripe TEST, Plaid Sandbox, the Supabase incident and external approvals remain. **Pre-production NO-GO.**
+
 **Latest local continuation (September 23):** [verification report](continuation-verification-20260923.md)
 records tested candidate `5bc8fe7` (local commit over a byte-verified snapshot of upstream
 `57d0790`, tree `a5bac62c`; local SHAs do not exist upstream). `57d0790` was not docs-only and
@@ -249,11 +251,11 @@ Latest verified application head `66b4a6acdded0bba60ca812e265e081fbf45c0ea` pass
 | Worker/provider access and cost | PARTIAL PROOF | Renewed AWS identity verifies account 792394000571 / us-east-2. Plaid Sandbox account is accessible. Credits $94.68 at September 13 21:33 UTC; current Ohio SQS pricing and shared usage (2/1,000,000 requests) verified. Cost Explorer access denied; no budget alerts yet verified. No continuous worker authorized. Upstash remains empty and undistributed. |
 | Broker encryption and budget | APPROVED; IMPLEMENTATION/PRE-APPLY GATES OPEN | Founder approved ADR-017 September 13: eight exact SSE-SQS queues, separate additions-only plan, exact roles and durable per-consumer delivery/inbox. No queues applied yet. Local durable delivery/inbox and bounded SQS adapter implemented; 60-second derived lease, 70 DB and 373 web integration checks pass. Separate 69-addition Terraform proposal and 8-addition state bootstrap reviewed; no execution yet. Cost/alert delivery and live provider probes remain required. Upstash is not application transport. |
 | Residual provider API table privileges | PASS, STAGING HARDENED | Migration run 34785388749 removes 207 residual provider table grants and migration-owner defaults. Read-back: zero API table grants, unchanged application rows, roles and existing ownership; real local TRUNCATE denial regression passes. [Receipt](evidence/adr017-staging-migration-20260913.json). |
-| Recovery, MFA and privacy workflows | PARTIAL (LOCAL); FAIL for launch | Export v3 (originals + JSONL + manifest) and deletion request/undo/status are user-accessible on a local synthetic mount; final deletion receipt disabled; provider/backup erasure unverified; journal retirement and ADR-019 authority not implemented; MFA/recovery browser lifecycle not verified. [Report](continuation-verification-20260924.md). |
+| Recovery, MFA and privacy workflows | PARTIAL (LOCAL); FAIL for launch | Export v3 and deletion request/undo/status are user-accessible on a local synthetic mount; the retained household anchor keeps only its id; completeness covers every table; final deletion receipt disabled; provider/backup erasure unverified; journal retirement planned but purge blocked (ADR-019 authority absent); MFA/recovery keyboard lifecycle verified locally in Chrome, WebKit and Firefox; hosted Auth not exercised. [Report](continuation-verification-20260925.md). |
 | Stripe lifecycle | FAIL, implementation required | Stripe CLI is authorized only for Pellum sandbox (`acct_1UEsCbH8x2dVKqIp`). Read-only lists show no products or webhooks yet. Server deployment credentials, implementation and lifecycle evidence still required. No live charges authorized. |
 | Plaid | REQUIRED LAUNCH WORK | Founder clarification on September 12 supersedes the prior deferral. Pellum Sandbox dashboard verified. A closed server client and strict webhook verifier pass 41 focused tests, with 185 affected observability/client checks. Custody, persistence, routes/UI and real provider lifecycle remain unimplemented/unproven. [Checkpoint](plaid-sandbox-checkpoint-20260913.md). Provider Production approval and readiness remain required before public launch. No Plaid Production, real financial ingestion or paid provider upgrade is authorized now. |
 | Legal operator, contacts and clearance | EXTERNAL BLOCKER | Business identity, jurisdiction, public support/privacy contact and counsel approval unresolved. `usepellum.com` selected, not registered. Name/domain screening is not trademark clearance. |
-| Exhaustive UI QA | FAIL, incomplete | Earlier 44 public HTTP probes passed. Local browser checks now cover scoped empty/populated records, settings, member lifecycle/capacity, obligation lifecycle, search and navigation, plus 390/320 px layouts. Static inventory is not exhaustive evidence; provider/document/privacy flows and final exact-SHA staging QA remain incomplete. |
+| Exhaustive UI QA | FAIL, incomplete | Earlier 44 public HTTP probes passed. Local browser checks now cover scoped empty/populated records, settings, member lifecycle/capacity, obligation lifecycle, search and navigation, plus 390/320 px layouts. Keyboard-only onboarding, MFA, recovery, last-factor and destructive-confirmation flows plus a nine-page light/dark accessibility and reflow sweep pass in three engines locally (September 25). Static inventory is not exhaustive evidence; provider/document flows, screen-reader passes and final exact-SHA staging QA remain incomplete. |
 | Stable staging final candidate | FAIL, not deployed | Current automatic deploys are Preview only. Stable staging acceptance and exact-SHA release evidence required after implementation. |
 | Management OAuth credential exposure | SECURITY BLOCKER, CONTAINMENT PARTIAL | Supabase OAuth callback credentials appeared in private browser-tool output on September 13 around 20:03 UTC. No values are retained in repository evidence. Exposed management session signed out and sign-in page verified. GitHub Supabase OAuth authorization revocation/re-authentication requested from the user; pending confirmation. Sign-out alone does not prove provider OAuth-token revocation or immediate JWT invalidation. Staging application secrets were not involved. |
 | Production readiness gates | NO-GO | No launch-branch merge, Production mutation, live billing, domain purchase/DNS or public launch authorized. External release prerequisites remain applicable. |
@@ -437,3 +439,25 @@ were detected on earlier trees but not rerun at this candidate. Posture changes 
 in the [report](continuation-verification-20260924.md). Nothing hosted, provider, legal or
 incident-related changed; the Supabase packet remains unsent. The prior receipt's mutation
 attribution is corrected there. **Decision: NO-GO.**
+
+## Exact-candidate evidence, staging readback and three-engine keyboard pass (September 24–25)
+
+Candidate `8882936` (tree `a79769ae`). Local: all steps pass (2,036 unit, 397 + 500 restricted-role integration, 206 controls, 7 guards, ClamAV proof). Mutations: 44/44 detected at the exact candidate (sleep-guarded run; a first run that straddled host sleeps is retained, not used).
+DB matrix: fresh apply and staged upgrade (13 → 45, staging-shaped synthetic seed, read-only
+preflight) pass on PG16.15, PG17.11 and PG18.3, and as a non-superuser Supabase-shaped owner on
+PG17/PG18; posture identical across versions except extension versions. Browser (local synthetic
+stack over loopback TLS, keyboard only): Chrome 132/132, WebKit 132/132, Firefox 132/132 (a first Firefox run hit the product's `mfa.ip` limiter after back-to-back passes and is retained); the `108642c` pass found focus falling to `<body>` after Undo deletion in WebKit and Firefox, fixed in `8882936`.
+
+Staging (read-only, operator session): PG 17.6, 13/45 migrations applied with checksums equal
+to source, preflight OK, 0 parity mismatches, 0 documents, **1 non-synthetic user address**
+(not read; operator must identify it before any hosted mutation), Data API exposes 0/25 tables
+and 0/93 functions. Advisor 0 errors / 5 warnings (dispositions in the report). Auth settings
+are staging-grade (confirmation off, password minimum 6, secure password change off,
+leaked-password protection unavailable on Free, localhost in the redirect allow-list): release
+items for Production. Stable staging still serves the September 12 build. Hosted apply and
+exact-SHA acceptance need push + workflow-dispatch authorization and history reconciliation;
+Stripe and Plaid had no signed-in session. The Supabase packet remains unsent.
+
+New fixes: runtime roles lost DML on `_prisma_migrations`; the household anchor keeps only its
+id after erasure; the completeness control covers tables without `household_id`. **Decision:
+NO-GO.**
