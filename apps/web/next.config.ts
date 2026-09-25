@@ -31,6 +31,15 @@ const nextConfig: NextConfig = {
    * on its first database call, so the root is stated rather than inferred.
    */
   outputFileTracingRoot: join(import.meta.dirname, "../.."),
+  /**
+   * `next dev` only; builds ignore it. Long keyboard-verification runs visit more routes than
+   * the default on-demand buffer holds (5 entries, evicted after 60 s idle), so revisits
+   * recompiled under load and outlived 5 s interactive transactions (P2028). Opt-in, so
+   * everyday development keeps the default memory profile.
+   */
+  ...(process.env.NEXT_DEV_KEEP_ROUTES === "1"
+    ? { onDemandEntries: { maxInactiveAge: 60 * 60 * 1000, pagesBufferLength: 500 } }
+    : {}),
   async headers() {
     return [
       {
