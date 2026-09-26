@@ -1,0 +1,316 @@
+{
+ "receipt": "staging-convergence-20260926",
+ "decision": "NO-GO",
+ "runtimeCandidate": {
+  "sha": "88829364ca5bda38630573b47cd5432b43acfa2e",
+  "tree": "a79769ae",
+  "githubBranch": "preprod/pellum-8882936"
+ },
+ "evidenceBranch": "preprod/pellum-8882936-evidence",
+ "environment": "Supabase staging kdqnfruwgocfqwpbpuxo (PG 17.6); Vercel project autobureau-staging (Production scope = staging)",
+ "timeWindowUtc": [
+  "2026-09-26T03:15Z",
+  "2026-09-26T14:10Z"
+ ],
+ "items": [
+  {
+   "requirement": "Candidate publication with pre-push secret controls",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [
+    "gitleaks-history.json",
+    "gitleaks-triage.md",
+    "histscan-all.txt",
+    "harness/histscan.py"
+   ],
+   "artifacts": [
+    [
+     "gitleaks-history.json",
+     "c232d33a64e7b2e203044099adf7fd2b6a798abe64bd906cedc3c26d6484c749"
+    ],
+    [
+     "gitleaks-triage.md",
+     "87d2f86c2f9b4a4d6b830247bd11cfafdb2d3b7468e80804ccf41141983ad343"
+    ],
+    [
+     "histscan-all.txt",
+     "5c08232c294cb3447973366084080d0ec5c6ae46dee75f97c66194ae45459fbe"
+    ],
+    [
+     "harness/histscan.py",
+     "078ac1e41d5e44267a6643e6ffcbdf1160e24c17dad6457b4acd5b4221c4cae3"
+    ]
+   ],
+   "limitations": "23 gitleaks findings all triaged false positives in the baseline snapshot; GitHub CI did not run on the branch"
+  },
+  {
+   "requirement": "Protected-account metadata determination",
+   "status": "PASS (1 founder account identified by hash); 2 auth-only accounts UNIDENTIFIED",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [
+    "01-protected-account.sql",
+    "01-protected-account.result.json",
+    "02-auth-only.sql",
+    "02-auth-only.result.json"
+   ],
+   "artifacts": [
+    [
+     "01-protected-account.sql",
+     "33db4a7387012879ed6bc30439ae3662a004479dd6584cdf2c670d7ccdd2185b"
+    ],
+    [
+     "01-protected-account.result.json",
+     "c1ad78a41de5b13a1770e29e6ba011e788c517600403f9719e95767c1fbe47cb"
+    ],
+    [
+     "02-auth-only.sql",
+     "e3a56d1dab42f5b87cf72677474d977bf4b036054b7ca40d28c6e9bd2ec87971"
+    ],
+    [
+     "02-auth-only.result.json",
+     "861e398e95b3576c51f6880324a92faf9826970e4decd3684b4cb2bf25b9d053"
+    ]
+   ],
+   "limitations": "metadata only; no address read"
+  },
+  {
+   "requirement": "Hosted preflight and pre-apply posture receipt",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [
+    "03-upgrade-preflight.sql",
+    "04-posture.sql",
+    "04-posture-pre.receipt.json",
+    "05-migration-plan.md",
+    "06-predispatch-idle.json"
+   ],
+   "artifacts": [
+    [
+     "03-upgrade-preflight.sql",
+     "2a172d276ba0d5b7342f2db3790af88dca4ba6d0b419e78713109ded1dcf6409"
+    ],
+    [
+     "04-posture.sql",
+     "d36a2d9254fb55a392f1c8cf67ba68abf5768458749b2787cd97a34b55afcc8d"
+    ],
+    [
+     "04-posture-pre.receipt.json",
+     "3f664fa2be283d3fe1d4bcbf46ac0745e897896642f387d663b29e434fc5eb38"
+    ],
+    [
+     "05-migration-plan.md",
+     "6b31e2f5663de32d08971bc86303995418df1e626d1dca300952e7caeb4674f5"
+    ],
+    [
+     "06-predispatch-idle.json",
+     "80edbef864306c7889644bc8bb1643523e22adefb2fc3f7a4a73a18dff58afe3"
+    ]
+   ],
+   "limitations": "large posture sections recorded by digest"
+  },
+  {
+   "requirement": "Staging migration 14-45 applied via deploy.yml run #93",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [
+    "07-github-gate.md",
+    "08-migrate-run93.md"
+   ],
+   "artifacts": [
+    [
+     "07-github-gate.md",
+     "a48dfa7347644315d80b831ce4a66177285992ee4dbdc80490f1b560eb5f381f"
+    ],
+    [
+     "08-migrate-run93.md",
+     "40b75230df2a0da12512a69603c0c072783b4c7f58b89033426bd3a36f3671dd"
+    ]
+   ],
+   "limitations": "exact-name environment branch rule added then removed with operator approval"
+  },
+  {
+   "requirement": "Post-migration posture equals local rehearsal",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [
+    "09-posture-post.receipt.json"
+   ],
+   "artifacts": [
+    [
+     "09-posture-post.receipt.json",
+     "103e0cb645fbfe20ca0f80fa637dd4277b728bfee75ab644424fd53035af51c1"
+    ]
+   ],
+   "limitations": "platform-owned differences itemized; no pre-apply content digest"
+  },
+  {
+   "requirement": "Runtime roles cannot read/write/forge the migration ledger (hosted)",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [
+    "10-ledger-probe.sql",
+    "10-ledger-probe.result.txt",
+    "11-post-migration-data.json"
+   ],
+   "artifacts": [
+    [
+     "10-ledger-probe.sql",
+     "6e3301147754c09ad1f908444860183a19d447748072dfd634488fec5e36185f"
+    ],
+    [
+     "10-ledger-probe.result.txt",
+     "350e5c5fd57b6f5b835119b69a99caec183fa309c3a51dcea0e9c77365bd73c4"
+    ],
+    [
+     "11-post-migration-data.json",
+     "3c58647250f3bfe7498e693e6b5b98bcb6d362322c778d17864544ccb574efa4"
+    ]
+   ],
+   "limitations": "probe runs as postgres with temporary SET membership inside a transaction that always rolls back"
+  },
+  {
+   "requirement": "Security Advisor rerun and Data API exposure",
+   "status": "PASS (no new findings; 5 accepted/open warnings unchanged)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [
+    "12-advisor-dataapi-post.json"
+   ],
+   "artifacts": [
+    [
+     "12-advisor-dataapi-post.json",
+     "6516a6a4c9451adcd302a96f01931b4eb37455701a4a5532f224610c3c00a342"
+    ]
+   ],
+   "limitations": "leaked-password protection remains off (Pro plan)"
+  },
+  {
+   "requirement": "Exact-candidate staging deployment, smoke and API acceptance (run #94)",
+   "status": "PASS",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [
+    "14-deploy-run94.md"
+   ],
+   "artifacts": [
+    [
+     "14-deploy-run94.md",
+     "d6ff8bfc5dfd93f2c06a831c026ad80be2dbab9e9c5c1a96fc1c249dcc1886ab"
+    ]
+   ],
+   "limitations": "API-level acceptance; browser-level authenticated flows not run by the agent"
+  },
+  {
+   "requirement": "Hosted anonymous keyboard/a11y/reflow sweep, 3 engines",
+   "status": "PASS 95/95 x3",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [
+    "harness/hosted-anon.mjs",
+    "15-hosted-anon/chromium.json",
+    "15-hosted-anon/webkit.json",
+    "15-hosted-anon/firefox.json"
+   ],
+   "artifacts": [
+    [
+     "harness/hosted-anon.mjs",
+     "850e9175c74d2837d8097fd8e18594ea5be7a7931728bfb65d1f0cb7ee928ce5"
+    ],
+    [
+     "15-hosted-anon/chromium.json",
+     "68e2e8c37dc0dcf9d59ec350ca754f2ffb0c11a110426d85305da7c5753e32f1"
+    ],
+    [
+     "15-hosted-anon/webkit.json",
+     "592892bfa156c2d9803b3c17961a4ad39b976c923fc38e29e61f3543d242edfa"
+    ],
+    [
+     "15-hosted-anon/firefox.json",
+     "b37984c351eba9b1d9e5c53e49f4889a3389d66b89d74990e06e6c42619bfec3"
+    ]
+   ],
+   "limitations": "anonymous pages only; no screen reader"
+  },
+  {
+   "requirement": "Hosted authenticated browser matrix",
+   "status": "NOT RUN (operator-run harness provided)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [
+    "harness/hosted-auth.mjs"
+   ],
+   "artifacts": [
+    [
+     "harness/hosted-auth.mjs",
+     "258f0c830bec7d0a6246d222220242eee1bda736ccacafd8e80832290703bc26"
+    ]
+   ],
+   "limitations": "agent does not create accounts or enter passwords on hosted services"
+  },
+  {
+   "requirement": "Hosted MFA / recovery / last-factor",
+   "status": "NOT MOUNTED (implementation gap)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [],
+   "artifacts": [],
+   "limitations": "local synthetic mount only by design"
+  },
+  {
+   "requirement": "Hosted export",
+   "status": "UNAVAILABLE BY DESIGN (implementation gap)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [],
+   "artifacts": [],
+   "limitations": "no hosted object storage or KMS-custodied export key"
+  },
+  {
+   "requirement": "Stripe TEST lifecycle",
+   "status": "NOT MOUNTED + BLOCKED",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [],
+   "artifacts": [],
+   "limitations": "no checkout/portal/webhook route; no dashboard session; credentials must be placed by operator"
+  },
+  {
+   "requirement": "Plaid Sandbox lifecycle",
+   "status": "NOT MOUNTED + BLOCKED",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [],
+   "artifacts": [],
+   "limitations": "linkAvailable false; no link/exchange/webhook route; no session"
+  },
+  {
+   "requirement": "Operational KMS",
+   "status": "DECISION REQUIRED",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [],
+   "artifacts": [],
+   "limitations": "no approved key-management provider for Plaid custody"
+  },
+  {
+   "requirement": "Supabase support packet sent",
+   "status": "SENT; OPEN - PROVIDER INVESTIGATION PENDING",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [
+    "13-supabase-support-message.txt",
+    "13-supabase-support-submission.md"
+   ],
+   "artifacts": [
+    [
+     "13-supabase-support-message.txt",
+     "e79ac782c649b1482f9d53301ea1e626d5fe94877dbefb06ce4fd6d04e7f9e64"
+    ],
+    [
+     "13-supabase-support-submission.md",
+     "0ac86a6942eb39e3cf0efd4337d7b3b01df9c0bc09a292e8d345cf23709333b1"
+    ]
+   ],
+   "limitations": "ticket number arrives by email; project access sharing turned off"
+  },
+  {
+   "requirement": "Staging Auth configuration review",
+   "status": "REVIEWED; no change applied; P1 finding (hosted sign-up lacks zxcvbn/HIBP policy)",
+   "candidate": "88829364ca5bda38630573b47cd5432b43acfa2e",
+   "evidence": [],
+   "artifacts": [],
+   "limitations": "change plan in report"
+  }
+ ],
+ "sha256sums": "SHA256SUMS in the evidence directory"
+}

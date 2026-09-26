@@ -461,3 +461,22 @@ Stripe and Plaid had no signed-in session. The Supabase packet remains unsent.
 New fixes: runtime roles lost DML on `_prisma_migrations`; the household anchor keeps only its
 id after erasure; the completeness control covers tables without `household_id`. **Decision:
 NO-GO.**
+
+## Staging/provider convergence at the exact candidate (September 25–26)
+
+Runtime candidate `8882936` is published as `preprod/pellum-8882936` after gitleaks and history checks.
+Staging moved 13 → 45 migrations via `deploy.yml` (run #93), with hosted preflight, idle-window,
+posture and ledger-privilege evidence; hosted posture equals the local Supabase-shaped rehearsal.
+Run #94 deployed the candidate to `autobureau-staging.vercel.app`: smoke 17/17, API acceptance 57/57.
+Hosted anonymous keyboard/a11y sweep: 95/95 in three engines. The Supabase packet was sent; the incident
+is **OPEN — PROVIDER INVESTIGATION PENDING**.
+
+New findings:
+- hosted sign-up does not apply the zxcvbn/HIBP password policy (P1);
+- hosted MFA, recovery and export are not mounted;
+- Stripe TEST and Plaid Sandbox have no hosted endpoints;
+- staging has no backups;
+- two unidentified auth-only accounts exist on staging;
+- the cutover runbook is stale (6 vs 45 migrations).
+
+[Report](staging-convergence-20260926.md). **Decision: NO-GO.**
