@@ -68,9 +68,13 @@ it("mounted recovery is account independent; strong password range check, one re
  expect(calls.filter(v=>v==='PUT /user')).toHaveLength(1);
  expect((await complete(req(path,body))).status).toBe(403);expect(calls.filter(v=>v==='PUT /user')).toHaveLength(1);
 });
-it("mount refuses CSRF and hosted mode before provider effects",async()=>{
+it("mount refuses CSRF, and a mixed hosted/local configuration, before provider effects",async()=>{
  const before=calls.length,r=req('/v1/account/security',{action:"list"},elevated);r.headers.delete('x-autobureau-request');
  expect((await security(r)).status).toBe(403);expect(calls).toHaveLength(before);
+ // VERCEL=1 with the local synthetic switch still set is neither mount: account-mount.ts
+ // classifies it "unavailable" (404), exactly like the kill switch, before any provider call.
  process.env.VERCEL="1";
- try{expect((await recovery(req('/v1/auth/recovery',{email:`${f.owner}@example.test`}))).status).toBe(503);expect(calls).toHaveLength(before);}finally{delete process.env.VERCEL;}
+ try{expect((await recovery(req('/v1/auth/recovery',{email:`${f.owner}@example.test`}))).status).toBe(404);expect(calls).toHaveLength(before);}finally{delete process.env.VERCEL;}
+ process.env.ACCOUNT_SECURITY_DISABLED="1";
+ try{expect((await recovery(req('/v1/auth/recovery',{email:`${f.owner}@example.test`}))).status).toBe(404);expect(calls).toHaveLength(before);}finally{delete process.env.ACCOUNT_SECURITY_DISABLED;}
 });
