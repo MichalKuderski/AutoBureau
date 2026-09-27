@@ -17,7 +17,7 @@ not be verified, it says so rather than guessing.
 | `main` | `5f75646` | working tree clean, local == `origin/main` |
 | Staging smoke | **17/17** | run `34001299542`, against `https://autobureau-staging.vercel.app` |
 | Staging acceptance | **57/57** | same run, same origin |
-| Staging database | 6 migrations applied, none rolled back | queried directly; all `finished_at` predate the run |
+| Staging database | 6 migrations applied, none rolled back (**historical, 2026-09-06**; see *Migration identity check* — never reuse a constant) | queried directly; all `finished_at` predate the run |
 | Production Supabase | **`ACTIVE_HEALTHY`** (`hdoknvqnjyttondgidvi`, us-east-2, PG 17.6) | resumed 2026-09-06 under section B |
 | Production schema | **empty, verified before migration** | 0 public tables · no `_prisma_migrations` · 0 auth users · no `app_user`/`app_dispatcher` · no `app` schema · 0 policies |
 | Production extensions | `pgcrypto` installed · `vector` available | `pg_available_extensions`; the init migration installs `vector` |
@@ -259,8 +259,8 @@ runtime database connection is wrong, whatever the smoke score says.
 
 | # | Action | System | Item | Mode | Prereq | Expected | Failure | Rollback | Approval |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| D-1 | Run the production job's migration step | GitHub Actions → Supabase | `prisma migrate deploy` | **MUTATING** | B, C-1 | 6 migrations applied | `P1000` → credential wrong, see incident §1 | expand-only; see rollback policy | **YES** (via F's gate) |
-| D-2 | Verify migration state | Supabase SQL | `_prisma_migrations` | read-only | D-1 | 6 rows, all `finished`, none `rolled_back` | any partial → **STOP** | — | no |
+| D-1 | Run the production job's migration step | GitHub Actions → Supabase | `prisma migrate deploy` | **MUTATING** | B, C-1 | **Migration identity check passes** for the exact candidate | `P1000` → credential wrong, see incident §1 | expand-only; see rollback policy | **YES** (via F's gate) |
+| D-2 | Verify migration state | Supabase SQL | `_prisma_migrations` | read-only | D-1 | **Migration identity check passes** (count, checksums, zero unfinished/rolled back) | any difference → **STOP** | — | no |
 | D-3 | Verify the runtime role and RLS exist | Supabase SQL | `app_user`, `pg_tables.rowsecurity`, `pg_policies` | read-only | D-1 | `app_user` exists; RLS enabled on tenant tables; policies present | absent → the application cannot run safely | — | no |
 | D-4 | **Grant `app_user` the ability to log in** | Supabase SQL | `ALTER ROLE app_user WITH LOGIN PASSWORD …` + `GRANT CONNECT` | **MUTATING** | D-1 | `app_user` can authenticate; password matches the one in `DATABASE_URL` | omitted → the application cannot connect at all, and every request fails at the boundary | `ALTER ROLE app_user NOLOGIN` restores the migrated state | **YES** |
 | D-5 | Confirm `app_user` is not over-privileged | Supabase SQL | `pg_roles` | read-only | D-4 | `app_user` is not superuser, has no `BYPASSRLS`, and does not own the tables | any of those true → RLS does not actually constrain it — **STOP** | — | no |
@@ -305,7 +305,7 @@ Note: `--git-branch` is not passed. Vercel accepts that flag only with
 | F-1 | Dispatch Deploy with `environment: production`, `stage: migrate` | GitHub Actions | Deploy workflow | **MUTATING** | A-4, B, C | `production · migrate` starts | — | — | **YES** |
 | F-2 | Approve the protected environment | GitHub | `production` environment | **MUTATING** | F-1 | job proceeds | — | decline to approve | **YES** |
 | F-3 | Preflight guard passes | GitHub Actions | `PRODUCTION_HOST` | read-only | C-5 | "PRODUCTION_HOST is set." | unset → job fails **before** migrating or deploying | nothing changed | no |
-| F-4 | Migrations apply, then the run stops | GitHub Actions → Supabase | `prisma migrate deploy` | **MUTATING** | F-3 | 6 migrations applied; no build, no deploy | `P1000` → incident §1 | expand-only | no |
+| F-4 | Migrations apply, then the run stops | GitHub Actions → Supabase | `prisma migrate deploy` | **MUTATING** | F-3 | **Migration identity check passes**; no build, no deploy | `P1000` → incident §1 | expand-only | no |
 | F-5 | Perform D-2 … D-5 | Supabase SQL | `app_user` | **MUTATING** (D-4 only) | F-4 | `app_user` can log in and is not over-privileged | **STOP** — do not dispatch stage 2 | `ALTER ROLE app_user NOLOGIN` | **YES** |
 | F-6 | Dispatch Deploy with `environment: production`, `stage: deploy` | GitHub Actions | Deploy workflow | **MUTATING** | F-5 | build and deploy proceed | — | — | **YES** |
 | F-7 | Build, deploy, smoke | GitHub Actions → Vercel | `--prod` deploy | **MUTATING** | F-6 | deployment aliased onto the stable host | see incident section | `vercel rollback` | no |
@@ -565,10 +565,74 @@ LOGIN, not superuser, no BYPASSRLS. Staging untouched.
 
 ---
 
+## Migration identity check (derived from the exact candidate — never a constant)
+
+The expected migration state is computed from the candidate being deployed, not remembered.
+Earlier revisions of this runbook said "6 migrations"; the chain was 7 at the first production
+deploy and 45 at candidate `8882936`. A hard-coded number is wrong the day a migration lands.
+
+Expected (run in a checkout of the **exact** candidate SHA):
+
+```sh
+cd packages/db/prisma/migrations
+ls -d */ | wc -l                                   # N = expected count
+for d in */; do printf '%s %s\n' "${d%/}" "$(shasum -a 256 "$d/migration.sql" | cut -d' ' -f1)"; done > expected.txt
+```
+
+Observed (read-only, target database):
+
+```sql
+SELECT count(*) FILTER (WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL) AS applied,
+       count(*) FILTER (WHERE finished_at IS NULL) AS unfinished,
+       count(*) FILTER (WHERE rolled_back_at IS NOT NULL) AS rolled_back,
+       string_agg(migration_name || ' ' || checksum, E'\n' ORDER BY migration_name) AS observed
+FROM _prisma_migrations;
+```
+
+Pass only when: `applied = N`, `unfinished = 0`, `rolled_back = 0`, and `observed` equals
+`expected.txt` line for line (names and SHA-256 checksums). Any extra, missing or differing
+row is a **STOP**: do not deploy the build, do not "repair" the ledger by hand. Before applying,
+also run `scripts/migration-preflight.mjs` (read-only) — it names every data precondition a
+pending migration will refuse.
+
+## Rollback, forward-fix and disable
+
+| Layer | Action | Notes |
+| --- | --- | --- |
+| Application | Vercel instant rollback (`vercel rollback`, or promote the previous deployment) | Pointer move between immutable deployments; the schema is untouched. The deploy job does this automatically on a failed smoke. |
+| Schema | **Forward-fix only.** Never down-migrate or edit an applied migration. | Migrations are additive/expand-first; each runs in its own transaction. A failed migration leaves that migration unapplied and recorded as failed: stop, diagnose, ship a reviewed forward fix. Data restore is a separate, authorized recovery action (see *Backups and restore*), never a rollback shortcut. |
+| Account security (MFA, recovery) | Set `ACCOUNT_SECURITY_DISABLED=1` in the deployment's configuration and redeploy | `/v1/account/security` and `/v1/auth/recovery*` answer 404; the pages say the feature is unavailable. Existing factors are **not** removed and sign-in is unchanged. |
+| Document intake | `DOCUMENT_INTAKE_ENABLED` unset/false | Intake refuses new uploads; existing records stay readable. |
+| Plaid | `PLAID_SANDBOX_ENABLED` unset | Linking is not mounted in this candidate. |
+| Supabase Auth settings | Revert the single changed setting in the dashboard | Record before/after values; never change several settings at once during an incident. |
+| Provider webhooks (when mounted) | Disable the endpoint in the provider dashboard | Durable inboxes make re-enabling safe; missed events are reconciled from provider state, never replayed by hand. |
+
+## Incident roles (must be named before any production step)
+
+| Role | Holder | Status |
+| --- | --- | --- |
+| Incident commander (decides rollback/disable) | — | **UNASSIGNED — founder must name a person (A-3)** |
+| On-call owner (first response, 24/7 during launch window) | — | **UNASSIGNED** |
+| Escalation: security/privacy lead | — | **UNASSIGNED** |
+| Escalation: provider contacts (Supabase support ticket, Vercel, Stripe, Plaid) | — | record ticket/case IDs in the incident log |
+
+No production step may start while any row above is unassigned.
+
+## Backups and restore (production requirement)
+
+- The staging project is on the Supabase **Free** plan and shows **"No backups"**. No restore drill
+  has been performed and none may be claimed.
+- **Production requirement:** a Supabase plan with daily backups **and** point-in-time recovery
+  enabled before real data is accepted; the retention window and cost are a founder/billing decision.
+- **Restore procedure (to be verified before launch):** restore to a *new* project from PITR at a
+  chosen timestamp → run the *Migration identity check* and the posture diff against the source →
+  verify row counts for the tenant tables → switch only after the incident commander approves.
+- ADR-019 restore admission (what a restored database may re-admit, e.g. erased households) remains
+  a separate authority and is not satisfied by a provider restore.
+
 ## What this runbook does not cover
 
 - DNS and custom-domain configuration for the production host.
-- Backup and restore procedure for production data.
-- On-call rotation and escalation paths.
+- Filling the incident-role table and verifying the restore procedure (both required before launch).
 
 These are real gaps. They are named here rather than left to be discovered during a cutover.

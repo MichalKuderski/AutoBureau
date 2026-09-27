@@ -320,7 +320,8 @@ jobs:
           echo "Migrations applied. app_user now exists, and cannot log in yet."
           echo
           echo "Before dispatching stage 2 (environment=production, stage=deploy):"
-          echo "  D-2  verify _prisma_migrations: 6 rows, all finished, none rolled back"
+          echo "  D-2  run the runbook's Migration identity check: count and checksums equal the"
+          echo "       exact candidate's migrations; zero unfinished, zero rolled back"
           echo "  D-3  verify RLS enabled and policies present on the tenant tables"
           echo "  D-4  ALTER ROLE app_user WITH LOGIN PASSWORD '<the password already in DATABASE_URL>';"
           echo "       GRANT CONNECT ON DATABASE postgres TO app_user;"
