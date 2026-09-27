@@ -2,6 +2,12 @@ import { z } from "zod";
 import type { AuthConfig } from "./config";
 import { ProviderError } from "./provider";
 import { discardProviderBody, readProviderJson, ProviderBodyError } from "./provider-body";
+
+/** GoTrue's enrollment response embeds a QR-code SVG written as one element per module
+ * (hundreds of KB at error-correction level H). It is discarded, but it must be read to
+ * reach the secret; observed on hosted staging 2026-09-27 where the shared 64 KB bound
+ * refused every enrollment. Finite, and only for this one call. */
+export const ENROLL_RESPONSE_MAX_BYTES = 1024 * 1024;
 import { parseProviderTokens } from "./provider-shape";
 import type { SessionTokens } from "./session";
 
@@ -29,7 +35,7 @@ const token = z.string().min(1).max(16_384).regex(/^[A-Za-z0-9._~-]+$/);
  * metadata authorization, retry, redirect or error-body logging. Separate interface
  * leaves the proven signup/confirmation transport unchanged. Mounted only via account-mount.ts. */
 export function createAccountProvider(config: AuthConfig, fetchImpl: typeof fetch = fetch, timeoutMs = 10_000): AccountProvider {
-  async function call(path: string, method: "GET" | "POST" | "PUT" | "DELETE", access?: string, body?: object, empty = false): Promise<unknown> {
+  async function call(path: string, method: "GET" | "POST" | "PUT" | "DELETE", access?: string, body?: object, empty = false, maxBytes?: number): Promise<unknown> {
     if (access !== undefined) input(token, access);
     const signal = AbortSignal.timeout(timeoutMs), start = performance.now();
     let response: Response;
@@ -49,7 +55,7 @@ export function createAccountProvider(config: AuthConfig, fetchImpl: typeof fetc
         "Account security request was refused", response.status, diagnostics("http"));
     }
     if (empty) { discardProviderBody(response); return undefined; }
-    try { return await readProviderJson(response, signal); }
+    try { return await readProviderJson(response, signal, maxBytes); }
     catch (e) { throw new ProviderError("unavailable", "Account security is unavailable", response.status,
       diagnostics(e instanceof ProviderBodyError ? e.failure : "invalid-response")); }
   }
@@ -74,7 +80,7 @@ export function createAccountProvider(config: AuthConfig, fetchImpl: typeof fetc
     },
     async enroll(access) {
       const value = input(z.object({ id: uuid, type: z.literal("totp"), totp: z.object({ secret: z.string().min(16).max(128).regex(/^[A-Z2-7]+$/) }) }),
-        await call("/factors", "POST", access, { factor_type: "totp", issuer: "Pellum" }));
+        await call("/factors", "POST", access, { factor_type: "totp", issuer: "Pellum" }, false, ENROLL_RESPONSE_MAX_BYTES));
       // The setup secret must be displayed once to enroll. Never persist/log it;
       // discard provider SVG/URI/friendly-name fields, including markup and URLs.
       return { id: value.id, secret: value.totp.secret };

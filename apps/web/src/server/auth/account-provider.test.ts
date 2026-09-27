@@ -29,6 +29,21 @@ describe("bounded account provider transport", () => {
     expect(await p.enroll("access")).toEqual({ id: factorId, secret: "A".repeat(32) });
     expect(JSON.parse(fetcher.mock.calls[0]![1]!.body as string)).toEqual({ factor_type: "totp", issuer: "Pellum" });
   });
+  // Regression (hosted 2026-09-27): GoTrue's QR SVG is one element per module; the shared 64 KB
+  // bound refused every real enrollment. A realistic ~400 KB body must parse; beyond 1 MiB refuses.
+  const qrSvg = (bytes: number) => "data:image/svg+xml;utf-8,<svg>" + '<rect x="1" y="1" width="1" height="1" style="fill:#000"/>'.repeat(Math.ceil(bytes / 58)) + "</svg>";
+  it("reads a realistic full-size enrollment response and still projects only the secret", async () => {
+    const { p } = setup({ id: factorId, type: "totp", friendly_name: "", totp: { secret: "B".repeat(32), qr_code: qrSvg(400_000), uri: "otpauth://totp/Pellum:x?secret=B" } });
+    expect(await p.enroll("access")).toEqual({ id: factorId, secret: "B".repeat(32) });
+  });
+  it("refuses an enrollment response beyond its own bound", async () => {
+    const { p } = setup({ id: factorId, type: "totp", totp: { secret: "B".repeat(32), qr_code: qrSvg(1_100_000), uri: "x" } });
+    await expect(p.enroll("access")).rejects.toThrow("Account security");
+  });
+  it("keeps the shared 64 KB bound on every other account call", async () => {
+    const { p } = setup({ id, factors: [], padding: "x".repeat(70_000) });
+    await expect(p.factors("access")).rejects.toThrow("Account security");
+  });
   it("uses exact factor/challenge IDs and code body, never query credentials", async () => {
     const { p, fetcher } = setup({ access_token: "access.new", refresh_token: "refresh.new", expires_in: 3600 });
     expect(await p.verify("access", factorId, id, "123456")).toEqual({ accessToken: "access.new", refreshToken: "refresh.new", expiresIn: 3600 });

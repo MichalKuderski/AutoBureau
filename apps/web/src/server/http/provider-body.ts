@@ -87,8 +87,8 @@ export async function readProviderText(response: Response, signal: AbortSignal, 
 }
 
 /** JSON consumers retain the same byte/chunk/time bounds as text protocols. */
-export async function readProviderJson(response: Response, signal: AbortSignal): Promise<unknown> {
-  const text = await readProviderText(response, signal);
+export async function readProviderJson(response: Response, signal: AbortSignal, maxBytes = MAX_PROVIDER_RESPONSE_BYTES): Promise<unknown> {
+  const text = await readProviderText(response, signal, maxBytes);
   try { return JSON.parse(text) as unknown; }
   catch { throw new ProviderBodyError("invalid-response"); }
 }
