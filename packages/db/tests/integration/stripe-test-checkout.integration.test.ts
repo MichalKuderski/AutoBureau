@@ -57,6 +57,11 @@ it("owner-only intent, idempotent by request key, one unresolved checkout per ho
   await expect(db.withHousehold(f.hh, tx => tx.$executeRaw`INSERT INTO stripe_test_checkouts(household_id,owner_id,account_id,plan,request_key)
     VALUES(${f.hh}::uuid,${member}::uuid,${account},'monthly',${randomUUID()}::uuid)`)).rejects.toThrow();
   await expect(asOwner(() => db.withHousehold(f.hh, tx => tx.$executeRaw`UPDATE stripe_test_checkouts SET plan='annual' WHERE id=${c.id}::uuid`))).rejects.toThrow();
+  // A signed-in member writing directly (no module check in the way) is refused by the guard itself.
+  const g = await household();
+  await expect(runAsUser(member, () => db.withHousehold(g.hh, tx => tx.$executeRaw`INSERT INTO stripe_test_checkouts(household_id,owner_id,account_id,plan,request_key)
+    VALUES(${g.hh}::uuid,${member}::uuid,${account},'monthly',${randomUUID()}::uuid)`))).rejects.toThrow();
+  expect(await admin.stripeTestCheckout.count({ where: { householdId: g.hh } })).toBe(0);
   await expect(asOwner(() => db.withHousehold(f.hh, tx => tx.$executeRaw`UPDATE stripe_test_checkouts SET state='bound',customer_id=${f.customerId},session_id=${f.sessionId} WHERE id=${c.id}::uuid`))).rejects.toThrow();
 });
 
@@ -67,6 +72,8 @@ it("binds only from an opened intent, derives both routes, and is terminal", asy
   await expect(runAsUser(member, () => recordStripeTestCheckoutSession(db, f.hh, c.id, f))).rejects.toThrow();
   await asOwner(() => recordStripeTestCheckoutSession(db, f.hh, c.id, f));
   await expect(asOwner(() => recordStripeTestCheckoutSession(db, f.hh, c.id, { ...f, customerId: "cus_Other" }))).rejects.toThrow();
+  // "bound" needs the binding itself; the owner cannot mark an opened intent bound directly.
+  await expect(asOwner(() => db.withHousehold(f.hh, tx => tx.$executeRaw`UPDATE stripe_test_checkouts SET state='bound' WHERE id=${c.id}::uuid`))).rejects.toThrow();
   const { bindingId } = await asOwner(() => completeStripeTestCheckout(db, f.hh, c.id, f.subscriptionId));
   const binding = await admin.stripeTestBinding.findUniqueOrThrow({ where: { id: bindingId } });
   expect(binding).toMatchObject({ householdId: f.hh, ownerId: owner, accountId: account, customerId: f.customerId, subscriptionId: f.subscriptionId, livemode: false });

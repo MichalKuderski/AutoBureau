@@ -51,7 +51,7 @@ async function fixture(options: { unscanned?: boolean; secret?: boolean } = {}) 
   localCleanCustody(custodyRoot).copy({ householdId: hh, objectId, sha256: sha.toString("hex"), size: bytes.length }, bytes);
   let pending: string | undefined;
   if (options.unscanned) { pending = randomUUID(); await admin.document.create({ data: { id: pending, householdId: hh, source: "upload", status: "scanning", storagePath: `hh/${hh}/upload/${pending}/sealed/${randomUUID()}`, sizeBytes: 10, mimeType: "image/png" } }); }
-  if (options.secret) await admin.itemSecret.create({ data: { itemId: item.id, field: "policy_number", ciphertext: randomBytes(40), keyVersion: 1, last4: "9876" } });
+  if (options.secret) await admin.itemSecret.create({ data: { itemId: item.id, field: "policy_number", ciphertext: randomBytes(40), keyVersion: 1, last4: "Q9X7" } });
   const requestId = randomUUID();
   await runAsUser(owner, () => requestOwnerExport(db, hh, requestId));
   return { hh, requestId, doc, pending, objectId, bytes };
@@ -105,7 +105,9 @@ describe("export v3 archive", () => {
     const f = await fixture({ secret: true });
     expect(await runAsUser(owner, () => vault().build(db, f.hh, f.requestId))).toMatchObject({ complete: false, omissions: ["identifier-values"] });
     const files = unzip(await runAsUser(owner, () => vault().download(db, f.hh, f.requestId)));
-    expect([...files.values()].map(b => b.toString("latin1")).join("")).not.toContain("9876");
+    // The canary is deliberately not hexadecimal: a digit-only value also occurs by chance inside
+    // the archive's own SHA-256 digests and UUIDs (a false positive seen on 2026-09-27).
+    expect([...files.values()].map(b => b.toString("latin1")).join("")).not.toContain("Q9X7");
   });
   it("refuses tampered, transplanted or custody-mismatched bytes and non-owners", async () => {
     const f = await fixture(), g = await fixture();
