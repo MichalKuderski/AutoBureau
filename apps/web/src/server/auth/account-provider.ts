@@ -27,7 +27,7 @@ const token = z.string().min(1).max(16_384).regex(/^[A-Za-z0-9._~-]+$/);
 
 /** Server-only GoTrue account lifecycle transport. No service-role key, SDK session,
  * metadata authorization, retry, redirect or error-body logging. Separate interface
- * leaves the proven signup/confirmation transport unchanged. Not mounted on a route. */
+ * leaves the proven signup/confirmation transport unchanged. Mounted only via account-mount.ts. */
 export function createAccountProvider(config: AuthConfig, fetchImpl: typeof fetch = fetch, timeoutMs = 10_000): AccountProvider {
   async function call(path: string, method: "GET" | "POST" | "PUT" | "DELETE", access?: string, body?: object, empty = false): Promise<unknown> {
     if (access !== undefined) input(token, access);

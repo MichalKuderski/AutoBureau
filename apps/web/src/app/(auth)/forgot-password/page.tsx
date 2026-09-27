@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { assertLocalAccountMount } from "@/server/auth/local-account-mount";
+import { accountSecurityAvailable } from "@/server/auth/account-mount";
 import { ForgotPasswordForm } from "./forgot-password-form";
 
 export const metadata: Metadata = {
@@ -7,9 +7,8 @@ export const metadata: Metadata = {
 };
 
 export default function ForgotPasswordPage() {
-  // Hosted activation stays closed: only the loopback-only synthetic mount enables the form.
-  let available = false;
-  try { assertLocalAccountMount(process.env); available = true; } catch { /* unavailable */ }
+  // Enabled on the synthetic loopback mount and on hosted runtimes (account-mount.ts); the kill switch closes it.
+  const available = accountSecurityAvailable(process.env);
   return <ForgotPasswordForm available={available} />;
 }
 export const dynamic = "force-dynamic";

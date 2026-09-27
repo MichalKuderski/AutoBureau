@@ -72,6 +72,8 @@ beforeAll(async () => {
   ROTATED = await mint();
 
   provider = createServer((req, res) => {
+    // Breach-range fixture for the authoritative password policy (loopback + test = fixture; never the network).
+    if ((req.url ?? "").startsWith("/range/")) { res.writeHead(200, { "content-type": "text/plain" }); res.end("0".repeat(35) + ":0\r\n"); return; }
     providerCalls.push({
       path: req.url ?? "",
       apikey: req.headers["apikey"] as string | undefined,

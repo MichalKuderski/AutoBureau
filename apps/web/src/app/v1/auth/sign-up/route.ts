@@ -10,6 +10,7 @@ import { assertSameSiteRequest, CsrfError } from "@/server/http/csrf";
 import { problemResponse } from "@/server/http/problem";
 import { SIGN_UP_POLICIES, enforceRateLimit } from "@/server/http/rate-limit";
 import { assessPassword, isPlausibleEmail } from "@/lib/password";
+import { PASSWORD_REFUSAL, passwordPolicyFor } from "@/server/auth/password-gate";
 import { log, routeOf, traceIdFrom, withTraceHeader } from "@/server/observability";
 
 /**
@@ -97,6 +98,18 @@ export async function POST(request: Request): Promise<Response> {
     route,
   });
   if (limited !== null) return withTraceHeader(limited, traceId);
+
+  // The authoritative policy (length, zxcvbn ≥ 3, k-anonymity breach range) — the check the
+  // meter above only hints at. After the limiter, so this route cannot be used to drive
+  // breach lookups, and before the provider, so a refused password never reaches it. An
+  // unavailable lookup refuses: an account is never created on an unchecked password.
+  const verdict = await passwordPolicyFor(process.env, config.apiUrl)(parsed.data.password);
+  if (verdict === "unavailable") {
+    return withTraceHeader(problemResponse("unavailable", { detail: PASSWORD_REFUSAL.unavailable }), traceId);
+  }
+  if (verdict !== "allowed") {
+    return withTraceHeader(problemResponse("validation", { detail: PASSWORD_REFUSAL[verdict] }), traceId);
+  }
 
   /** Same body for a fresh address and one already registered — see the header. */
   const pending = (): Response =>

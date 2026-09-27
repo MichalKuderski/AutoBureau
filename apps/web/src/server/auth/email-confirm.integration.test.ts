@@ -72,6 +72,8 @@ beforeAll(async () => {
     .sign(privateKey);
 
   provider = createServer((req, res) => {
+    // Breach-range fixture for the authoritative password policy (loopback + test = fixture; never the network).
+    if ((req.url ?? "").startsWith("/range/")) { res.writeHead(200, { "content-type": "text/plain" }); res.end("0".repeat(35) + ":0\r\n"); return; }
     const url = new URL(req.url ?? "/", "http://local");
     let body = "";
     req.on("data", (c) => (body += c));

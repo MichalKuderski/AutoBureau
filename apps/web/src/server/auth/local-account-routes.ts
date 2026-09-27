@@ -7,8 +7,8 @@ import { LOCAL_ACCOUNT_ROUTES } from "./operation-matrix";
 import type { createAccountSecurityController } from "./account-security";
 import type { createRecoveryController } from "./account-recovery";
 
-/** Dependency-injected HTTP seam. Next exports reach it only through the independent
- * synthetic loopback gate; no hosted provider activation.
+/** Dependency-injected HTTP seam. Next exports reach it only through account-mount.ts
+ * (its hosted gate or the independent synthetic loopback gate).
  * Real controllers, signed identity and DB adapters can be composed in disposable
  * integration tests. Initiation needs neither a session nor a household candidate.
  * No bearer authorization input, query token, or browser factor evidence is trusted. */

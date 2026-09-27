@@ -10,8 +10,7 @@ import { traceIdFrom } from "../observability";
 /** Concrete local-testable ports. householdId is a candidate, never authority:
  * every DB entry repeats live owner/fence checks under the signed principal.
  * This does not grant access to auth.sessions or claim global JWT revocation.
- * Mounted only through the explicitly synthetic loopback account adapter; hosted
- * activation remains closed. */
+ * Mounted through account-mount.ts (hosted runtime or synthetic loopback). */
 export function createDatabaseAccountSecurityPorts(db: Database, householdId: string, verifier: JwtVerifier): AccountSecurityPorts {
   const check = (action: AccountAction, userId: string, evidence: AccountOperationEvidence, sessionId: string | undefined, factorId?: string) =>
     (current: { requiresMfa: boolean; now: number }) => {

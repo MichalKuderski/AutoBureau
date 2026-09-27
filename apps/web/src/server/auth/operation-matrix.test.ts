@@ -20,9 +20,9 @@ function inspect(source: string, expected: Readonly<Record<string, string>>) {
     if (ts.isExportDeclaration(s)) throw new Error("Unreviewed export");
     if (!ts.canHaveModifiers(s) || !ts.getModifiers(s)?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
     if (ts.isFunctionDeclaration(s) && s.name && methods.has(s.name.text)) {
-      if (expected[s.name.text] === "local-account") {
-        if (!source.includes('from "@/server/auth/local-account-mount"') || !s.body || s.body.statements.length!==1 || !ts.isReturnStatement(s.body.statements[0]!) || s.body.statements[0]!.getText(ast)!=="return localAccountMount(request);") throw new Error("Missing local mount gate");
-        found[s.name.text]="local-account"; continue;
+      if (expected[s.name.text] === "account-mount") {
+        if (!source.includes('from "@/server/auth/account-mount"') || !s.body || s.body.statements.length!==1 || !ts.isReturnStatement(s.body.statements[0]!) || s.body.statements[0]!.getText(ast)!=="return accountMount(request);") throw new Error("Missing account mount gate");
+        found[s.name.text]="account-mount"; continue;
       }
       if (expected[s.name.text] !== "auth-special") throw new Error("Unwrapped route");
       found[s.name.text] = "auth-special";

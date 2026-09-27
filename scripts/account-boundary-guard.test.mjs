@@ -22,9 +22,24 @@ test('TEST journal has no entitlement write or direct queue publication',()=>{
  assert.equal(/unsafeAcrossAllHouseholds|withGlobalTable/.test(s),false);
 });
 
-test('local account page must retain the server loopback gate',()=>{
+test('account page must retain the server-side mount gate',()=>{
  const s=read('apps/web/src/app/account-security/page.tsx');
- assert.match(s,/assertLocalAccountMount\(process\.env\)/);
+ assert.match(s,/accountSecurityAvailable\(process\.env\)/);
  assert.match(s,/available\?<SecurityPanel/);
  assert.doesNotMatch(s,/createAccountSecurityController|createRecoveryController|createAccountProvider/);
+});
+
+test('every account/recovery route goes through the single gated account mount',()=>{
+ for(const r of ['apps/web/src/app/v1/account/security/route.ts','apps/web/src/app/v1/auth/recovery/route.ts','apps/web/src/app/v1/auth/recovery/complete/route.ts'])
+  assert.equal(read(r),'import { accountMount } from "@/server/auth/account-mount";\nexport async function POST(request: Request): Promise<Response> { return accountMount(request); }\n');
+ const m=read('apps/web/src/server/auth/account-mount.ts');
+ assert.match(m,/env\.VERCEL !== "1"/); assert.match(m,/LOCAL_ACCOUNT_ROUTES !== undefined/); assert.match(m,/ACCOUNT_SECURITY_DISABLED === "1"/);
+ assert.doesNotMatch(m,/service_role|SERVICE_ROLE|console\./);
+});
+test('every route that creates or changes a password applies the authoritative policy',()=>{
+ const callers=files('apps/web/src').filter(p=>!/\.test\.[jt]sx?$/.test(p)&&/\.signUp\(|\.updatePassword\(/.test(read(p)));
+ const allowed={'apps/web/src/app/v1/auth/sign-up/route.ts':/passwordPolicyFor\(process\.env, config\.apiUrl\)/,'apps/web/src/server/auth/account-recovery.ts':/ports\.passwordAllowed\(value\.password\)/};
+ assert.deepEqual(callers.sort(),Object.keys(allowed).sort());
+ for(const [p,rx] of Object.entries(allowed))assert.match(read(p),rx);
+ assert.match(read('apps/web/src/server/auth/account-mount.ts'),/passwordPolicyFor\(process\.env, config\.apiUrl\)/);
 });

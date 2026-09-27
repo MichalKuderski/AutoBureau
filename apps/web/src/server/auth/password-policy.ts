@@ -7,7 +7,8 @@ export type PasswordVerdict = "allowed" | "weak" | "breached" | "unavailable";
  * protocol, never password storage. No full password/hash, identifier or caller
  * header reaches the adapter. Hash prefixes still permit dictionary inference;
  * this protocol is disclosure minimization, not mathematical non-reconstruction.
- * One check at submit time, never per keystroke. No route activates it yet. */
+ * One check at submit time, never per keystroke. Applied by every password-setting route
+ * through password-gate.ts (sign-up, recovery); a guard test pins the call sites. */
 export function createPasswordPolicy(fetchImpl: typeof fetch = fetch) {
   return async (password: string): Promise<PasswordVerdict> => {
     // Bound synchronous estimator work. Do not trim or normalize a password: the

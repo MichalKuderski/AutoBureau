@@ -1,6 +1,6 @@
-/** Authoritative local sensitive-operation inventory. This is NOT a hosted
- * activation list. Every entry is gated until application-wide enforcement and
- * provider evidence pass. Matrix changes require corresponding boundary tests. */
+/** Authoritative sensitive-operation inventory. `implementation` states where each entry
+ * actually runs; "hosted-and-local-controller" entries are served by account-mount.ts on
+ * hosted runtimes and on the synthetic loopback mount. Matrix changes require boundary tests. */
 const owner = { principal: "signed-session", membership: "current-owner", account: "active",
   providerFactors: "fresh-at-most-60s", recentAuth: "password-or-aal2-totp-15m",
   transaction: "owner-policy-fence-and-db-clock", instantSessionRevocation: false } as const;
@@ -12,14 +12,14 @@ export const SENSITIVE_OPERATION_MATRIX = {
   "export.generate": { ...owner, mode: "recent", fence: "open", implementation: "partial-local-artifact" },
   "export.revoke": { ...owner, mode: "recent", fence: "open", implementation: "partial-local-artifact" },
   "export.download": { ...owner, mode: "recent", fence: "open", implementation: "partial-local-artifact" },
-  "security.list": { ...owner, mode: "bootstrap", recentAuth: "signed-current-session", fence: "open", implementation: "local-controller" },
-  "security.enroll": { ...owner, mode: "bootstrap", fence: "open", implementation: "local-controller" },
-  "security.challenge": { ...owner, mode: "bootstrap", recentAuth: "aal1-step-up-or-recent-enrollment", fence: "open", implementation: "local-controller" },
-  "security.verify": { ...owner, mode: "bootstrap", recentAuth: "one-use-challenge-same-session", fence: "open", implementation: "local-controller" },
-  "security.remove-factor": { ...owner, mode: "recent", fence: "open-no-required-verified-factor-removal", implementation: "local-controller" },
-  "recovery.initiate": { mode: "public-recovery", principal: "none", membership: "none", implementation: "local-controller",
+  "security.list": { ...owner, mode: "bootstrap", recentAuth: "signed-current-session", fence: "open", implementation: "hosted-and-local-controller" },
+  "security.enroll": { ...owner, mode: "bootstrap", fence: "open", implementation: "hosted-and-local-controller" },
+  "security.challenge": { ...owner, mode: "bootstrap", recentAuth: "aal1-step-up-or-recent-enrollment", fence: "open", implementation: "hosted-and-local-controller" },
+  "security.verify": { ...owner, mode: "bootstrap", recentAuth: "one-use-challenge-same-session", fence: "open", implementation: "hosted-and-local-controller" },
+  "security.remove-factor": { ...owner, mode: "recent", fence: "open-no-required-verified-factor-removal", implementation: "hosted-and-local-controller" },
+  "recovery.initiate": { mode: "public-recovery", principal: "none", membership: "none", implementation: "hosted-and-local-controller",
     transaction: "shared-rate-limit-only", instantSessionRevocation: false },
-  "recovery.complete": { ...owner, mode: "recovery", recentAuth: "fresh-one-use-redemption-and-existing-factor", fence: "open", implementation: "local-controller" },
+  "recovery.complete": { ...owner, mode: "recovery", recentAuth: "fresh-one-use-redemption-and-existing-factor", fence: "open", implementation: "hosted-and-local-controller" },
   "billing.manage": { ...owner, mode: "recent", fence: "open", implementation: "not-mounted" },
   "billing.checkout": { ...owner, mode: "recent", fence: "open", implementation: "not-mounted" },
   "billing.portal": { ...owner, mode: "recent", fence: "open", implementation: "not-mounted" },
@@ -33,7 +33,7 @@ export type RecentOperation = { [K in SensitiveOperationName]: typeof SENSITIVE_
 export const recentOperations = Object.keys(SENSITIVE_OPERATION_MATRIX).filter(
   k => SENSITIVE_OPERATION_MATRIX[k as SensitiveOperationName].mode === "recent") as RecentOperation[];
 
-/** Exact local HTTP seams. No Next route or environment flag activates them. */
+/** Exact account/recovery HTTP seams, served only through account-mount.ts (hosted or synthetic loopback). */
 export const LOCAL_ACCOUNT_ROUTES = {
   "/v1/account/security": "security",
   "/v1/auth/recovery": "initiate",
@@ -46,9 +46,9 @@ export const LOCAL_ACCOUNT_ROUTES = {
  * Ordinary endpoints use live session/factor checks in the shared request boundary.
  * Hosted readiness still requires provider/session and exact-candidate evidence. */
 export const MOUNTED_ROUTE_MATRIX: Readonly<Record<string, Readonly<Record<string, string>>>> = {
-  "v1/account/security": { POST: "local-account" },
-  "v1/auth/recovery": { POST: "local-account" },
-  "v1/auth/recovery/complete": { POST: "local-account" },
+  "v1/account/security": { POST: "account-mount" },
+  "v1/auth/recovery": { POST: "account-mount" },
+  "v1/auth/recovery/complete": { POST: "account-mount" },
   "auth/callback": { GET: "auth-special" },
   "auth/confirm": { GET: "auth-special" },
   "auth/refresh": { GET: "auth-special" },

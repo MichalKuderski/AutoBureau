@@ -31,6 +31,7 @@
  */
 
 import { probeForeignHousehold } from './acceptance-tenant-probe.mjs';
+import { createHmac, randomBytes } from 'node:crypto';
 
 const BASE = (process.argv[2] ?? process.env.ACCEPTANCE_BASE_URL ?? "").replace(/\/+$/, "");
 const BYPASS = process.env.VERCEL_AUTOMATION_BYPASS_SECRET ?? "";
@@ -45,7 +46,22 @@ if (!BASE || !URL.canParse(BASE) || new URL(BASE).hostname === "") {
 const ORIGIN = new URL(BASE).origin;
 const CSRF = { "x-autobureau-request": "1" };
 const JSON_HEADERS = { "content-type": "application/json", origin: ORIGIN, ...CSRF };
-const PASSWORD = "Correct-Horse-Battery-77";
+// Per run and never printed: a fixed password in a public repository would be a breached
+// password by construction, and the authoritative policy now refuses those at sign-up.
+const PASSWORD = `Acc-${randomBytes(12).toString("base64url")}-${randomBytes(3).toString("hex")}`;
+
+/** RFC 6238 TOTP (SHA-1, 30 s, 6 digits) for the synthetic factor this run enrolls. Never printed. */
+function totp(base32, at = Date.now()) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const ch of base32.replace(/=+$/, "")) bits += alphabet.indexOf(ch).toString(2).padStart(5, "0");
+  const key = Buffer.from(bits.match(/.{8}/g).map((b) => parseInt(b, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(at / 1000 / 30)));
+  const h = createHmac("sha1", key).update(counter).digest();
+  const o = h[h.length - 1] & 15;
+  return String(((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000)).padStart(6, "0");
+}
 
 const results = [];
 let section = "";
@@ -406,6 +422,76 @@ const reLogin = await req("/v1/auth/sign-in", {
   body: JSON.stringify({ email: alice.email, password: PASSWORD }),
 });
 check("re-login after sign-out succeeds", reLogin.status === 204, { status: reLogin.status });
+
+/* ───────────────────────────── 5b. password policy, MFA and recovery (hosted) ───────────── */
+
+heading("authoritative password policy");
+
+// Two refused sign-ups. The policy runs after the limiter, so each spends one `sign_up.ip`
+// unit; the budget for the whole run stays at 9 of 10.
+for (const [label, password, detail] of [
+  ["a predictable password (zxcvbn < 3)", "qwertyuiopasdfgh", /longer, less predictable/i],
+  ["a strong-looking but breached passphrase (k-anonymity)", "correcthorsebatterystaple", /known data breaches/i],
+]) {
+  const email = addressFor(`pw-${label.includes("breached") ? "breached" : "weak"}`);
+  const res = await req("/v1/auth/sign-up", { method: "POST", headers: JSON_HEADERS,
+    body: JSON.stringify({ name: "Acceptance policy", email, password }) });
+  const body = await res.text();
+  check(`sign-up refuses ${label}`, res.status === 400 && detail.test(body), { status: res.status });
+  const probe = await req("/v1/auth/sign-in", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ email, password }) });
+  check(`no account exists after refusing ${label}`, probe.status === 401, { status: probe.status });
+}
+
+heading("MFA (hosted provider)");
+
+const mfa = jar();
+mfa.take(await req("/v1/auth/sign-in", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ email: alice.email, password: PASSWORD }) }));
+const security = async (body) => {
+  const res = await req("/v1/account/security", { method: "POST", headers: { ...JSON_HEADERS, cookie: mfa.header() }, body: JSON.stringify(body) });
+  mfa.take(res);
+  let json = null;
+  try { json = await res.json(); } catch { /* not json */ }
+  return { status: res.status, json };
+};
+const listed = await security({ action: "list" });
+check("the hosted account-security endpoint lists live factors (aal1, none)", listed.status === 200 && listed.json?.level === "aal1" && Array.isArray(listed.json?.factors) && listed.json.factors.length === 0, { status: listed.status, level: listed.json?.level });
+const enrolled = await security({ action: "enroll" });
+const secret = enrolled.json?.setupSecret, factorId = enrolled.json?.factorId;
+check("enrollment returns a factor and a one-time setup secret", enrolled.status === 200 && typeof secret === "string" && /^[A-Z2-7]{16,}$/.test(secret ?? "") && typeof factorId === "string", { status: enrolled.status });
+if (typeof secret === "string" && typeof factorId === "string") {
+  const challenged = await security({ action: "challenge", factorId });
+  check("a challenge is issued and journaled", challenged.status === 200 && typeof challenged.json?.challengeId === "string", { status: challenged.status });
+  const code = totp(secret);
+  const verified = await security({ action: "verify", factorId, challengeId: challenged.json?.challengeId, code });
+  check("TOTP verification establishes the session", verified.status === 200 && verified.json?.verified === true, { status: verified.status });
+  const replay = await security({ action: "verify", factorId, challengeId: challenged.json?.challengeId, code });
+  check("replaying a consumed challenge is refused", replay.status === 403, { status: replay.status });
+  const elevated = await security({ action: "list" });
+  check("the session is now AAL2 with a verified factor", elevated.status === 200 && elevated.json?.level === "aal2" && elevated.json?.factors?.some((f) => f.id === factorId && f.status === "verified"), { level: elevated.json?.level });
+  const removed = await security({ action: "remove", factorId });
+  check("removing the factor succeeds and requires signing in again", removed.status === 200 && removed.json?.removed === true && removed.json?.signInRequired === true, { status: removed.status });
+  const again = jar();
+  again.take(await req("/v1/auth/sign-in", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ email: alice.email, password: PASSWORD }) }));
+  const after = await req("/v1/account/security", { method: "POST", headers: { ...JSON_HEADERS, cookie: again.header() }, body: JSON.stringify({ action: "list" }) });
+  const afterJson = await after.json().catch(() => null);
+  check("after re-sign-in the factor is gone (live provider enumeration)", after.status === 200 && afterJson?.factors?.length === 0, { status: after.status });
+} else {
+  for (const n of ["a challenge is issued and journaled", "TOTP verification establishes the session", "replaying a consumed challenge is refused",
+    "the session is now AAL2 with a verified factor", "removing the factor succeeds and requires signing in again",
+    "after re-sign-in the factor is gone (live provider enumeration)"]) blocked(n);
+}
+
+heading("recovery (hosted, no mail sent)");
+
+// A never-registered address: the provider sends nothing, so no mail bounces from a synthetic domain.
+const unknown = await req("/v1/auth/recovery", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ email: addressFor("recovery-unknown") }) });
+check("recovery initiation answers uniformly (202) without revealing account existence", unknown.status === 202, { status: unknown.status });
+const bogus = await req("/v1/auth/recovery/complete", { method: "POST", headers: JSON_HEADERS,
+  body: JSON.stringify({ tokenHash: "never_issued_synthetic_hash", password: PASSWORD }) });
+check("a never-issued recovery token is refused (no 5xx)", bogus.status === 403, { status: bogus.status });
+const weakFirst = await req("/v1/auth/recovery/complete", { method: "POST", headers: JSON_HEADERS,
+  body: JSON.stringify({ tokenHash: "never_issued_synthetic_hash", password: "correcthorsebatterystaple" }) });
+check("a breached new password is refused before any token redemption", weakFirst.status === 403, { status: weakFirst.status });
 
 /* ───────────────────────────── 6. rate limiting (LAST — spends budget) ───────────── */
 

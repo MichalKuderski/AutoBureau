@@ -27,7 +27,7 @@ export interface RecoveryPorts {
 const refuse = (): never => { throw new Error("Recovery refused"); };
 const reply = (body: object, status = 200) => Response.json(body, { status, headers: { "cache-control": "no-store, private", "pragma": "no-cache", "referrer-policy": "no-referrer" } });
 
-/** Single-request recovery completion; mounted only through the synthetic-loopback gate. Hash redemption is provider-
+/** Single-request recovery completion; mounted only through account-mount.ts. Hash redemption is provider-
  * consumed once; recovery never creates an application session or bypasses TOTP.
  * Token-hash email template/landing-page review and actual password-policy/admission
  * adapters are activation gates. No lost-factor reset path exists.
