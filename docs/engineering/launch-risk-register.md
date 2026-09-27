@@ -480,3 +480,15 @@ New findings:
 - the cutover runbook is stale (6 vs 45 migrations).
 
 [Report](staging-convergence-20260926.md). **Decision: NO-GO.**
+
+## Hosted capability (September 27)
+
+Staging runs `22f397d` (`preprod/pellum-22f397d`): migration 46 applied (run #98, identity check equal),
+web deploy run #99 with smoke 17/17 and acceptance 73/73. Hosted MFA, recovery and the authoritative
+password policy pass at the API level. Hosted Stripe TEST checkout is implemented through a separate
+billing runtime that holds the only Stripe credentials. The full suite and 21/21 source mutations pass,
+along with 3/4 hosted-checkout DB mutations (the fourth is held by a second control).
+
+Checkout is **not proven on staging**. It needs operator-only Stripe, Vercel, Supabase and GitHub
+steps, and the agent's Stripe writes were refused. AWS is still a root session, so Plaid, export
+storage and alert delivery have not started. [Report](hosted-capability-20260927.md). **Decision: NO-GO.**

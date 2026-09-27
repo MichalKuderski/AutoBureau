@@ -1,0 +1,90 @@
+{
+ "run": "hosted-capability-20260927",
+ "decision": "NO-GO",
+ "candidate": {
+  "commit": "22f397d1648b392181f720fc115c3482dbbefd9f",
+  "tree": "c053eb26189e05d4081b147bf53b2c359028f61b",
+  "branch": "preprod/pellum-22f397d",
+  "allExitZero": true
+ },
+ "sourceMutations": {
+  "detected": 21,
+  "total": 21
+ },
+ "dbMutations": [
+  {
+   "mutation": "checkout-by-non-owner",
+   "verdict": "DETECTED"
+  },
+  {
+   "mutation": "checkout-bound-without-binding",
+   "verdict": "DETECTED"
+  },
+  {
+   "mutation": "stripe-route-enumeration",
+   "verdict": "DETECTED"
+  },
+  {
+   "mutation": "billing-writes-checkouts",
+   "verdict": "UNDETECTED"
+  }
+ ],
+ "staging": {
+  "migrateRun": 98,
+  "deployRun": 99,
+  "migrations": 46,
+  "smoke": "17/17",
+  "acceptance": "73/73",
+  "hostedBilling": "NOT PROVEN (billing runtime not configured)"
+ },
+ "artifacts": [
+  [
+   "cand-22f397d/candidate.json",
+   "bb3a66481378779a8c5f9068551838d78c0097751dadd25a5c3859896c4779ed"
+  ],
+  [
+   "cand-22f397d.log",
+   "32ad7e85a8c5bcf3da1c1ca5617fdf50da36d00ad5a771480aaf95d1da87733c"
+  ],
+  [
+   "srcmut-22f397d/src-mutations.json",
+   "5ebbcd45ea4c211cf665e05d26cda1ec663833bae245d4fc1b8024807395423f"
+  ],
+  [
+   "dbmut-22f397d/mutations.json",
+   "bc5d10ded6d89b77359219388a582a3e855b8ed1746c66ee10bdd2330664878f"
+  ],
+  [
+   "dbmut-22f397d/billing-writes-checkouts-second-layer.md",
+   "ecfbfc192d1da917246ec92ab5afc3cbc2b8c0f27c32cf86606dda5ad66e70c9"
+  ],
+  [
+   "cand-22f397d-discarded-host-sleep.log",
+   "4f5a31079e33de29d44052da08195025fef25c8b84ee636a69b11a5e818f2889"
+  ],
+  [
+   "cand-3336896.log",
+   "976a00deab60f4d8384d0f7483e8266363f7765cd95d1bbfa46e4ed0fba69e34"
+  ],
+  [
+   "staging-preprod-20260927/05-stripe-operator-steps.md",
+   "65e329d0d0e5d1af9bf4e2232ce575aae52bad4773adde2e7de150fe1ae2ee15"
+  ],
+  [
+   "staging-preprod-20260927/06-migration-plan-22f397d.md",
+   "c07b3ac3cfa5a45df1e7075ce301182f5744a5e5f27ecd79e99efb195501a4d2"
+  ],
+  [
+   "staging-preprod-20260927/07-predispatch-ledger-22f397d.json",
+   "85aadd350665e9de837683ca573603a041206543955d5bdd3985a92949259b36"
+  ],
+  [
+   "staging-preprod-20260927/08-run98-migrate-22f397d.json",
+   "b150d11bb502fc3804e1ae59d62c196572176177e6dbe8c2ccdf946fbe97c538"
+  ],
+  [
+   "staging-preprod-20260927/09-run99-deploy-22f397d.json",
+   "23c846d2859cb22eb730987c8c54daa9aa589764fa2cf79a27cd27426c0a64dd"
+  ]
+ ]
+}
