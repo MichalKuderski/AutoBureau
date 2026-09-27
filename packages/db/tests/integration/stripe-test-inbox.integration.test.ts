@@ -15,7 +15,7 @@ beforeAll(async()=>{
 },120000);
 afterAll(async()=>{
  if(admin){const where={householdId:{in:households}};
- await admin.stripeTestNotice.deleteMany({where});await admin.stripeTestBinding.deleteMany({where});await admin.householdDeletion.deleteMany({where});await admin.household.deleteMany({where:{id:{in:households}}});await admin.auditLog.deleteMany({where});await admin.user.deleteMany({where:{id:{in:[owner,other]}}});
+ await admin.stripeTestNotice.deleteMany({where});await admin.stripeTestRoute.deleteMany({where});await admin.stripeTestCheckout.deleteMany({where});await admin.stripeTestBinding.deleteMany({where});await admin.householdDeletion.deleteMany({where});await admin.household.deleteMany({where:{id:{in:households}}});await admin.auditLog.deleteMany({where});await admin.user.deleteMany({where:{id:{in:[owner,other]}}});
  await admin.$executeRawUnsafe("ALTER ROLE app_billing_test NOLOGIN PASSWORD NULL");}
  await Promise.all([admin,app,worker].map(c=>c?.$disconnect()));
 });

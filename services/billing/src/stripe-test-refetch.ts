@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import { z } from "zod";
 import { StripeTestBindingSchema, stripeTestId } from "@autobureau/contracts";
-import { validateStripeTestPrice, StripeTestPolicyError, type StripeTestPriceBinding } from "./stripe-test-policy";
+import { validateStripeTestPrice, StripeTestPolicyError, type StripeTestPriceBinding } from "./stripe-test-policy.js";
 
 const seconds=z.number().int().nonnegative().max(8_640_000_000_000);
 const objectId=(prefix:string)=>z.union([stripeTestId(prefix),z.object({id:stripeTestId(prefix)})]).transform(v=>typeof v==="string"?v:v.id);

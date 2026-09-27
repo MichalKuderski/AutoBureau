@@ -39,6 +39,8 @@ const sources = {
   "stripe-states": ["provider-references", Prisma.sql`SELECT id::text AS key,household_id FROM stripe_test_states`],
   "stripe-intents": ["provider-references", Prisma.sql`SELECT id::text AS key,household_id FROM stripe_test_intents`],
   "stripe-notices": ["provider-references", Prisma.sql`SELECT id::text AS key,household_id FROM stripe_test_notices`],
+  "stripe-checkouts": ["provider-references", Prisma.sql`SELECT id::text AS key,household_id FROM stripe_test_checkouts`],
+  "stripe-routes": ["provider-references", Prisma.sql`SELECT id::text AS key,household_id FROM stripe_test_routes`],
   "export-artifacts": ["job-artifacts", Prisma.sql`SELECT id::text AS key,household_id FROM local_export_artifacts`],
   "auth-challenges": ["account-household", Prisma.sql`SELECT id::text AS key,household_id FROM account_security_challenges`],
 } as const;

@@ -10,7 +10,9 @@ export interface BillingStatus {
   tier: "free" | "premium";
   state: "none" | "active" | "canceling" | "grace" | "past_due" | "canceled" | "blocked";
   cadence: "monthly" | "annual" | null; paidThrough: string | null; premiumUntil: string | null;
-  testMode: boolean; paymentUpdateAvailable: false; checkoutAvailable: false;
+  testMode: boolean; subscribed: boolean; checkoutOpen: boolean;
+  /** The billing runtime is mounted on this deployment (server-decided), not a grant. */
+  paymentUpdateAvailable: boolean; checkoutAvailable: boolean;
 }
 const day = (iso: string | null) => iso ? new Date(iso).toLocaleDateString("en-US", { dateStyle: "long", timeZone: "UTC" }) : "";
 
@@ -26,13 +28,16 @@ export function useBillingStatus() {
 /**
  * What the database says about Premium, in plain words. Premium is only ever described as
  * on when the effective plan is Premium; a payment problem is never softened into "active".
- * Payment updates are not available in this build, and the copy says so instead of
- * offering a control that cannot work.
+ * A reconciled TEST subscription whose Premium limits are not in effect says exactly that.
  */
 export function describeBilling(b: BillingStatus): { tone: "info" | "warning" | "critical"; title: string; body: string } | null {
   switch (b.state) {
     case "active": return b.tier === "premium"
-      ? { tone: "info", title: "Premium is on", body: `Your ${b.cadence ?? ""} plan is paid through ${day(b.paidThrough)}.`.replace("  ", " ") } : null;
+      ? { tone: "info", title: "Premium is on", body: `Your ${b.cadence ?? ""} plan is paid through ${day(b.paidThrough)}.`.replace("  ", " ") }
+      : { tone: "info", title: "Subscription recorded, Premium limits not on",
+        body: b.testMode
+          ? "Your TEST subscription is recorded, but its paid period isn't current, so your household uses Free limits until Stripe confirms the next payment."
+          : "Your TEST subscription is recorded, but Premium limits aren't switched on in this environment, so your household uses Free limits." };
     case "canceling": return { tone: "info", title: "Premium is ending", body: `Premium stays on until ${day(b.premiumUntil)}. You won't be charged again.` };
     case "grace": return { tone: "warning", title: "Payment problem",
       body: `Your last payment didn't go through. Premium stays on until ${day(b.premiumUntil)} while the payment is retried. After that, your household moves to Free — nothing is deleted.` };

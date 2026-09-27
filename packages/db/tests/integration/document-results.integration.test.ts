@@ -16,7 +16,7 @@ beforeAll(async()=>{await bootstrapDatabase();await grantAppUserLogin();admin=ne
 },120000);
 afterAll(async()=>{if(admin){const where={householdId:{in:households}};
  await admin.documentResultReview.deleteMany({where});await admin.documentResult.deleteMany({where});await admin.documentProcessing.deleteMany({where});await admin.documentCustody.deleteMany({where});await admin.documentScanAttempt.deleteMany({where});await admin.documentScan.deleteMany({where});
- await admin.stripeTestState.deleteMany({where});await admin.stripeTestIntent.deleteMany({where});await admin.stripeTestBinding.deleteMany({where});
+ await admin.stripeTestState.deleteMany({where});await admin.stripeTestIntent.deleteMany({where});await admin.stripeTestRoute.deleteMany({where});await admin.stripeTestCheckout.deleteMany({where});await admin.stripeTestBinding.deleteMany({where});
  await admin.householdDeletion.deleteMany({where});await admin.outboxEvent.deleteMany({where});await admin.household.deleteMany({where:{id:{in:households}}});await admin.auditLog.deleteMany({where});await admin.user.deleteMany({where:{id:{in:owners}}});await admin.localPlanActivation.update({where:{singleton:true},data:{testEnabled:false}});await admin.$executeRawUnsafe('ALTER ROLE app_document_worker NOLOGIN PASSWORD NULL');}
  await Promise.all([admin,app,worker].map(c=>c?.$disconnect()));});
 async function fixture(){const hh=randomUUID(),owner=randomUUID(),doc=randomUUID(),seal=randomUUID();households.push(hh);owners.push(owner);

@@ -1,8 +1,8 @@
 // @vitest-environment node
 import Stripe from "stripe";
 import { expect,it,vi } from "vitest";
-import { createStripeTestReadPort,refetchStripeTestState,type TestBillingReadPort } from "./stripe-test-refetch";
-import { deriveTestSubscription } from "./stripe-test-state";
+import { createStripeTestReadPort,refetchStripeTestState,type TestBillingReadPort } from "./stripe-test-refetch.js";
+import { deriveTestSubscription } from "./stripe-test-state.js";
 const now=1790000000,binding={accountId:"acct_Synthetic",customerId:"cus_Synthetic",subscriptionId:"sub_Synthetic",livemode:false};
 const catalog=[{plan:"monthly" as const,priceId:"price_Monthly",productId:"prod_Premium"}];
 function fixture(){

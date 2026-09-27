@@ -33,8 +33,42 @@ importers:
         specifier: ^8.65.0
         version: 8.65.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
 
+  apps/billing:
+    dependencies:
+      '@autobureau/billing-boundary':
+        specifier: workspace:*
+        version: link:../../services/billing
+      '@prisma/client':
+        specifier: ^6.2.0
+        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+      next:
+        specifier: ^15.1.0
+        version: 15.5.22(@babel/core@7.29.7)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.8(react@19.2.8)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.17
+      typescript:
+        specifier: ^5.8.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@16.8.1)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
+
   apps/web:
     dependencies:
+      '@autobureau/billing-boundary':
+        specifier: workspace:*
+        version: link:../../services/billing
       '@autobureau/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -80,9 +114,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.8(react@19.2.8)
-      stripe:
-        specifier: 22.6.2
-        version: 22.6.2(@types/node@22.20.1)
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.1
@@ -192,6 +223,34 @@ importers:
 
   services/ai:
     devDependencies:
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.1
+      typescript:
+        specifier: ^5.8.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.7(@types/node@22.20.1)(happy-dom@16.8.1)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
+
+  services/billing:
+    dependencies:
+      '@autobureau/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@autobureau/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      stripe:
+        specifier: 22.6.2
+        version: 22.6.2(@types/node@22.20.1)
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
+    devDependencies:
+      '@prisma/client':
+        specifier: ^6.2.0
+        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
       '@types/node':
         specifier: ^22.20.1
         version: 22.20.1

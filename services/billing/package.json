@@ -1,0 +1,36 @@
+{
+  "name": "@autobureau/billing-boundary",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./internal-signature": {
+      "types": "./dist/internal-signature.d.ts",
+      "default": "./dist/internal-signature.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --exclude \"**/*.integration.test.ts\" --exclude \"dist/**\"",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
+  },
+  "dependencies": {
+    "@autobureau/contracts": "workspace:*",
+    "@autobureau/db": "workspace:*",
+    "stripe": "22.6.2",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.2.0",
+    "@types/node": "^22.20.1",
+    "typescript": "^5.8.0",
+    "vitest": "^3.0.0"
+  }
+}

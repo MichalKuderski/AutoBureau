@@ -18,7 +18,7 @@ afterAll(async () => {
   if (h) {
     const where = { householdId: h.household };
     await h.admin.reminder.deleteMany({ where }); await h.admin.obligation.deleteMany({ where }); await h.admin.item.deleteMany({ where });
-    await h.admin.stripeTestState.deleteMany({ where }); await h.admin.stripeTestIntent.deleteMany({ where }); await h.admin.stripeTestBinding.deleteMany({ where });
+    await h.admin.stripeTestState.deleteMany({ where }); await h.admin.stripeTestIntent.deleteMany({ where }); await h.admin.stripeTestRoute.deleteMany({ where });await h.admin.stripeTestCheckout.deleteMany({ where });await h.admin.stripeTestBinding.deleteMany({ where });
     await h.admin.entitlement.deleteMany({ where }); await h.close();
   }
 });

@@ -28,6 +28,7 @@ const EXPECTED: Record<Capability, Array<"owner" | "member" | "viewer">> = {
   "household.export": ["owner"],
   "financial.read": ["owner"],
   "financial.manage": ["owner"],
+  "billing.manage": ["owner"],
   "document.resolve": ["owner"],
 };
 

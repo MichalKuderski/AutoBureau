@@ -164,6 +164,8 @@ export async function observeLocalDeletionResource(db: Database, householdId: st
         (SELECT count(*) FROM stripe_test_notices WHERE household_id=${householdId}::uuid)+
         (SELECT count(*) FROM stripe_test_states WHERE household_id=${householdId}::uuid)+
         (SELECT count(*) FROM stripe_test_intents WHERE household_id=${householdId}::uuid)+
+        (SELECT count(*) FROM stripe_test_checkouts WHERE household_id=${householdId}::uuid)+
+        (SELECT count(*) FROM stripe_test_routes WHERE household_id=${householdId}::uuid)+
         (SELECT count(*) FROM plaid_local_subjects WHERE household_id=${householdId}::uuid)+
         (SELECT count(*) FROM plaid_local_exchanges WHERE household_id=${householdId}::uuid)+
         (SELECT count(*) FROM plaid_local_items WHERE household_id=${householdId}::uuid)+

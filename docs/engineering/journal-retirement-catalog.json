@@ -198,7 +198,9 @@
         "StripeTestBinding",
         "StripeTestNotice",
         "StripeTestState",
-        "StripeTestIntent"
+        "StripeTestIntent",
+        "StripeTestCheckout",
+        "StripeTestRoute"
       ],
       "purpose": "TEST provider ownership, dedupe and entitlement reconciliation",
       "personalData": true,

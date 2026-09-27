@@ -1,8 +1,8 @@
 // @vitest-environment node
 import Stripe from "stripe";
 import { describe, expect, it } from "vitest";
-import { createStripeTestNoticeVerifier } from "./stripe-test-notice";
-import { StripeTestPolicyError } from "./stripe-test-policy";
+import { createStripeTestNoticeVerifier } from "./stripe-test-notice.js";
+import { StripeTestPolicyError } from "./stripe-test-policy.js";
 
 // Official SDK's offline helpers only. No client instance, API key, endpoint or
 // network call exists in this fixture. These are not delivered provider events.
@@ -22,7 +22,7 @@ function signed(value: unknown = event, timestamp = Math.floor(Date.now() / 1000
 describe("official Stripe SDK signature conformance with synthetic TEST events", () => {
   it("accepts exact signed Buffer bytes and projects only reconciliation data", () => {
     const { bytes, signature } = signed();
-    expect(verify(bytes, signature)).toEqual({ kind: "reconcile", eventId: "evt_Synthetic", eventType: "invoice.paid", objectId: "in_Synthetic", created: event.created });
+    expect(verify(bytes, signature)).toEqual({ kind: "reconcile", eventId: "evt_Synthetic", eventType: "invoice.paid", objectId: "in_Synthetic", created: event.created, customerId: null });
     expect(JSON.stringify(verify(bytes, signature))).not.toContain("PRIVATE_CANARY");
   });
   it("accepts a Uint8Array with the same exact bytes", () => {
@@ -60,6 +60,22 @@ describe("official Stripe SDK signature conformance with synthetic TEST events",
     const { bytes, signature } = signed();
     expect(verify(bytes, signature)).toEqual(verify(bytes, signature));
     expect(verify(bytes, signature)).not.toHaveProperty("entitlement");
+  });
+  it("projects only an exact TEST customer ID as the routing key, expanded or not", () => {
+    for (const customer of ["cus_Route1", { id: "cus_Route1", email: "PRIVATE_CANARY" }]) {
+      const { bytes, signature } = signed({ ...event, data: { object: { ...event.data.object, customer } } });
+      const projected = verify(bytes, signature);
+      expect(projected).toMatchObject({ kind: "reconcile", customerId: "cus_Route1" });
+      expect(JSON.stringify(projected)).not.toContain("PRIVATE_CANARY");
+    }
+    for (const customer of ["cus_", "acct_Route1", "cus_bad id", 7]) {
+      const { bytes, signature } = signed({ ...event, data: { object: { ...event.data.object, customer } } });
+      expect(verify(bytes, signature)).toMatchObject({ kind: "reconcile", customerId: null });
+    }
+  });
+  it("never turns a checkout completion into a notice: binding comes only from the owner's verified return", () => {
+    const { bytes, signature } = signed({ ...event, type: "checkout.session.completed", data: { object: { id: "cs_test_Synthetic", customer: "cus_Route1" } } });
+    expect(verify(bytes, signature)).toEqual({ kind: "ignored", eventId: event.id });
   });
   it("ignores authentic unrelated TEST events", () => {
     const { bytes, signature } = signed({ ...event, type: "customer.created" });

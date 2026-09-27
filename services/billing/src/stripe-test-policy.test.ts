@@ -1,8 +1,8 @@
 // @vitest-environment node
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
-import { validateStripeTestPrice, StripeTestPolicyError, type StripeTestPriceBinding } from "./stripe-test-policy";
-import { createStripeTestNoticeVerifier } from "./stripe-test-notice";
+import { validateStripeTestPrice, StripeTestPolicyError, type StripeTestPriceBinding } from "./stripe-test-policy.js";
+import { createStripeTestNoticeVerifier } from "./stripe-test-notice.js";
 const binding:StripeTestPriceBinding={plan:'monthly',priceId:'price_MonthlyTest',productId:'prod_PellumTest'};
 const price={object:'price',id:binding.priceId,product:binding.productId,livemode:false,active:true,type:'recurring',currency:'usd',unit_amount:1200,billing_scheme:'per_unit',recurring:{interval:'month',interval_count:1,usage_type:'licensed'}};
 describe('provisional Stripe TEST catalog guard',()=>{

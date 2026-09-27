@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { StripeTestStateSchema, type StripeTestState } from "@autobureau/contracts";
-import { StripeTestPolicyError } from "./stripe-test-policy";
-import type { RefetchedTestState } from "./stripe-test-refetch";
+import { StripeTestPolicyError } from "./stripe-test-policy.js";
+import type { RefetchedTestState } from "./stripe-test-refetch.js";
 export type ReconciledTestSubscription=StripeTestState;
 const time=z.number().int().nonnegative().max(8_640_000_000_000);
 const prior=StripeTestStateSchema;

@@ -26,7 +26,7 @@ afterAll(async()=>{
  await admin.accountSecurityChallenge.deleteMany({where});
  await admin.documentProcessing.deleteMany({where});await admin.documentCustody.deleteMany({where});await admin.documentScan.deleteMany({where});
  await admin.localExportArtifact.deleteMany({where:{householdId:{in:households}}});
- await admin.stripeTestState.deleteMany({where});await admin.stripeTestNotice.deleteMany({where});await admin.stripeTestBinding.deleteMany({where});
+ await admin.stripeTestState.deleteMany({where});await admin.stripeTestNotice.deleteMany({where});await admin.stripeTestRoute.deleteMany({where});await admin.stripeTestCheckout.deleteMany({where});await admin.stripeTestBinding.deleteMany({where});
  await admin.household.deleteMany({where:{id:{in:households}}});await admin.auditLog.deleteMany({where});await admin.user.delete({where:{id:owner}});
  for(const role of ["app_retention_worker","app_deletion_verifier"])await admin.$executeRawUnsafe(`ALTER ROLE ${role} NOLOGIN PASSWORD NULL`);}
  await Promise.all([admin,app,retention,verifier].map(c=>c?.$disconnect()));

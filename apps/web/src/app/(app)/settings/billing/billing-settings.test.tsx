@@ -168,3 +168,71 @@ describe("Test E · unrelated billing content remains intact", () => {
     expect(screen.getByRole("heading", { name: "Premium" })).toBeInTheDocument();
   });
 });
+
+describe("Test F · hosted TEST checkout, only as the server allows", () => {
+  const status = (over: Record<string, unknown> = {}) => ({ tier: "free", state: "none", cadence: null, paidThrough: null, premiumUntil: null, testMode: false,
+    subscribed: false, checkoutOpen: false, paymentUpdateAvailable: false, checkoutAvailable: true, ...over });
+  function stub(routes: Record<string, unknown>) {
+    const calls: Array<{ path: string; body: unknown }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(String(input), "https://app.example.test").pathname.replace(/^\/v1\/households\/[^/]+/, "");
+      calls.push({ path, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+      return Response.json(routes[path] ?? {});
+    }));
+    return calls;
+  }
+  function trapNavigation() {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign, search: "" });
+    return assign;
+  }
+
+  it("offers monthly and annual upgrades and leaves only for Stripe's checkout origin", async () => {
+    const calls = stub({ "/billing": status(), "/billing/checkout": { url: "https://checkout.stripe.com/c/pay/cs_test_Synthetic" } });
+    const assign = trapNavigation();
+    renderScreen(<BillingSettings />, { household: { plan: "free" } });
+    await userEvent.click(await screen.findByRole("button", { name: "Upgrade — $99/year" }));
+    expect(await screen.findByText(/Opening Stripe checkout/)).toBeInTheDocument();
+    expect(assign).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_test_Synthetic");
+    expect(calls.find(c => c.path === "/billing/checkout")?.body).toMatchObject({ plan: "annual" });
+    expect(screen.getByRole("button", { name: "Upgrade — $12/month" })).toBeInTheDocument();
+  });
+
+  it("never navigates to a destination the server did not name on the exact provider origin", async () => {
+    stub({ "/billing": status(), "/billing/checkout": { url: "https://checkout.stripe.com.attacker.example/pay" } });
+    const assign = trapNavigation();
+    renderScreen(<BillingSettings />, { household: { plan: "free" } });
+    await userEvent.click(await screen.findByRole("button", { name: "Upgrade — $12/month" }));
+    await new Promise(r => setTimeout(r, 20));
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("an open checkout offers status and cancel instead of a second checkout", async () => {
+    const calls = stub({ "/billing": status({ checkoutOpen: true }), "/billing/confirm": { status: "abandoned", reconciled: false } });
+    renderScreen(<BillingSettings />, { household: { plan: "free" } });
+    expect(await screen.findByRole("button", { name: "Check checkout status" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Upgrade — / })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel checkout" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("The checkout was cancelled. Nothing was charged.");
+    expect(calls.find(c => c.path === "/billing/confirm")?.body).toEqual({ cancel: true });
+  });
+
+  it("a recorded subscription whose Premium limits are off never reads as Premium", async () => {
+    stub({ "/billing": status({ state: "active", cadence: "monthly", subscribed: true, checkoutAvailable: false, paymentUpdateAvailable: true }) });
+    renderScreen(<BillingSettings />, { household: { plan: "free" } });
+    expect(await screen.findByText("Subscription recorded, Premium limits not on")).toBeInTheDocument();
+    expect(screen.queryByText("Premium is on")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Manage subscription" })).toBeInTheDocument();
+  });
+
+  it("a payment problem offers the portal to update the payment method", async () => {
+    const calls = stub({ "/billing": status({ tier: "premium", state: "grace", premiumUntil: "2026-10-08T00:00:00.000Z", subscribed: true, checkoutAvailable: false, paymentUpdateAvailable: true }),
+      "/billing/portal": { url: "https://billing.stripe.com/p/session/Synthetic" } });
+    const assign = trapNavigation();
+    renderScreen(<BillingSettings />, { household: { plan: "premium" } });
+    await userEvent.click(await screen.findByRole("button", { name: "Update payment method" }));
+    expect(assign).toHaveBeenCalledWith("https://billing.stripe.com/p/session/Synthetic");
+    expect(calls.some(c => c.path === "/billing/portal")).toBe(true);
+    expect(screen.queryByRole("button", { name: "Cancel Premium" })).not.toBeInTheDocument();
+  });
+});

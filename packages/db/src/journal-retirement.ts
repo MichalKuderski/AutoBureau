@@ -17,7 +17,7 @@ export const RETIREMENT_CLASSES = {
   outbox: ["outbox_events", "job_deliveries", "job_inbox"],
   "account-security": ["account_security_challenges"],
   exports: ["local_export_artifacts"],
-  stripe: ["stripe_test_bindings", "stripe_test_notices", "stripe_test_states", "stripe_test_intents"],
+  stripe: ["stripe_test_bindings", "stripe_test_notices", "stripe_test_states", "stripe_test_intents", "stripe_test_checkouts", "stripe_test_routes"],
   plaid: ["plaid_local_subjects", "plaid_local_exchanges", "plaid_local_items", "plaid_local_credentials", "plaid_local_item_routes",
     "plaid_local_cursors", "plaid_local_webhooks", "plaid_local_accounts", "plaid_local_transactions"],
   deletion: ["household_deletions", "deletion_resources", "deletion_attempts", "deletion_observations",

@@ -136,3 +136,92 @@ remains non-authoritative for hosted Premium resource caps. Independent local au
 work continues. Initial migration requires empty notice/state journals; populated
 history must stop for a separately reviewed compatibility cutover rather than rewriting
 append-only audit evidence. See the [local verification report](../../engineering/billing-authority-verification-20260921.md).
+
+## Hosted TEST amendment (2026-09-27)
+
+**Status: founder-approved 2026-09-27** ("Stripe TEST hosted implementation — APPROVED …
+Keep ADR-020 and `app_billing_test`"; two staging-only Vercel projects approved the same day).
+TEST mode only. No Live key, no Production deployment, no Premium from client navigation or
+webhook arrival. Everything above stays normative except the one change stated here.
+
+### The one change: a standing TEST runtime credential
+
+Amendment 5 said "no persistent runtime credential". A hosted webhook receiver cannot work
+without one, so the hosted billing runtime holds exactly three standing secrets, all in its
+**own** Vercel project and nowhere else: the `app_billing_test` LOGIN password (inside
+`BILLING_TEST_DATABASE_URL`, set by the operator), a Stripe **TEST** key (restricted key
+preferred) and the TEST webhook signing secret. Compensating controls:
+
+- **Separate runtime.** `apps/billing` is route handlers only (webhook, signed internal ops,
+  scheduled recheck, readiness). It refuses to start when web authority is present beside it
+  (`DATABASE_URL`, `AUTH_API_URL`, `AUTH_JWKS_URL`), when a key is not `sk_test_`/`rk_test_`, or
+  when `BILLING_TEST_DISABLED=1`. Its connection factory accepts only the `app_billing_test`
+  login (pooler suffix allowed) on a hosted billing build, and every billing transaction still
+  asserts `current_user` itself.
+- **The web runtime holds no Stripe credential and no Stripe SDK.** `stripe` is not a web
+  dependency; the web imports only the SDK-free signing subpath of the billing boundary. A
+  Stripe secret or key in the web environment unmounts checkout instead of co-locating it.
+- **Role grants barely move.** The migration adds `SELECT` on seven checkout-intent columns
+  (household-scoped RLS) and a knows-the-key `SELECT` on route digests (`stripe_route_lookup`,
+  the ADR-022 pattern). The role still cannot write intents, bindings or routes, read members,
+  documents, secrets or Plaid, or grant a cap.
+
+### Checkout and binding
+
+1. The **owner** (web, `app_user`, owner guard, recent authentication) writes a checkout intent
+   before any provider call. One unresolved intent per household (partial unique index); a new
+   start first resolves the previous one (bind if the provider says complete, else expire it).
+2. The billing runtime verifies the intent (state, plan, account) and creates the TEST customer
+   and Checkout Session. Idempotency keys derive from the intent UUID; no name, email or
+   household identifier is sent; the session expires after one hour.
+3. The owner records the provider IDs on the intent (`opened`).
+4. On return, the browser's arrival proves nothing: the billing runtime re-reads the session and
+   requires the exact recorded session, customer and `client_reference_id`. Only a `complete`
+   session with a subscription is bindable. The owner then creates the existing immutable
+   binding and marks the intent `bound` in **one** transaction; an `AFTER INSERT` trigger derives
+   the two route digests from the binding itself.
+5. The billing runtime reconciles immediately with an internal UUID intent of the new closed
+   reason `checkout-return`. Premium follows only from that reconciled state.
+
+### Webhooks and missed webhooks
+
+The webhook verifies the raw body with the official SDK, accepts only the five inbox event
+types (checkout completion is never a notice), routes by `SHA-256('stripe-test:'||account||':'||
+customer)`, and answers truthfully: 2xx only when the event is settled or can never be (unrouted
+and older than one hour, refused by the journal, household fenced, or three claims exhausted,
+which also logs `billing.notice_exhausted` at error level); 503 otherwise so the provider
+redelivers. A daily Vercel Cron call (`CRON_SECRET` bearer) lists at most 100 TEST
+subscriptions, processes at most 25, and reconciles each routed one through an internal intent
+whose request key is a deterministic UUID for "this subscription, this UTC day"
+(`scheduled-recheck`). No `evt_` identifier is ever fabricated.
+
+### Web → billing authentication
+
+A dedicated shared secret (`BILLING_INTERNAL_SECRET`, ≥256 bits, only in the two projects)
+signs `timestamp.METHOD.path.sha256(body)` with HMAC-SHA256; ±60 s, exact path per operation,
+8 KiB body bound, no redirects, no automatic retry. The Vercel OIDC token was rejected for this
+purpose: forwarding it would let the billing runtime assume every AWS role that trusts the web
+project.
+
+### Entitlement
+
+Unchanged: `effective_plan` applies TEST eligibility only while `local_plan_activation.test_enabled`
+is true, which only a database administrator can set. Turning it on for **staging** entitlement
+verification is an explicit, recorded administrator action; it is never set for Production.
+Labels reflect durable state: a reconciled subscription whose Premium limits are not in effect
+says so instead of "Premium is on".
+
+### Residual risks (accepted for TEST, blocking for Live)
+
+- A leaked internal secret lets its holder request provider work for intents and bindings that
+  already exist, including a portal session URL for a bound household. The web runtime could do
+  the same, and the secret lives only in two TEST projects. Before Live, bind each portal/checkout
+  request to a fresh owner-signed, single-use assertion.
+- A second paid session for an already-bound household is abandoned and logged
+  (`billing.duplicate_checkout`), never bound; its TEST subscription is not cancelled
+  automatically.
+- Grace and expiry are verified against the database clock with synthetic provider state; Stripe
+  test clocks move provider time only, so hosted grace expiry is not proven by a hosted run.
+
+Rollback: `BILLING_TEST_DISABLED=1` on both projects, disable the webhook endpoint in the Stripe
+TEST dashboard; journals are kept, nothing is rolled back.

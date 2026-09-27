@@ -258,6 +258,71 @@ jobs:
         env:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
+  # ── staging · billing runtime (ADR-020 hosted amendment) ─────────────────────────
+  # The Stripe TEST credentials live only in their own Vercel project, never in the web
+  # project above. Same exact-candidate commit, same staging gate, after the web job (which
+  # applied the migrations). Skipped until the operator has created the project and set
+  # `vars.BILLING_STAGING_HOST`, so existing staging dispatches are unaffected.
+  staging_billing:
+    name: staging · billing runtime
+    needs: [staging]
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      && github.event.inputs.environment == 'staging'
+      && github.event.inputs.stage != 'migrate'
+      && vars.BILLING_STAGING_HOST != ''
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://${{ vars.BILLING_STAGING_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: npm install --global vercel@latest
+
+      - name: Pull Vercel billing-runtime configuration
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BILLING_STAGING_PROJECT_ID }}
+
+      - name: Build
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BILLING_STAGING_PROJECT_ID }}
+
+      - name: Deploy prebuilt artifact
+        id: deploy
+        run: |
+          url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BILLING_STAGING_PROJECT_ID }}
+
+      # Readiness plus refusals only: no credential, no provider data, nothing created.
+      - name: Smoke the billing runtime
+        run: node scripts/smoke-billing-runtime.mjs "https://${{ vars.BILLING_STAGING_HOST }}"
+
+      # The web acceptance again, now against the billing runtime this job just deployed, with
+      # checkout REQUIRED: a TEST session is created at Stripe and expired again. Nothing is
+      # paid or bound; synthetic identities only, on the synthetic-only staging backend.
+      - name: Staging acceptance with the billing runtime
+        run: node scripts/staging-acceptance.mjs "https://${{ vars.STAGING_HOST }}"
+        env:
+          ACCEPTANCE_REQUIRE_BILLING: "1"
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
   # ── production · stage 1 of 2: migrate ─────────────────────────────────────────────
   # Gated by a GitHub protected environment: the approval is the promotion. Production is
   # never deployed by a push alone — a human names the commit that ships (doc 09 §2/§4).

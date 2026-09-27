@@ -1,6 +1,8 @@
 /** Authoritative sensitive-operation inventory. `implementation` states where each entry
  * actually runs; "hosted-and-local-controller" entries are served by account-mount.ts on
- * hosted runtimes and on the synthetic loopback mount. Matrix changes require boundary tests. */
+ * hosted runtimes and on the synthetic loopback mount; "hosted-billing-runtime" entries are
+ * owner web routes whose provider work runs only in the separate TEST billing runtime
+ * (ADR-020 hosted amendment). Matrix changes require boundary tests. */
 const owner = { principal: "signed-session", membership: "current-owner", account: "active",
   providerFactors: "fresh-at-most-60s", recentAuth: "password-or-aal2-totp-15m",
   transaction: "owner-policy-fence-and-db-clock", instantSessionRevocation: false } as const;
@@ -20,9 +22,9 @@ export const SENSITIVE_OPERATION_MATRIX = {
   "recovery.initiate": { mode: "public-recovery", principal: "none", membership: "none", implementation: "hosted-and-local-controller",
     transaction: "shared-rate-limit-only", instantSessionRevocation: false },
   "recovery.complete": { ...owner, mode: "recovery", recentAuth: "fresh-one-use-redemption-and-existing-factor", fence: "open", implementation: "hosted-and-local-controller" },
-  "billing.manage": { ...owner, mode: "recent", fence: "open", implementation: "not-mounted" },
-  "billing.checkout": { ...owner, mode: "recent", fence: "open", implementation: "not-mounted" },
-  "billing.portal": { ...owner, mode: "recent", fence: "open", implementation: "not-mounted" },
+  "billing.manage": { ...owner, mode: "recent", fence: "open", implementation: "hosted-billing-runtime" },
+  "billing.checkout": { ...owner, mode: "recent", fence: "open", implementation: "hosted-billing-runtime" },
+  "billing.portal": { ...owner, mode: "recent", fence: "open", implementation: "hosted-billing-runtime" },
   "financial.link": { ...owner, mode: "recent", fence: "open", implementation: "not-mounted" },
   "financial.unlink": { ...owner, mode: "recent", fence: "open", implementation: "local-domain" },
   "identifier.reveal": { ...owner, mode: "recent", fence: "open", implementation: "separate-reveal-review-required" },
@@ -66,6 +68,9 @@ export const MOUNTED_ROUTE_MATRIX: Readonly<Record<string, Readonly<Record<strin
   "v1/documents/[id]/cancel": { POST: "document.upload" },
   "v1/documents/[id]/result": { GET: "document.resolve" },
   "v1/households/[id]/billing": { GET: "settings.manage" },
+  "v1/households/[id]/billing/checkout": { POST: "billing.manage" },
+  "v1/households/[id]/billing/confirm": { POST: "settings.manage" },
+  "v1/households/[id]/billing/portal": { POST: "billing.manage" },
   "v1/obligations/[id]/reminders": { GET: "registry.read" },
   "v1/documents/[id]/result/apply": { POST: "document.resolve" },
   "v1/documents/[id]/result/discard": { POST: "document.resolve" },
@@ -103,8 +108,8 @@ export const MOUNTED_ROUTE_POLICY = Object.fromEntries(Object.entries(MOUNTED_RO
       capability, public:publicAuth || path.startsWith("v1/auth/recovery"),
       authenticated:!publicAuth && !path.startsWith("v1/auth/recovery"),
       householdScoped:!publicAuth && !bootstrap,
-      ownerOnly:bootstrap ? !path.endsWith("auth/recovery") : ["member.manage","settings.manage","household.delete","household.export","financial.read","financial.manage","document.resolve"].includes(capability),
-      recentAuth:["secret.reveal","household.delete","household.export","financial.manage"].includes(capability),
+      ownerOnly:bootstrap ? !path.endsWith("auth/recovery") : ["member.manage","settings.manage","household.delete","household.export","financial.read","financial.manage","document.resolve","billing.manage"].includes(capability),
+      recentAuth:["secret.reveal","household.delete","household.export","financial.manage","billing.manage"].includes(capability),
       mfa:publicAuth?"session-establishment":bootstrap?"explicit-step-up-recovery-contract":"live-factors-and-household-policy",
       deletionFence:!publicAuth,
       financial:capability.startsWith("financial."), privacyExportDelete:["household.delete","household.export"].includes(capability),

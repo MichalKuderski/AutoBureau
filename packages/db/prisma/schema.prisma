@@ -103,6 +103,7 @@ model Household {
   stripeTestStates StripeTestState[]
 
  stripeTestIntents StripeTestIntent[]
+ stripeTestCheckouts StripeTestCheckout[]
 }
 
 /// Local account-security challenge consumption. No OTP, TOTP seed or token.
@@ -870,6 +871,7 @@ model StripeTestBinding {
  @@unique([id,householdId,accountId])
  @@map("stripe_test_bindings")
  intents StripeTestIntent[]
+ routes StripeTestRoute[]
 }
 model StripeTestNotice {
  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -1256,4 +1258,39 @@ model JournalRetirementObservation {
   @@unique([runId,classId])
   @@unique([id,householdId])
   @@map("journal_retirement_observations")
+}
+
+/// Hosted TEST checkout intent: created by the owner before any provider call; provider IDs
+/// are recorded after it. Never ownership or payment evidence by itself (ADR-020 hosted amendment).
+model StripeTestCheckout {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ householdId String @map("household_id") @db.Uuid
+ ownerId String @map("owner_id") @db.Uuid
+ accountId String @map("account_id")
+ plan String
+ requestKey String @map("request_key") @db.Uuid
+ customerId String? @map("customer_id")
+ sessionId String? @unique @map("session_id")
+ state String @default("created")
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+ updatedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(6)
+ household Household @relation(fields:[householdId],references:[id],onDelete:Restrict)
+ @@unique([householdId,requestKey])
+ @@unique([id,householdId])
+ @@index([householdId],map:"stripe_test_checkouts_household_idx")
+ @@map("stripe_test_checkouts")
+}
+/// Knows-the-key webhook routing digest derived from an immutable TEST binding.
+model StripeTestRoute {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ routeDigest String @unique @map("route_digest")
+ householdId String @map("household_id") @db.Uuid
+ bindingId String @map("binding_id") @db.Uuid
+ accountId String @map("account_id")
+ kind String
+ createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+ binding StripeTestBinding @relation(fields:[bindingId,householdId,accountId],references:[id,householdId,accountId],onDelete:Restrict)
+ @@unique([bindingId,kind])
+ @@index([householdId],map:"stripe_test_routes_household_idx")
+ @@map("stripe_test_routes")
 }

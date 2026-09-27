@@ -81,8 +81,8 @@ export async function refuseStripeTestNotice(db:Database,householdId:string,noti
  }));
 }
 
-export async function requestStripeTestReconciliation(db:Database,householdId:string,bindingId:string,requestKey:string,reason:"missed-webhook"|"scheduled-recheck"|"operator-reconcile"){
- if(![bindingId,requestKey].every(v=>UUID_RE.test(v))||!["missed-webhook","scheduled-recheck","operator-reconcile"].includes(reason))return refuse();
+export async function requestStripeTestReconciliation(db:Database,householdId:string,bindingId:string,requestKey:string,reason:"missed-webhook"|"scheduled-recheck"|"operator-reconcile"|"checkout-return"){
+ if(![bindingId,requestKey].every(v=>UUID_RE.test(v))||!["missed-webhook","scheduled-recheck","operator-reconcile","checkout-return"].includes(reason))return refuse();
  return runAsSystem("Persist internal TEST reconciliation intent",()=>db.withHousehold(householdId,async tx=>{
   await assertTestBillingTransaction(tx);await openHousehold(tx,householdId);
   const [b]=await tx.$queryRaw<Array<{account_id:string}>>`SELECT account_id FROM stripe_test_bindings WHERE household_id=${householdId}::uuid AND id=${bindingId}::uuid AND livemode=false`;

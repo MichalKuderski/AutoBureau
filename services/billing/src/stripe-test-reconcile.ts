@@ -1,7 +1,7 @@
 import { claimStripeTestNotice, readStripeTestClaim, commitStripeTestState, type Database } from "@autobureau/db";
-import { refetchStripeTestState, type TestBillingReadPort } from "./stripe-test-refetch";
-import { deriveTestSubscription } from "./stripe-test-state";
-import { StripeTestPolicyError, type StripeTestPriceBinding } from "./stripe-test-policy";
+import { refetchStripeTestState, type TestBillingReadPort } from "./stripe-test-refetch.js";
+import { deriveTestSubscription } from "./stripe-test-state.js";
+import { StripeTestPolicyError, type StripeTestPriceBinding } from "./stripe-test-policy.js";
 /** Explicit bounded local invocation. No scheduler, webhook route, outbound
  * provider mutation, gateway entitlement grant or automatic credential retry.
  * Failed/ambiguous reads leave the lease until expiry; maximum three notice claims.

@@ -18,7 +18,7 @@ export function domainFixtureFetch() {
       return json({ read_ids: ids, changed: ids.length });
     }
     if (/^\/v1\/obligations\/[^/]+\/reminders$/.test(url.pathname)) return json({ deliveryActive: false, reminders: [] });
-    if (/^\/v1\/households\/[^/]+\/billing$/.test(url.pathname)) return json({ tier: "free", state: "none", cadence: null, paidThrough: null, premiumUntil: null, testMode: false, paymentUpdateAvailable: false, checkoutAvailable: false });
+    if (/^\/v1\/households\/[^/]+\/billing$/.test(url.pathname)) return json({ tier: "free", state: "none", cadence: null, paidThrough: null, premiumUntil: null, testMode: false, subscribed: false, checkoutOpen: false, paymentUpdateAvailable: false, checkoutAvailable: false });
     const [, , resource, id] = url.pathname.split("/");
     const records = resource === "obligations" ? obligations : resource === "documents" ? fixtures.DOCUMENTS : resource === "items" ? fixtures.ITEMS : null;
     if (!records) throw new Error(`No UI fixture for ${url.pathname}`);

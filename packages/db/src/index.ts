@@ -58,6 +58,7 @@ export * from "./account-security.js";
 export * from "./stripe-test-inbox.js";
 
 export * from "./stripe-test-reconciliation.js";
+export * from "./stripe-test-checkout.js";
 
 export { runWithSensitiveScope } from "./sensitive-scope.js";
 
@@ -66,7 +67,7 @@ export { createLocalExportVault } from "./local-export-artifact.js";
 export { readHouseholdSessionAdmission, AccountSecurityRefused } from "./account-security.js";
 export { runWithHouseholdSessionScope } from "./sensitive-scope.js";
 
-export { createLocalTestBillingDatabase } from "./test-billing-runtime.js";
+export { createLocalTestBillingDatabase, createHostedTestBillingDatabase } from "./test-billing-runtime.js";
 
 export { readEffectivePlan,consumesHumanAllowance,managedHumanCount,type EffectivePlan } from "./plan-policy.js";
 

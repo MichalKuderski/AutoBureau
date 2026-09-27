@@ -17,3 +17,15 @@ export function createLocalTestBillingDatabase(url:string){
  if(u.protocol!=="postgresql:"||u.hostname!=="127.0.0.1"||u.username!=="app_billing_test"||!u.pathname.startsWith('/pellum_')||u.search||u.hash||process.env.VERCEL||process.env.AWS_EXECUTION_ENV||process.env.NODE_ENV==="production")throw new Error("Local TEST billing unavailable");
  return createDatabase(url);
 }
+/** ADR-020 hosted amendment: the dedicated billing runtime's own connection, and only on a
+ * hosted production build. The login is app_billing_test (the pooler may suffix it with the
+ * project ref); loopback, a different role or any other runtime refuses before connecting.
+ * Every billing transaction still asserts current_user itself (assertTestBillingTransaction). */
+export function createHostedTestBillingDatabase(url:string,env:Readonly<Record<string,string|undefined>>=process.env){
+ let u:URL;try{u=new URL(url);}catch{throw new Error("Hosted TEST billing unavailable");}
+ const user=decodeURIComponent(u.username);
+ if(env.VERCEL!=="1"||env.NODE_ENV!=="production"||env.BILLING_RUNTIME!=="stripe-test"||u.protocol!=="postgresql:"
+  ||!/^app_billing_test(\.[a-z0-9]{20})?$/.test(user)||!u.password||["127.0.0.1","localhost","::1","[::1]"].includes(u.hostname)
+  ||u.pathname!=="/postgres"||u.hash)throw new Error("Hosted TEST billing unavailable");
+ return createDatabase(url);
+}

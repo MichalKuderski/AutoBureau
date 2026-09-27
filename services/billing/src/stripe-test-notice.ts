@@ -1,13 +1,20 @@
-import { StripeTestPolicyError } from "./stripe-test-policy";
+import { StripeTestPolicyError } from "./stripe-test-policy.js";
 
 /** Adapter for Stripe's official SDK, not a replacement signature algorithm.
  * Bind stripe.webhooks.constructEvent with a separately pinned SDK/version.
- * Passing a JSON parser instead is NOT a verifier. No route imports this module yet.
+ * Passing a JSON parser instead is NOT a verifier. Only the billing runtime's webhook uses it.
  */
 export type StripeConstructEvent = (payload: Uint8Array, signature: string, secret: string, tolerance: number) => unknown;
-const RECONCILE = new Set(["checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed",
-  "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted",
+// Exactly the durable inbox's closed event types. Checkout completion is NOT a notice: the
+// binding is created only from the owner's return after the runtime re-reads the session.
+const RECONCILE = new Set(["customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted",
   "invoice.paid", "invoice.payment_failed"]);
+/** Routing key only: a provider customer ID of the exact TEST shape, or null. Never trusted as
+ * ownership; the route digest resolves only a binding the owner created from a verified session. */
+function customerOf(object: Record<string, unknown>): string | null {
+  const c = record(object.customer) ? object.customer.id : object.customer;
+  return typeof c === "string" && /^cus_[A-Za-z0-9]{1,240}$/.test(c) ? c : null;
+}
 function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -40,7 +47,7 @@ export function createStripeTestNoticeVerifier(constructEvent: StripeConstructEv
       if (!record(event.data) || !record(event.data.object) || typeof event.data.object.id !== "string"
         || !/^[A-Za-z0-9_]{1,256}$/.test(event.data.object.id)) throw new StripeTestPolicyError();
       return Object.freeze({ kind: "reconcile" as const, eventId: event.id, eventType: event.type,
-        objectId: event.data.object.id, created: event.created });
+        objectId: event.data.object.id, created: event.created, customerId: customerOf(event.data.object) });
     } catch { throw new StripeTestPolicyError(); }
   };
 }

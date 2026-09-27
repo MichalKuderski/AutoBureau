@@ -83,6 +83,8 @@ export const EXPORT_COVERAGE: Readonly<Record<string, string>> = Object.freeze({
   stripe_test_bindings: "omitted:provider-binding (billing-provider identifiers)",
   stripe_test_notices: "omitted:provider-binding (billing webhook journal)",
   stripe_test_intents: "omitted:provider-binding (billing reconciliation journal)",
+  stripe_test_checkouts: "omitted:provider-binding (TEST checkout intent journal)",
+  stripe_test_routes: "omitted:provider-binding (billing webhook routing digest)",
   household_deletions: "omitted:retained-evidence (deletion journal; status is shown in settings)",
   deletion_resources: "omitted:retained-evidence (deletion journal)",
   deletion_attempts: "omitted:retained-evidence (deletion journal)",

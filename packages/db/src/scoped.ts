@@ -352,6 +352,36 @@ export class Database {
     );
   }
 
+  /**
+   * ADR-020 hosted amendment: the TEST billing counterpart of `resolveFinancialItemRoute`.
+   * A signature-verified Stripe TEST event names a customer/subscription; the runtime digests
+   * it with its own pinned account and may read ONLY the route row carrying that digest
+   * (`stripe_route_lookup`, granted to `app_billing_test` alone). It cannot list or guess
+   * another household's routes. Callers re-check the binding inside `withHousehold`.
+   */
+  async resolveTestBillingRoute(
+    routeDigest: string,
+    options: ScopedTransactionOptions = {},
+  ): Promise<{ householdId: string; bindingId: string; kind: "customer" | "subscription" } | null> {
+    refuseSensitiveScopeEscape();
+    if (!/^[a-f0-9]{64}$/.test(routeDigest)) {
+      throw new ScopeError("route digest is not a lowercase SHA-256 hex digest");
+    }
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT set_config('request.stripe_route', ${routeDigest}, true)`;
+        const rows = await tx.$queryRaw<Array<{ household_id: string; binding_id: string; kind: "customer" | "subscription" }>>`
+          SELECT household_id::text AS household_id, binding_id::text AS binding_id, kind
+          FROM stripe_test_routes WHERE route_digest = ${routeDigest} LIMIT 2`;
+        return rows.length === 1 ? { householdId: rows[0]!.household_id, bindingId: rows[0]!.binding_id, kind: rows[0]!.kind } : null;
+      },
+      {
+        timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        maxWait: options.maxWaitMs ?? DEFAULT_MAX_WAIT_MS,
+      },
+    );
+  }
+
   /** Health probe. Deliberately unscoped and trivial. */
   async ping(): Promise<boolean> {
     const rows = await this.prisma.$queryRaw<Array<{ ok: number }>>`SELECT 1 AS ok`;

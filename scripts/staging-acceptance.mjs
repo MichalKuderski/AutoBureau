@@ -31,10 +31,12 @@
  */
 
 import { probeForeignHousehold } from './acceptance-tenant-probe.mjs';
-import { createHmac, randomBytes } from 'node:crypto';
+import { createHmac, randomBytes, randomUUID } from 'node:crypto';
 
 const BASE = (process.argv[2] ?? process.env.ACCEPTANCE_BASE_URL ?? "").replace(/\/+$/, "");
 const BYPASS = process.env.VERCEL_AUTOMATION_BYPASS_SECRET ?? "";
+// Set by the billing-runtime job after it deploys the exact candidate: checkout must work.
+const REQUIRE_BILLING = process.env.ACCEPTANCE_REQUIRE_BILLING === "1";
 const BYPASS_HEADERS = BYPASS === "" ? {} : { "x-vercel-protection-bypass": BYPASS };
 
 if (!BASE || !URL.canParse(BASE) || new URL(BASE).hostname === "") {
@@ -257,6 +259,40 @@ check("anonymous /v1/households/current is 401", anonApi.status === 401, { statu
 for (const path of ["/dashboard", "/obligations", "/settings/privacy", "/onboarding", "/onboarding/census"]) {
   const res = await req(path, { headers: { cookie: alice.jar.header() } });
   check(`authenticated ${path} renders (200, never 500)`, res.status === 200, { status: res.status });
+}
+
+/* ─────────────────── 2b. hosted Stripe TEST checkout (no payment) ─────────────────── */
+
+heading("hosted Stripe TEST checkout · session created, then expired; nothing paid or bound");
+
+const billingPath = `/v1/households/${household.id}/billing`;
+const ownerJson = { ...JSON_HEADERS, cookie: alice.jar.header() };
+const billingStatus = async () => { const r = await req(billingPath, { headers: { cookie: alice.jar.header() } }); return { status: r.status, json: await r.json().catch(() => null) }; };
+const before = await billingStatus();
+check("billing status is readable by the owner and starts unsubscribed", before.status === 200 && before.json?.subscribed === false && before.json?.state === "none", { status: before.status });
+if (!before.json?.checkoutAvailable) {
+  if (REQUIRE_BILLING) check("the billing runtime is mounted for checkout on this deployment", false, { checkoutAvailable: before.json?.checkoutAvailable });
+  else console.error("      billing runtime not mounted on this deployment: checkout checks skipped (the billing job requires them)");
+} else {
+  const start = await req(`${billingPath}/checkout`, { method: "POST", headers: ownerJson, body: JSON.stringify({ plan: "monthly", requestId: randomUUID() }) });
+  const started = await start.json().catch(() => null);
+  let origin = ""; try { origin = new URL(started?.url ?? "").origin; } catch { /* not a URL */ }
+  check("checkout returns a Stripe-hosted TEST checkout URL (and nothing else)", start.status === 200 && origin === "https://checkout.stripe.com"
+    && Object.keys(started ?? {}).join() === "url", { status: start.status, origin });
+  const open = await billingStatus();
+  check("the owner's checkout is open and grants nothing yet", open.json?.checkoutOpen === true && open.json?.subscribed === false && open.json?.tier === "free", open.json && { checkoutOpen: open.json.checkoutOpen, tier: open.json.tier });
+  const pending = await req(`${billingPath}/confirm`, { method: "POST", headers: ownerJson, body: JSON.stringify({ cancel: false }) });
+  const pendingJson = await pending.json().catch(() => null);
+  check("returning without paying is not a payment: the session is still open", pending.status === 200 && pendingJson?.status === "pending", { status: pending.status, outcome: pendingJson?.status });
+  const cancelled = await req(`${billingPath}/confirm`, { method: "POST", headers: ownerJson, body: JSON.stringify({ cancel: true }) });
+  const cancelledJson = await cancelled.json().catch(() => null);
+  check("cancelling expires the provider session and abandons the checkout", cancelled.status === 200 && cancelledJson?.status === "abandoned", { status: cancelled.status, outcome: cancelledJson?.status });
+  const after = await billingStatus();
+  check("after cancel: no binding, no open checkout, still Free", after.json?.subscribed === false && after.json?.checkoutOpen === false && after.json?.tier === "free");
+  const portal = await req(`${billingPath}/portal`, { method: "POST", headers: ownerJson, body: "{}" });
+  check("no billing portal without a verified subscription", portal.status === 409, { status: portal.status });
+  const plan = await req(`${billingPath}/checkout`, { method: "POST", headers: ownerJson, body: JSON.stringify({ plan: "weekly", requestId: randomUUID() }) });
+  check("an unknown plan is refused before any provider call", plan.status === 400, { status: plan.status });
 }
 
 /* ───────────────────────────── 3. tenant isolation ───────────────────────────── */

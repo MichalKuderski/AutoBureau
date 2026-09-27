@@ -3,12 +3,18 @@ import { screen, waitFor } from "@testing-library/react";
 import { renderScreen } from "@/test/render";
 import { BillingBanner, describeBilling, type BillingStatus } from "./billing-status";
 
-const base: BillingStatus = { tier: "free", state: "none", cadence: null, paidThrough: null, premiumUntil: null, testMode: true, paymentUpdateAvailable: false, checkoutAvailable: false };
+const base: BillingStatus = { tier: "free", state: "none", cadence: null, paidThrough: null, premiumUntil: null, testMode: true, subscribed: false, checkoutOpen: false, paymentUpdateAvailable: false, checkoutAvailable: false };
 afterEach(() => vi.unstubAllGlobals());
 
 describe("billing status wording (from durable state only)", () => {
   it("never calls Premium on unless the effective plan is Premium", () => {
-    expect(describeBilling({ ...base, state: "active", tier: "free" })).toBeNull();
+    // A reconciled subscription whose Premium limits are not in effect says so, never "Premium is on".
+    for (const testMode of [true, false]) {
+      const d = describeBilling({ ...base, state: "active", tier: "free", testMode })!;
+      expect(d.title).toBe("Subscription recorded, Premium limits not on");
+      expect(`${d.title} ${d.body}`).not.toMatch(/Premium is on|Premium stays on/);
+      expect(d.body).toMatch(/Free limits/);
+    }
     expect(describeBilling({ ...base, state: "active", tier: "premium", cadence: "monthly", paidThrough: "2026-10-31T00:00:00.000Z" }))
       .toMatchObject({ title: "Premium is on", body: expect.stringMatching(/paid through October 31, 2026/) });
   });

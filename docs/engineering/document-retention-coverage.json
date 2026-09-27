@@ -38,6 +38,8 @@
     "LocalExportArtifact": "job-artifacts",
     "StripeTestState": "provider-references",
     "StripeTestIntent": "provider-references",
+    "StripeTestCheckout": "provider-references",
+    "StripeTestRoute": "provider-references",
     "PlanCatalog": "global-nonpersonal-configuration",
     "LocalPlanActivation": "global-nonpersonal-configuration",
     "DocumentCustody": "documents",
