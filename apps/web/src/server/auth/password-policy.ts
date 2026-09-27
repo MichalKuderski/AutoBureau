@@ -3,6 +3,11 @@ import zxcvbn from "zxcvbn";
 import { discardProviderBody, readProviderText } from "../http/provider-body";
 
 export type PasswordVerdict = "allowed" | "weak" | "breached" | "unavailable";
+/** Observed live range responses (2026-09-27): ~82 KB and ~2,100 lines with padding. The
+ * earlier 64 KB / 1,600-line bounds refused every real response, so hosted sign-up failed
+ * closed for all passwords. These bounds keep a 3x margin and remain finite. */
+export const BREACH_RANGE_MAX_BYTES = 256 * 1024;
+export const BREACH_RANGE_MAX_LINES = 4096;
 /** Local strength evaluation precedes network I/O. SHA-1 is ONLY the public range
  * protocol, never password storage. No full password/hash, identifier or caller
  * header reaches the adapter. Hash prefixes still permit dictionary inference;
@@ -30,9 +35,9 @@ export function createPasswordPolicy(fetchImpl: typeof fetch = fetch) {
         headers: { "Add-Padding": "true", "User-Agent": "Pellum-password-policy", Accept: "text/plain" },
       }).then(r => { if(signal.aborted) { discardProviderBody(r); throw new Error("Password policy unavailable"); } return r; }), timedOut]);
       if (response.status !== 200) { discardProviderBody(response); return "unavailable"; }
-      const body = await readProviderText(response, signal);
+      const body = await readProviderText(response, signal, BREACH_RANGE_MAX_BYTES);
       const lines = body.replace(/\r\n/g, "\n").replace(/\n$/, "").split("\n");
-      if (lines.length < 1 || lines.length > 1600) return "unavailable";
+      if (lines.length < 1 || lines.length > BREACH_RANGE_MAX_LINES) return "unavailable";
       const seen = new Set<string>(); let breached = false;
       for (const line of lines) {
         const match = /^([A-F0-9]{35}):([0-9]{1,12})$/.exec(line);

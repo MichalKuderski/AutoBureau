@@ -37,3 +37,30 @@ it("refuses weak passwords before any lookup", async () => {
   for (const pw of ["short7", "password123", "aaaaaaaaaaaa", "x".repeat(129)]) expect(await passwordPolicyFor({ NODE_ENV: "test" }, "http://127.0.0.1:4555")(pw)).toBe("weak");
   expect(fetchSpy).not.toHaveBeenCalled();
 });
+
+// Regression (hosted 2026-09-27): the live service returns ~2,100 padded lines (~82 KB); the
+// earlier bounds refused every real response, so hosted sign-up failed closed for all passwords.
+const padded = (lines: number, extra = "") => {
+  const rows: string[] = [];
+  for (let i = 0; i < lines; i++) rows.push(`${i.toString(16).toUpperCase().padStart(35, "0")}:${i % 7 === 0 ? 0 : i}`);
+  return rows.join("\r\n") + "\r\n" + extra;
+};
+it("accepts a realistic, full-size padded range response", async () => {
+  vi.stubGlobal("fetch", async () => new Response(padded(2100), { status: 200 }));
+  expect(await passwordPolicyFor({ NODE_ENV: "test" }, "http://127.0.0.1:4555")("Violet-Harbor-Lantern-5521")).toBe("allowed");
+});
+it("finds a breach inside a full-size range response", async () => {
+  const { createHash } = await import("node:crypto");
+  const pw = "Violet-Harbor-Lantern-5521", sha = createHash("sha1").update(pw).digest("hex").toUpperCase();
+  vi.stubGlobal("fetch", async () => new Response(padded(2100, `${sha.slice(5)}:3\r\n`), { status: 200 }));
+  expect(await passwordPolicyFor({ NODE_ENV: "test" }, "http://127.0.0.1:4555")(pw)).toBe("breached");
+});
+it("still refuses an unbounded range response (lines or bytes)", async () => {
+  vi.stubGlobal("fetch", async () => new Response(padded(4097), { status: 200 }));
+  expect(await passwordPolicyFor({ NODE_ENV: "test" }, "http://127.0.0.1:4555")("Violet-Harbor-Lantern-5521")).toBe("unavailable");
+  vi.stubGlobal("fetch", async () => new Response("0".repeat(35) + ":0\r\n" + "x".repeat(300 * 1024), { status: 200 }));
+  expect(await passwordPolicyFor({ NODE_ENV: "test" }, "http://127.0.0.1:4555")("Violet-Harbor-Lantern-5521")).toBe("unavailable");
+});
+it("a Vercel runtime never uses the fixture, even if its build mode says test", () => {
+  expect(breachRangeOrigin({ NODE_ENV: "test", VERCEL: "1" }, "http://127.0.0.1:4555")).toBe(BREACH_RANGE_ORIGIN);
+});

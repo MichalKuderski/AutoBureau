@@ -23,7 +23,9 @@ export function discardProviderBody(response: Response): void {
 }
 
 /** Read actual decoded-stream bytes, not a potentially absent/incorrect Content-Length. */
-export async function readProviderText(response: Response, signal: AbortSignal): Promise<string> {
+/** `maxBytes` defaults to the shared provider bound; a caller with a documented larger
+ * response (the k-anonymity breach range) passes its own, still finite, bound. */
+export async function readProviderText(response: Response, signal: AbortSignal, maxBytes = MAX_PROVIDER_RESPONSE_BYTES): Promise<string> {
   if (signal.aborted) {
     discardProviderBody(response);
     throw new ProviderBodyError("timeout");
@@ -57,9 +59,9 @@ export async function readProviderText(response: Response, signal: AbortSignal):
         break;
       }
       chunks += 1;
-      if (chunks > MAX_PROVIDER_RESPONSE_CHUNKS) throw new ProviderBodyError("invalid-response");
+      if (chunks > maxBytes + 1) throw new ProviderBodyError("invalid-response");
       bytes += chunk.value.byteLength;
-      if (bytes > MAX_PROVIDER_RESPONSE_BYTES) throw new ProviderBodyError("invalid-response");
+      if (bytes > maxBytes) throw new ProviderBodyError("invalid-response");
       try {
         text += decoder.decode(chunk.value, { stream: true });
       } catch {
