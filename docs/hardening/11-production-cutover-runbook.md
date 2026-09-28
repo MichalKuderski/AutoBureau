@@ -599,12 +599,13 @@ pending migration will refuse.
 
 | Layer | Action | Notes |
 | --- | --- | --- |
-| Application | Vercel instant rollback (`vercel rollback`, or promote the previous deployment) | Pointer move between immutable deployments; the schema is untouched. The deploy job does this automatically on a failed smoke. |
+| Application | Vercel instant rollback (`vercel rollback`, or promote the previous deployment) | Pointer move between immutable deployments; the schema is untouched. The Production deploy job does this automatically on a failed smoke. Staging has no automatic rollback step; its authorized incident operator must select the reviewed previous staging artifact. |
 | Schema | **Forward-fix only.** Never down-migrate or edit an applied migration. | Migrations are additive/expand-first; each runs in its own transaction. A failed migration leaves that migration unapplied and recorded as failed: stop, diagnose, ship a reviewed forward fix. Data restore is a separate, authorized recovery action (see *Backups and restore*), never a rollback shortcut. |
 | Account security (MFA, recovery) | Set `ACCOUNT_SECURITY_DISABLED=1` in the deployment's configuration and redeploy | `/v1/account/security` and `/v1/auth/recovery*` answer 404; the pages say the feature is unavailable. Existing factors are **not** removed and sign-in is unchanged. |
 | Document intake | `DOCUMENT_INTAKE_ENABLED` unset/false | Intake refuses new uploads; existing records stay readable. |
 | Billing (Stripe TEST) | Set `BILLING_TEST_DISABLED=1` in **both** the web and the billing-runtime projects and redeploy each | The web billing routes answer 503 and the page stops offering checkout; the billing runtime answers 404 to webhooks, internal calls and the recheck (Stripe retries, then the scheduled recheck reconciles from provider state after re-enabling). Bindings, notices, intents and states are retained; no state is rolled back. Production has **no** billing runtime: Live mode needs its own ADR. |
-| Plaid | `PLAID_SANDBOX_ENABLED` unset | Linking is not mounted in this candidate. |
+| Plaid | `PLAID_SANDBOX_ENABLED` unset | Linking is not mounted in this candidate. Provider work must remain unavailable until the separate Sandbox runtime, custody and disable procedure are verified. |
+| Hosted export | Keep the hosted export mount unavailable | No hosted S3/KMS export adapter is mounted in this candidate. A future disable switch must close publication/download while retaining revocation, deletion admission and journals; its behavior requires exact-candidate proof before activation. |
 | Supabase Auth settings | Revert the single changed setting in the dashboard | Record before/after values; never change several settings at once during an incident. |
 | Provider webhooks (when mounted) | Disable the endpoint in the provider dashboard | Durable inboxes make re-enabling safe; missed events are reconciled from provider state, never replayed by hand. |
 
@@ -623,11 +624,18 @@ No production step may start while any row above is unassigned.
 
 - The staging project is on the Supabase **Free** plan and shows **"No backups"**. No restore drill
   has been performed and none may be claimed.
-- **Production requirement:** a Supabase plan with daily backups **and** point-in-time recovery
+- **Production requirement:** a paid Supabase plan with provider-managed physical backups and point-in-time recovery
   enabled before real data is accepted; the retention window and cost are a founder/billing decision.
+  Supabase [documents](https://supabase.com/docs/guides/platform/backups) that PITR replaces its
+  Daily Backups mode, using a physical backup plus WAL replay. Do not require two simultaneous
+  dashboard modes or claim unavailable backups were tested.
 - **Restore procedure (to be verified before launch):** restore to a *new* project from PITR at a
   chosen timestamp → run the *Migration identity check* and the posture diff against the source →
   verify row counts for the tenant tables → switch only after the incident commander approves.
+- Before a binary restore, inventory all database cron/webhook/wrapper egress. Supabase
+  [warns](https://supabase.com/docs/guides/platform/clone-project) those jobs can start immediately
+  in the restored project. Prove isolation before the drill; inability to do so is a STOP.
+  Verify storage objects separately because database restore does not restore object contents.
 - ADR-019 restore admission (what a restored database may re-admit, e.g. erased households) remains
   a separate authority and is not satisfied by a provider restore.
 
@@ -637,3 +645,10 @@ No production step may start while any row above is unassigned.
 - Filling the incident-role table and verifying the restore procedure (both required before launch).
 
 These are real gaps. They are named here rather than left to be discovered during a cutover.
+
+## Supabase Auth incident
+
+September 13 Auth 504 investigation: **OPEN — PROVIDER INVESTIGATION PENDING**, ticket
+`SU-486128`. The provider acknowledgement is not an investigation result. Preserve bounded
+Auth responses, current timeouts and no automatic credential retries. Record only ticket ID
+and relevant provider findings; no unrelated email belongs in operational evidence.
