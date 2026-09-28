@@ -225,3 +225,18 @@ says so instead of "Premium is on".
 
 Rollback: `BILLING_TEST_DISABLED=1` on both projects, disable the webhook endpoint in the Stripe
 TEST dashboard; journals are kept, nothing is rolled back.
+
+### Digest policy correction (2026-09-27 continuation)
+
+Restricted-role verification found that the hosted migration's permissive PUBLIC household
+policy also applied to `app_billing_test`. PostgreSQL ORs permissive policies, so setting a
+household scope exposed that household's two routes without the required digest. The existing
+unscoped lookup test did not cover this bypass. This violates the accepted digest-only boundary.
+
+Forward migration `20261003000001_stripe_route_digest_isolation` limits the household policy
+to `app_user`, `app_retention_worker` and `app_deletion_verifier`; billing retains only its exact
+digest SELECT policy. It verifies the prior policy/RLS posture before changing metadata,
+preserves existing grants, owner publication and privacy inventory, and rewrites no data.
+The applied hosted-checkout migration remains unchanged. A direct billing-role regression
+tests missing, wrong and exact digests with household scope already set. Rollback disables
+billing and retains journals; restoring the vulnerable policy is not a safe rollback.

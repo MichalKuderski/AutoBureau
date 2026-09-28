@@ -25,6 +25,7 @@ beforeAll(async () => {
 afterAll(async () => {
   if (admin) {
     const where = { householdId: { in: households } };
+    await admin.stripeTestState.deleteMany({ where }); await admin.stripeTestNotice.deleteMany({ where });
     await admin.stripeTestIntent.deleteMany({ where }); await admin.stripeTestRoute.deleteMany({ where });
     await admin.stripeTestCheckout.deleteMany({ where }); await admin.stripeTestBinding.deleteMany({ where });
     await admin.householdDeletion.deleteMany({ where }); await admin.household.deleteMany({ where: { id: { in: households } } });
@@ -117,6 +118,79 @@ it("the billing runtime resolves only the digest it holds and never writes inten
   expect(await requestStripeTestReconciliation(work, f.hh, bf.id, c!.id, "checkout-return")).toMatch(/^[0-9a-f-]{36}$/);
   await expect(requestStripeTestReconciliation(work, f.hh, bf.id, randomUUID(), "webhook-arrived" as never)).rejects.toThrow();
   await expect(work.withHousehold(f.hh, tx => tx.$executeRaw`INSERT INTO stripe_test_intents(household_id,binding_id,account_id,request_key,reason) VALUES(${f.hh}::uuid,${bf.id}::uuid,${account},${randomUUID()}::uuid,'webhook-arrived')`)).rejects.toThrow();
+});
+
+it("household scope cannot widen billing route lookup without the exact digest", async () => {
+  const f = await household();
+  const c = await asOwner(() => beginStripeTestCheckout(db, f.hh, { accountId: account, plan: "monthly", requestKey: randomUUID() }));
+  await asOwner(() => recordStripeTestCheckoutSession(db, f.hh, c.id, f));
+  await asOwner(() => completeStripeTestCheckout(db, f.hh, c.id, f.subscriptionId));
+  const customerDigest = stripeTestRouteDigest(account, f.customerId);
+
+  // A billing connection can set household scope itself. That scope must not bypass
+  // the knows-the-key policy or expose the subscription route beside a customer route.
+  expect.soft(await work.withHousehold(f.hh, tx => tx.$queryRaw`SELECT route_digest FROM stripe_test_routes`)).toEqual([]);
+  expect.soft(await work.withHousehold(f.hh, async tx => {
+    await tx.$executeRaw`SELECT set_config('request.stripe_route',${"0".repeat(64)},true)`;
+    return tx.$queryRaw`SELECT route_digest FROM stripe_test_routes`;
+  })).toEqual([]);
+  expect.soft(await work.withHousehold(f.hh, async tx => {
+    await tx.$executeRaw`SELECT set_config('request.stripe_route',${customerDigest},true)`;
+    return tx.$queryRaw`SELECT route_digest FROM stripe_test_routes`;
+  })).toEqual([{ route_digest: customerDigest }]);
+});
+
+it("billing role holds no checkout or route write privileges", async () => {
+  // Privilege absence is independent of the audit/transition triggers that may also
+  // refuse a write. Exercise the actual restricted login, not an administrator.
+  const held = await worker.$queryRaw<Array<{ role: string; checkout: boolean; route: boolean }>>`
+    SELECT current_user AS role,
+      (has_any_column_privilege(current_user,'public.stripe_test_checkouts','INSERT,UPDATE,REFERENCES')
+        OR has_table_privilege(current_user,'public.stripe_test_checkouts','DELETE,TRUNCATE,TRIGGER')) AS checkout,
+      (has_any_column_privilege(current_user,'public.stripe_test_routes','INSERT,UPDATE,REFERENCES')
+        OR has_table_privilege(current_user,'public.stripe_test_routes','DELETE,TRUNCATE,TRIGGER')) AS route`;
+  expect(held).toEqual([{ role: "app_billing_test", checkout: false, route: false }]);
+});
+
+it("checkout owner id must equal the authenticated owner even for direct SQL", async () => {
+  const f = await household();
+  await expect(asOwner(() => db.withHousehold(f.hh, tx => tx.$executeRaw`INSERT INTO stripe_test_checkouts(household_id,owner_id,account_id,plan,request_key)
+    VALUES(${f.hh}::uuid,${member}::uuid,${account},'monthly',${randomUUID()}::uuid)`))).rejects.toThrow("Test checkout refused");
+  expect(await admin.stripeTestCheckout.count({ where: { householdId: f.hh } })).toBe(0);
+});
+
+it.each(["expired lease", "wrong revision"])("billing state guard refuses direct SQL with %s before publication", async mode => {
+  const f = await household();
+  const c = await asOwner(() => beginStripeTestCheckout(db, f.hh, { accountId: account, plan: "monthly", requestKey: randomUUID() }));
+  await asOwner(() => recordStripeTestCheckoutSession(db, f.hh, c.id, f));
+  const { bindingId } = await asOwner(() => completeStripeTestCheckout(db, f.hh, c.id, f.subscriptionId));
+  const leaseToken = randomUUID();
+  const notice = await admin.stripeTestNotice.create({ data: {
+    householdId: f.hh, bindingId, accountId: account, eventId: `evt_${randomUUID().replaceAll("-", "")}`,
+    eventType: "customer.subscription.updated", objectId: f.subscriptionId, providerCreated: BigInt(Math.floor(Date.now() / 1000)),
+    state: "leased", attempts: 1, leaseToken, leaseUntil: mode === "expired lease" ? new Date(0) : new Date(Date.now() + 60_000),
+    expectedRevision: mode === "wrong revision" ? 1 : 0,
+  } });
+  // Bypass the API's duplicate checks. If the BEFORE guard were removed, the
+  // sentinel rolls back before deferred publication checks can hide that defect.
+  const rollback = new Error("State admission unexpectedly reached publication");
+  await expect(work.withHousehold(f.hh, async tx => {
+    expect(await tx.$queryRaw`SELECT current_user AS role`).toEqual([{ role: "app_billing_test" }]);
+    await tx.$executeRaw`INSERT INTO stripe_test_states(household_id,binding_id,account_id,source_notice_id,source_lease_token,state,plan,paid_through,premium_until)
+      VALUES(${f.hh}::uuid,${bindingId}::uuid,${account},${notice.id}::uuid,${leaseToken}::uuid,'active','monthly',
+        extract(epoch FROM clock_timestamp())::bigint+3600,extract(epoch FROM clock_timestamp())::bigint+3600)`;
+    throw rollback;
+  })).rejects.toThrow("TEST billing state refused");
+  expect(await admin.stripeTestState.count({ where: { householdId: f.hh } })).toBe(0);
+  await admin.stripeTestNotice.delete({ where: { id: notice.id } });
+});
+
+it("deletion fence blocks direct checkout writes", async () => {
+  const f = await household();
+  await admin.householdDeletion.create({ data: { householdId: f.hh, requestedBy: owner, requestedAt: new Date(0), undoUntil: new Date(14 * 86400000), state: "fenced", fencedAt: new Date(), settleUntil: new Date(Date.now() + 900000) } });
+  await expect(asOwner(() => db.withHousehold(f.hh, tx => tx.$executeRaw`INSERT INTO stripe_test_checkouts(household_id,owner_id,account_id,plan,request_key)
+    VALUES(${f.hh}::uuid,${owner}::uuid,${account},'monthly',${randomUUID()}::uuid)`))).rejects.toThrow("Household processing is fenced");
+  expect(await admin.stripeTestCheckout.count({ where: { householdId: f.hh } })).toBe(0);
 });
 
 it("abandonment frees the household for a new checkout; a fenced household refuses every step", async () => {
