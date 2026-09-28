@@ -19,7 +19,8 @@ No SECURITY DEFINER or BYPASSRLS authority is added.
 
 Migration 46 has already been applied to staging; it is not edited. Its SHA-256 stays
 `d297aada49cfd8a6341c4187ba01144c950c2413c6477549280e882a7717875b`.
-The next candidate has 47 migrations. Derive every expected checksum from that exact
+The Stripe-only fix candidate had 47 migrations. The subsequent Plaid route fix adds
+migration 48; the combined staging delta is 46→48. Derive every expected checksum from that exact
 candidate and compare every already-applied ledger entry before dispatch.
 
 ## Locks, row impact and preflight
@@ -40,7 +41,7 @@ These are timestamped observations, not permission to skip the immediate preflig
 Before staging application: verify the project identity and exact candidate; compare
 all 46 checksums; capture policy/grant/function posture and row counts; confirm no
 unexpected drift or active lock contention; leave protected accounts untouched.
-Rehearse 46→47 with populated synthetic route rows on PostgreSQL 17 and verify
+Rehearse the combined 46→48 delta with populated synthetic Stripe and Plaid route rows on PostgreSQL 17 and verify
 unchanged row fingerprints, grants, functions and all unrelated policies.
 
 Apply only through the reviewed `deploy.yml` staging migration path after exact-candidate

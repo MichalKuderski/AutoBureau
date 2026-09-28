@@ -85,6 +85,39 @@ describe('verified ingress and non-enumerating routing',()=>{
   await expect(appDb.resolveFinancialItemRoute(localPlaidRouteDigest(f.providerItemId))).rejects.toThrow('permission denied');
   await expect(db.withHousehold(f.hh,tx=>tx.$executeRaw`INSERT INTO plaid_local_item_routes(id,household_id,route_digest) VALUES(${f.item}::uuid,${f.hh}::uuid,${'0'.repeat(64)})`)).rejects.toThrow();
  });
+ it('household scope cannot widen financial route lookup without the exact digest', async () => {
+  // connected() publishes each route through the restricted runtime's real Item
+  // indexing trigger. SELECT isolation must preserve that guarded INSERT path.
+  const f = await connected(), g = await connected();
+  const digest = localPlaidRouteDigest(g.providerItemId);
+  const [role] = await runtime.$queryRaw<Array<{ name: string; rolsuper: boolean; rolbypassrls: boolean }>>`
+    SELECT current_user::text AS name, rolsuper, rolbypassrls FROM pg_roles WHERE rolname=current_user`;
+  expect(role).toEqual({ name: 'app_plaid_sandbox', rolsuper: false, rolbypassrls: false });
+  for (const item of [f, g]) {
+   expect(await admin.plaidLocalItemRoute.findUnique({ where: { id: item.item },
+    select: { id: true, householdId: true, routeDigest: true } })).toEqual({
+     id: item.item, householdId: item.hh, routeDigest: localPlaidRouteDigest(item.providerItemId),
+    });
+   expect(await cursorOf(item.item)).toMatchObject({ id: item.item, householdId: item.hh, revision: 0n });
+   expect(await admin.auditLog.count({ where: { householdId: item.hh, targetType: 'plaid_local_item_routes',
+    targetId: item.item, action: 'plaid_local_item_routes.insert' } })).toBe(1);
+  }
+  // A caller chooses this GUC itself; it is not a substitute for the routing key.
+  expect.soft(await db.withHousehold(f.hh, tx => tx.$queryRaw`
+   SELECT id,household_id FROM plaid_local_item_routes`)).toEqual([]);
+  expect.soft(await db.withHousehold(f.hh, async tx => {
+   await tx.$executeRaw`SELECT set_config('request.plaid_route',${'0'.repeat(64)},true)`;
+   return tx.$queryRaw`SELECT id,household_id FROM plaid_local_item_routes`;
+  })).toEqual([]);
+  // Routing intentionally discovers the household from the known digest. Even
+  // with f's household GUC set, g's exact key may expose g alone and never f.
+  expect.soft(await db.withHousehold(f.hh, async tx => {
+   await tx.$executeRaw`SELECT set_config('request.plaid_route',${digest},true)`;
+   return tx.$queryRaw`SELECT id,household_id FROM plaid_local_item_routes`;
+  })).toEqual([{ id: g.item, household_id: g.hh }]);
+  expect(await db.resolveFinancialItemRoute(digest)).toEqual({ itemId: g.item, householdId: g.hh });
+  expect(await runtime.$queryRaw`SELECT id,household_id FROM plaid_local_item_routes`).toEqual([]);
+ });
 });
 
 describe('atomic bounded sync',()=>{

@@ -315,3 +315,35 @@ holds only the local keyring and refuses v2 envelopes explicitly.
 This is a storage and binding contract tested with a fake key service. It is **not**
 operational KMS evidence: no key, key policy, IAM role, grant, rotation schedule or audit
 trail exists, and none can be verified from this environment.
+
+### Route policy separation (September 27, forward security fix)
+
+Restricted-role review found that the original route table's permissive PUBLIC
+`household_scope` policy could OR with `plaid_route_lookup`: a financial runtime
+setting `request.household_id` could enumerate that household's routing digests
+without holding the exact routing key. The fixed-query helper alone did not prove
+this database boundary. The accepted authority above remains unchanged.
+
+Forward migration `20261003000002_plaid_route_digest_isolation` limits the household
+ALL policy to the two existing privacy inventory readers and preserves the runtime's
+household-scoped INSERT through a separate INSERT-only policy. The unchanged
+`plaid_route_lookup` SELECT policy is therefore the financial role's only read path.
+The invoker Item-indexing, exact derived-digest, owner/fence and audit triggers remain
+in place. No privilege, role, function, custody format or provider activation changes.
+A correct digest still discovers its bound household independently of a caller-set
+household GUC; the caller must re-check that binding before a household-scoped effect.
+
+The transaction holds the route table's ACCESS EXCLUSIVE lock while checking the
+exact old two-policy posture, then alters one policy and adds one. Lock acquisition
+is bounded to 5 seconds and statements to 60 seconds. At 100k households there is no
+row rewrite or data scan; active route readers/writers may briefly wait. Unexpected
+RLS/policy drift aborts. Existing rows and grants must match the pre-apply snapshot.
+Rollback disables Plaid callers and retains journals; restoring PUBLIC applicability
+would restore the defect and is not a safe rollback. This forward fix does not edit
+an already-applied migration or authorize hosted Plaid activation.
+
+Regression coverage includes direct restricted-role SELECT with absent/wrong digest,
+a known other-household digest alongside a caller-chosen household, real indexed
+exchange publication and its audit, and the existing restricted privacy inventory
+suite. Exact-candidate positive, mutation and migration-rehearsal receipts are required
+before release evidence can mark this boundary verified.
