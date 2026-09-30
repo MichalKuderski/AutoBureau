@@ -44,7 +44,7 @@ describe("document processing panel", () => {
     expect(screen.queryByRole("button", { name: /stop processing/i })).not.toBeInTheDocument();
     unmount(); vi.unstubAllGlobals();
     serve({ documentId: id, state: "waiting", cancellable: true, reviewAt: null },
-      () => Response.json({ type: "about:blank", title: "Conflict", status: 409, detail: "started" }, { status: 409, headers: { "content-type": "application/problem+json" } }));
+      () => Response.json({ type: "about:blank", title: "Conflict", status: 409, detail: "Processing has already started, so it can't be stopped now." }, { status: 409, headers: { "content-type": "application/problem+json" } }));
     renderScreen(<DocumentWorkPanel documentId={id} />);
     await userEvent.click(await screen.findByRole("button", { name: /stop processing…/i }));
     await userEvent.click(screen.getByRole("button", { name: /^stop processing$/i }));
