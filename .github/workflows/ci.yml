@@ -16,8 +16,8 @@ permissions:
 env:
   # Local CI credentials only — production secrets live in Doppler (doc 09 §5).
   POSTGRES_PASSWORD: ci_only
-  DATABASE_ADMIN_URL: postgresql://autobureau:ci_only@localhost:5432/autobureau
-  DATABASE_URL: postgresql://app_user:app_local_only@localhost:5432/autobureau
+  DATABASE_ADMIN_URL: postgresql://autobureau:ci_only@127.0.0.1:5432/pellum_ci
+  DATABASE_URL: postgresql://app_user:app_local_only@127.0.0.1:5432/pellum_ci
 
 jobs:
   staging-jobs-plan:
@@ -82,10 +82,10 @@ jobs:
         env:
           POSTGRES_USER: autobureau
           POSTGRES_PASSWORD: ci_only
-          POSTGRES_DB: autobureau
+          POSTGRES_DB: pellum_ci
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U autobureau"
+          --health-cmd "pg_isready -U autobureau -d pellum_ci"
           --health-interval 2s --health-timeout 2s --health-retries 20
 
     steps:
