@@ -54,7 +54,12 @@ export function useDocumentReview<T extends { documentId: string; resultId?: str
       }
     },
   });
-  const reconcile = async () => {
+  const refresh = (refetchType: "active" | "none") => {
+    // Invalidation marks every root stale immediately. Background reads may remain
+    // in flight; their completion is neither an action lock nor proof of its outcome.
+    void invalidateDocumentReview(client, householdId, refetchType).catch(() => {});
+  };
+  const reconcile = async (refreshOnResolution = false) => {
     const originalIntent = state().intent;
     const next = await query.refetch();
     if (!alive.current || state().intent !== originalIntent) return;
@@ -63,11 +68,13 @@ export function useDocumentReview<T extends { documentId: string; resultId?: str
     if (!next.isError && next.data && matchesIntent && (terminal(next.data) || state().refused) && (!state().intent || (state().intent!.path.includes("/result/") ? kind === "result" : kind === "work"))) {
       save({ intent: null, pending: state().pending });
       if (terminal(next.data)) setError(null);
+      if (originalIntent && refreshOnResolution) refresh("active");
     }
     setRevision(v => v + 1);
   };
   const run = async (next: ReviewIntent) => {
     if (state().pending || !alive.current || denial || protectedDenial(query.error)) return;
+    const wasUncertain = Boolean(state().intent);
     save({ intent: next, pending: true }); setError(null);
     controller.current = new AbortController();
     let accessDenied = false;
@@ -79,6 +86,13 @@ export function useDocumentReview<T extends { documentId: string; resultId?: str
       if (!alive.current) return;
       await reconcile();
     } catch (cause) {
+      // assertCan rejects this exact role denial before invoking the handler. A
+      // generic 403 can instead follow a committed write (session-policy drift),
+      // and even a pre-write denial on retry cannot settle an earlier attempt.
+      if (!wasUncertain && cause instanceof ApiError && cause.status === 403
+        && cause.message === "Your role does not allow that." && state().intent === next) {
+        save({ intent: null, pending: true });
+      }
       if (!alive.current) return;
       setError(cause);
       if (cause instanceof ApiError && cause.status === 409 && REFUSALS.has(cause.message)) save({ ...state(), refused: true });
@@ -88,9 +102,9 @@ export function useDocumentReview<T extends { documentId: string; resultId?: str
     } finally {
       // Navigation suppresses focus/local state work, not invalidation of a write
       // that may already have committed in the captured household.
-      await invalidateDocumentReview(client, householdId, alive.current && !accessDenied ? "active" : "none");
-      if (alive.current) setRevision(v => v + 1);
       if (client.getQueryState(actionKey)) save({ ...state(), pending: false });
+      if (alive.current) setRevision(v => v + 1);
+      refresh(alive.current && !accessDenied ? "active" : "none");
     }
   };
   const ownsIntent = !shared.data.intent || (shared.data.intent.path.includes("/result/") ? kind === "result" : kind === "work");
@@ -100,6 +114,6 @@ export function useDocumentReview<T extends { documentId: string; resultId?: str
       void run({ path: `/documents/${encodeURIComponent(documentId)}/${suffix}`, body, idempotencyKey: newIdempotencyKey() });
     },
     retry: () => { const intent = state().intent; if (intent && ownsIntent) void run(intent); },
-    check: () => { if (!state().pending) void reconcile(); },
+    check: () => { if (!state().pending) void reconcile(true); },
   };
 }

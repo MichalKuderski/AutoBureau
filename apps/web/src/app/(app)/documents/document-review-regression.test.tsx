@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { HouseholdProvider } from "@/providers/household-provider";
 import { HOUSEHOLD, VIEWER, DOCUMENTS } from "@/lib/domain/fixtures";
 import { DocumentResultPanel, type DocumentResultView } from "./document-result-panel";
@@ -271,4 +271,129 @@ it("source retry returns focus inside the drawer and keeps filing disabled", asy
   await screen.findByRole("heading", { name: DOCUMENTS[0]!.title! });
   await waitFor(() => expect(screen.getByRole("dialog")).toContainElement(document.activeElement as HTMLElement));
   expect(screen.getByRole("button", { name: "Looks right — file it" })).toBeDisabled();
+});
+
+const roleDenied = () => Response.json({ type: "about:blank", title: "Forbidden", status: 403,
+  detail: "Your role does not allow that." }, { status: 403 });
+const waiting = { documentId: doc, state: "waiting", cancellable: true, reviewAt: null };
+const reviewKey = ["document-review-action", HOUSEHOLD.id, doc];
+
+it("releases a first-attempt role refusal without restoring owner content or locking permitted work", async () => {
+  let denied = false, resultReads = 0;
+  vi.stubGlobal("fetch", vi.fn(async (path: string, options: RequestInit) => {
+    if (options.method === "POST") { denied = true; return roleDenied(); }
+    if (path.endsWith("/work")) return Response.json(waiting);
+    resultReads++; return denied ? roleDenied() : Response.json(base);
+  }));
+  const { client } = setup(<><DocumentResultPanel documentId={doc} /><DocumentWorkPanel documentId={doc} /></>);
+  await screen.findByRole("button", { name: "Stop processing…" });
+  await applyReading();
+  await waitFor(() => expect(client.getQueryData(reviewKey)).toMatchObject({ intent: null, pending: false }));
+  expect(await screen.findByRole("button", { name: "Stop processing…" })).toBeEnabled();
+  expect(screen.queryByRole("region", { name: "Reading" })).not.toBeInTheDocument();
+  expect(client.getQueryData(["household", HOUSEHOLD.id, "document-result", doc])).toBeNull();
+  expect(resultReads).toBe(1);
+});
+
+it("keeps a denied retry fenced because the earlier uncertain attempt could still commit", async () => {
+  const posts: RequestInit[] = [];
+  vi.stubGlobal("fetch", vi.fn(async (path: string, options: RequestInit) => {
+    if (options.method === "POST") { posts.push(options); return posts.length === 1 ? problem(503) : roleDenied(); }
+    return Response.json(path.endsWith("/work") ? waiting : base);
+  }));
+  const { client } = setup(<><DocumentResultPanel documentId={doc} /><DocumentWorkPanel documentId={doc} /></>);
+  await applyReading();
+  fireEvent.click(await screen.findByRole("button", { name: "Retry same action" }));
+  await waitFor(() => expect(posts).toHaveLength(2));
+  await waitFor(() => expect(client.getQueryData(reviewKey)).toMatchObject({ pending: false }));
+  expect(client.getQueryData<{ intent: unknown }>(reviewKey)?.intent).not.toBeNull();
+  expect(posts[1]?.headers).toEqual(posts[0]?.headers);
+  expect(screen.queryByRole("button", { name: "Stop processing…" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Reading" })).not.toBeInTheDocument();
+});
+
+it("does not treat a possible post-commit security denial as proof of no write", async () => {
+  vi.stubGlobal("fetch", vi.fn(async (path: string, options: RequestInit) => options.method === "POST"
+    ? Response.json({ type: "about:blank", title: "Forbidden", status: 403, detail: "Verify your account security to continue." }, { status: 403 })
+    : Response.json(path.endsWith("/work") ? waiting : base)));
+  const { client } = setup(<><DocumentResultPanel documentId={doc} /><DocumentWorkPanel documentId={doc} /></>);
+  await applyReading();
+  await waitFor(() => expect(screen.queryByRole("region", { name: "Reading" })).not.toBeInTheDocument());
+  expect(client.getQueryData<{ intent: unknown }>(reviewKey)?.intent).not.toBeNull();
+  expect(screen.queryByRole("button", { name: "Stop processing…" })).not.toBeInTheDocument();
+});
+
+it.each([true, false])("releases only the pending flag while an unrelated refresh stalls (resolved=%s)", async resolved => {
+  let posted = false;
+  vi.stubGlobal("fetch", vi.fn(async (_path, options: RequestInit) => {
+    if (options.method === "POST") { posted = true; return resolved ? Response.json(done) : problem(503); }
+    return Response.json(posted && resolved ? done : base);
+  }));
+  const { client } = setup(<DocumentResultPanel documentId={doc} />);
+  const stalled = deferred<object>(), queryKey = ["summary", HOUSEHOLD.id];
+  const observer = new QueryObserver(client, { queryKey, queryFn: () => stalled.promise, initialData: {}, staleTime: Infinity });
+  const unsubscribe = observer.subscribe(() => {});
+  try {
+    await applyReading();
+    await waitFor(() => expect(client.getQueryState(queryKey)?.fetchStatus).toBe("fetching"));
+    await waitFor(() => expect(client.getQueryData(reviewKey)).toMatchObject({ pending: false }));
+    if (resolved) {
+      expect(await screen.findByText(/Filed and counted/)).toBeInTheDocument();
+      expect(client.getQueryData(reviewKey)).toMatchObject({ intent: null });
+    } else {
+      expect(await screen.findByRole("button", { name: "Retry same action" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Check status" })).toBeEnabled();
+      expect(screen.queryByRole("button", { name: "Discard reading…" })).not.toBeInTheDocument();
+      expect(client.getQueryData<{ intent: unknown }>(reviewKey)?.intent).not.toBeNull();
+    }
+    // The dependent view is still fetching: releasing pending never claims it refreshed.
+    expect(client.getQueryState(queryKey)?.fetchStatus).toBe("fetching");
+  } finally { unsubscribe(); await act(async () => stalled.resolve({})); }
+});
+
+it("invalidates every dependent root when a later manual check observes the delayed commit", async () => {
+  let committed = false, posts = 0;
+  vi.stubGlobal("fetch", vi.fn(async (_path, options: RequestInit) => {
+    if (options.method === "POST") { posts++; return problem(503); }
+    return Response.json(committed ? done : base);
+  }));
+  const { client } = setup(<DocumentResultPanel documentId={doc} />);
+  await applyReading();
+  const check = await screen.findByRole("button", { name: "Check status" });
+  const roots = ["documents", "document", "document-quota", "summary", "obligations", "obligation", "items", "item", "timeline", "household"];
+  // Model views that completed their first refresh before the delayed commit.
+  for (const root of roots) {
+    client.setQueryData([root, HOUSEHOLD.id, "probe"], { beforeCommit: true });
+    client.setQueryData([root, "other", "probe"], {});
+  }
+  committed = true; fireEvent.click(check);
+  await screen.findByText(/Filed and counted/);
+  await waitFor(() => expect(client.getQueryState(["summary", HOUSEHOLD.id, "probe"])?.isInvalidated).toBe(true));
+  for (const root of roots) {
+    expect(client.getQueryState([root, HOUSEHOLD.id, "probe"])?.isInvalidated).toBe(true);
+    expect(client.getQueryState([root, "other", "probe"])?.isInvalidated).toBe(false);
+  }
+  expect(posts).toBe(1);
+  expect(client.getQueryData(reviewKey)).toMatchObject({ intent: null, pending: false });
+});
+
+it("does not resolve or refresh another household from a late manual status read", async () => {
+  let checking = false;
+  const status = deferred<Response>();
+  vi.stubGlobal("fetch", vi.fn(async (_path, options: RequestInit) => {
+    if (options.method === "POST") return problem(503);
+    if (checking && (options.headers as Record<string, string>)["X-Household-Id"] === HOUSEHOLD.id) return status.promise;
+    return Response.json(base);
+  }));
+  const view = setup(<DocumentResultPanel documentId={doc} />);
+  await applyReading();
+  const check = await screen.findByRole("button", { name: "Check status" });
+  checking = true; fireEvent.click(check);
+  view.rerender(view.tree(<DocumentResultPanel documentId={doc} />, "household-b"));
+  view.client.setQueryData(["summary", "household-b"], {});
+  await act(async () => status.resolve(Response.json(done)));
+  expect(await screen.findByRole("button", { name: "Apply this month…" })).toBeInTheDocument();
+  expect(screen.queryByText(/Filed and counted/)).not.toBeInTheDocument();
+  expect(view.client.getQueryState(["summary", "household-b"])?.isInvalidated).toBe(false);
+  expect(view.client.getQueryData<{ intent: unknown }>(reviewKey)?.intent).not.toBeNull();
 });

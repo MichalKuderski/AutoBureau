@@ -66,3 +66,24 @@ or separate browser tabs; server idempotency/domain serialization remain authori
 Known refusal recognition deliberately matches existing exact domain messages;
 message changes fail closed to uncertainty and require corresponding client/tests
 updates. No new response/correction contract was introduced in this slice.
+
+## Follow-up review reliability fixes (2026-10-01)
+
+- A first-attempt `403` with the existing exact role-denial message releases the
+  shared intent without restoring the concealed owner reading. `assertCan` emits
+  this refusal before idempotency/handler execution. Generic security denials can
+  occur after a write, and a denied retry cannot settle an earlier uncertain
+  attempt; both remain fenced rather than permitting conflicting decisions.
+- Broad dependent-query invalidation no longer extends the action's pending lock.
+  Unresolved intents still permit only status checks and the exact original retry.
+  Dependent refreshes can remain in flight; releasing pending does not claim that
+  those reads finished or that a write did not commit.
+- A manual status check that resolves the matching intent invalidates the same
+  dependent roots again. Mounted-scope, document/result and intent checks prevent
+  late reads from refreshing a different household or resolving another intent.
+- Seven regression cases cover these paths and the safety boundaries. The focused
+  panel/drawer suite passes 56 tests. With the original hook, four new cases fail,
+  demonstrating each reported defect. Independent read-only review found no blocker.
+- Local lint has zero errors (16 existing warnings). Full local build/typecheck
+  and web-suite completion are blocked by unavailable Prisma engine download and
+  missing generated database artifacts; exact-head CI remains the full validation authority.
