@@ -101,6 +101,22 @@ jobs:
       - run: pnpm build
       - run: pnpm typecheck
       - run: node --test scripts/document-boundary-guard.test.mjs scripts/scanner-sandbox.test.mjs scripts/account-boundary-guard.test.mjs
+      - name: Prepare local custody test directory
+        # The synthetic adapter deliberately requires a canonical /private/tmp path.
+        # Provision it only on this disposable runner; keep its path checks intact.
+        run: |
+          for path in /private /private/tmp; do
+            test ! -L "$path"
+            if test -e "$path"; then
+              test -d "$path"
+              test "$(realpath "$path")" = "$path"
+            fi
+          done
+          sudo mkdir -p /private/tmp
+          sudo chown "$(id -u):$(id -g)" /private/tmp
+          sudo chmod 0700 /private/tmp
+          test "$(realpath /private/tmp)" = /private/tmp
+          test "$(stat -c '%u:%a' /private/tmp)" = "$(id -u):700"
       - run: pnpm test
       - name: OIDC proof negative controls
         run: node --test scripts/staging-oidc-settings.test.mjs scripts/staging-cloud-oidc-proof.test.mjs scripts/staging-stable-oidc-proof.test.mjs scripts/staging-proof-inspection.test.mjs scripts/staging-github-oidc-proof.test.mjs scripts/staging-storage-probe-runner.test.mjs
