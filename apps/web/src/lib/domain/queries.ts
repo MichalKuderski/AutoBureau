@@ -108,8 +108,16 @@ export function useDocuments(householdId: string, filters: DocumentFilters = {})
   }));
 }
 export function useDocument(householdId: string, id: string) {
+  const client = useQueryClient();
   return useQuery<DocumentView | null>({ queryKey: queryKeys.document(householdId, id), enabled: id.length > 0,
-    queryFn: ({ signal }) => detail(`/documents/${encodeURIComponent(id)}`, householdId, signal) });
+    retry: false,
+    queryFn: async ({ signal }) => {
+      try { return await detail<DocumentView>(`/documents/${encodeURIComponent(id)}`, householdId, signal); }
+      catch (error) {
+        if (error instanceof ApiError && [401, 403].includes(error.status)) client.setQueryData(queryKeys.document(householdId, id), null);
+        throw error;
+      }
+    } });
 }
 
 export function useTimeline(householdId: string, lens: TimelineLens = "all") {
