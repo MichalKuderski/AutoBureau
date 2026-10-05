@@ -63,7 +63,11 @@ export function DashboardScreen() {
       <PageHeader
         title={`Good ${timeOfDay()}, ${firstName}`}
         description={
-          summary.data
+          summary.isError || actionNeeded.isError || upcoming.isError
+            ? "Some dashboard information couldn't be loaded. Check the affected sections below."
+            : summary.isPending || actionNeeded.isPending || upcoming.isPending
+            ? "Loading dashboard information."
+            : summary.data
             ? summaryLine(summary.data.action_needed, summary.data.upcoming_30d)
             : undefined
         }
@@ -105,7 +109,7 @@ export function DashboardScreen() {
           <EmptyState
             tone="reassuring"
             icon={<Icon.Check className="size-5" />}
-            title="Nothing needs you right now"
+            title="No saved obligations need action"
             description="No saved obligations need action right now. Add your important records to start building a clearer picture."
           />
         ) : (
@@ -125,7 +129,7 @@ export function DashboardScreen() {
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <section aria-labelledby="coming-up">
           <h2 id="coming-up" className="mb-3 text-xl">
-            Coming up
+            Coming up · next 45 days
           </h2>
           {upcoming.isPending ? (
             <SkeletonList count={3} />
@@ -313,7 +317,5 @@ function timeOfDay(): string {
 }
 
 function summaryLine(action: number, upcoming: number): string {
-  if (action === 0 && upcoming === 0) return "Nothing needs you, and nothing is coming up soon.";
-  if (action === 0) return `Nothing needs you today. ${upcoming} coming up in the next month.`;
-  return `${action} ${action === 1 ? "thing needs" : "things need"} your attention. ${upcoming} coming up in the next month.`;
+  return `${action} saved ${action === 1 ? "obligation needs" : "obligations need"} action. ${upcoming} due in the next 30 days.`;
 }
