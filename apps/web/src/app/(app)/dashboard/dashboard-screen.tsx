@@ -1,5 +1,7 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
+import { dashboardReadScheduler } from "@/lib/domain/read-scheduler";
 import Link from "next/link";
 import { CollectionMore } from "@/components/patterns/collection-more";
 import { PageHeader } from "@/components/patterns/page-header";
@@ -27,10 +29,11 @@ import { useToast } from "@/components/ui/toast";
  */
 export function DashboardScreen() {
   const { household, viewer } = useHousehold();
-  const summary = useSummary(household.id);
-  const actionNeeded = useObligations(household.id, { status: ["action_needed"] });
-  const upcoming = useObligations(household.id, { status: ["upcoming", "action_needed", "in_progress", "waiting"], dueWithinDays: 45 });
-  const entitlements = useObligations(household.id, { direction: "owed_to_household", status: ["upcoming", "action_needed", "in_progress", "waiting", "missed"] });
+  const schedule = dashboardReadScheduler(useQueryClient());
+  const summary = useSummary(household.id, schedule);
+  const actionNeeded = useObligations(household.id, { status: ["action_needed"] }, true, schedule);
+  const upcoming = useObligations(household.id, { status: ["upcoming", "action_needed", "in_progress", "waiting"], dueWithinDays: 45 }, true, schedule);
+  const entitlements = useObligations(household.id, { direction: "owed_to_household", status: ["upcoming", "action_needed", "in_progress", "waiting", "missed"] }, true, schedule);
   const updateStatus = useUpdateObligationStatus(household.id);
   const { toast } = useToast();
 

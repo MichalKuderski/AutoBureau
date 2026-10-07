@@ -1,3 +1,4 @@
+import { observeReadTransaction } from "./observability/read-transactions";
 import { createDatabase, type Database } from "@autobureau/db";
 
 /**
@@ -25,7 +26,7 @@ export function getDatabase(): Database {
   if (url === undefined || url.trim() === "") {
     throw new DatabaseConfigError("DATABASE_URL is not set.");
   }
-  cached = createDatabase(url);
+  cached = createDatabase(url, observeReadTransaction);
   return cached;
 }
 

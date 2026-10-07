@@ -14,6 +14,7 @@ export {
   type GlobalClient,
   type GlobalTable,
   type ScopedTransactionOptions,
+  type TransactionTiming,
   type HouseholdScopeOptions,
 } from "./scoped.js";
 

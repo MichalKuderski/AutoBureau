@@ -74,6 +74,6 @@ describe("dashboard partial-read messaging", () => {
     expect(screen.getByText("Synthetic deadline on day 40")).toBeInTheDocument();
     expect(screen.queryByText("No saved deadlines in the next 45 days")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Coming up · next 45 days" })).toBeInTheDocument();
-    expect(queries.obligations).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ dueWithinDays: 45 }));
+    expect(queries.obligations).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ dueWithinDays: 45 }), true, expect.any(Function));
   });
 });

@@ -1,3 +1,5 @@
+import { uuidv7 } from "@autobureau/contracts";
+import { withReadTransactions } from "../observability/read-transactions";
 import { createAccountProvider } from "../auth/account-provider";
 import { withHouseholdSession } from "../auth/household-session";
 import { RecentAuthenticationRequired } from "../auth/recent-auth";
@@ -129,76 +131,78 @@ export function authenticated(
   return async (request: Request): Promise<Response> => {
     // Established before anything else so that every outcome below — including a
     // misconfigured deployment — is attributable. Reads headers only; no check moves.
-    const traceId = traceIdFrom(request);
     const route = routeOf(request);
-    const method = request.method;
-    // Set once the request has resolved to a household, so a failure after that point
-    // says which tenant it happened to. Hashed at the point of capture (doc 10 §3).
-    let household: string | undefined;
+    const traceId = request.method === "GET" && ["/v1/dashboard", "/v1/obligations"].includes(route ?? "") ? uuidv7() : traceIdFrom(request);
+    return withReadTransactions(request.method, route, traceId, async () => {
+      const method = request.method;
+      // Set once the request has resolved to a household, so a failure after that point
+      // says which tenant it happened to. Hashed at the point of capture (doc 10 §3).
+      let household: string | undefined;
 
-    let deps: { config: AuthConfig; db: Database };
-    try {
-      deps = boundaryDeps(options);
-    } catch (cause) {
-      if (cause instanceof AuthConfigError || cause instanceof DatabaseConfigError) {
-        // Operationally useful rather than noisy: this fires when a deployment is missing
-        // configuration, which is a deploy-time fault someone has to be told about.
-        log({
-          event: "http.not_configured",
-          level: "error",
-          traceId,
-          route,
-          method,
-          status: 503,
-          error: cause,
+      let deps: { config: AuthConfig; db: Database };
+      try {
+        deps = boundaryDeps(options);
+      } catch (cause) {
+        if (cause instanceof AuthConfigError || cause instanceof DatabaseConfigError) {
+          // Operationally useful rather than noisy: this fires when a deployment is missing
+          // configuration, which is a deploy-time fault someone has to be told about.
+          log({
+            event: "http.not_configured",
+            level: "error",
+            traceId,
+            route,
+            method,
+            status: 503,
+            error: cause,
+          });
+          // Deliberately not `internal`: the deployment is misconfigured, not broken, and
+          // the detail names no variable — configuration is not a client's business.
+          return withTraceHeader(
+            problemResponse("unavailable", {
+              detail: "Authentication is not configured on this deployment.",
+            }),
+            traceId,
+          );
+        }
+        throw cause;
+      }
+
+      try {
+        assertSameSiteRequest(request, { allowedOrigins: deps.config.allowedOrigins });
+
+        let principal: VerifiedPrincipal | undefined;
+        const verifier = createJwtVerifier(deps.config);
+        const ctx = await resolveRequestContext(request, {
+          verifier: { verify: async token => { principal = await verifier.verify(token); return principal; } },
+          memberships: membershipsVia(deps.db),
+          cookieName: deps.config.cookieName,
         });
-        // Deliberately not `internal`: the deployment is misconfigured, not broken, and
-        // the detail names no variable — configuration is not a client's business.
+
+        household = householdRef(ctx.householdId);
+
+        if (options.requires) assertCan(ctx, options.requires);
+
+        // Step 5.5 (P1-05): idempotency. Inserted here and nowhere else — after
+        // authorization, so a key can never be a side channel around the boundary, and
+        // inside `runAsUser`, because the store's RLS policy checks the principal that
+        // `withHousehold` sets from the audit actor. For anything other than an honored
+        // POST carrying a key this is a straight call through to the handler.
+        const response = await withHouseholdSession(deps.db, ctx, principal!,
+          readCookie(request.headers.get("cookie"), deps.config.cookieName)!, createAccountProvider(deps.config), options.requires, () =>
+          withIdempotency({ request, ctx, db: deps.db, traceId, route }, async () =>
+            // Nothing above this line moved. The only change is that a handler may now name
+            // a status and headers; a plain value still means 200, exactly as before.
+            toResponse(await handler({ request, ctx, db: deps.db })),
+          ),
+        );
+        return withTraceHeader(response, traceId);
+      } catch (cause) {
         return withTraceHeader(
-          problemResponse("unavailable", {
-            detail: "Authentication is not configured on this deployment.",
-          }),
+          toProblem(cause, { traceId, route, method, household }),
           traceId,
         );
       }
-      throw cause;
-    }
-
-    try {
-      assertSameSiteRequest(request, { allowedOrigins: deps.config.allowedOrigins });
-
-      let principal: VerifiedPrincipal | undefined;
-      const verifier = createJwtVerifier(deps.config);
-      const ctx = await resolveRequestContext(request, {
-        verifier: { verify: async token => { principal = await verifier.verify(token); return principal; } },
-        memberships: membershipsVia(deps.db),
-        cookieName: deps.config.cookieName,
-      });
-
-      household = householdRef(ctx.householdId);
-
-      if (options.requires) assertCan(ctx, options.requires);
-
-      // Step 5.5 (P1-05): idempotency. Inserted here and nowhere else — after
-      // authorization, so a key can never be a side channel around the boundary, and
-      // inside `runAsUser`, because the store's RLS policy checks the principal that
-      // `withHousehold` sets from the audit actor. For anything other than an honored
-      // POST carrying a key this is a straight call through to the handler.
-      const response = await withHouseholdSession(deps.db, ctx, principal!,
-        readCookie(request.headers.get("cookie"), deps.config.cookieName)!, createAccountProvider(deps.config), options.requires, () =>
-        withIdempotency({ request, ctx, db: deps.db, traceId, route }, async () =>
-          // Nothing above this line moved. The only change is that a handler may now name
-          // a status and headers; a plain value still means 200, exactly as before.
-          toResponse(await handler({ request, ctx, db: deps.db })),
-        ),
-      );
-      return withTraceHeader(response, traceId);
-    } catch (cause) {
-      return withTraceHeader(
-        toProblem(cause, { traceId, route, method, household }),
-        traceId,
-      );
-    }
+    });
   };
 }
 

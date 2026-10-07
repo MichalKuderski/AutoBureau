@@ -12,6 +12,7 @@ import type {
   TimelineEntry,
   TimelineLens,
 } from "./types";
+import type { ReadScheduler } from "./read-scheduler";
 import { useCollection } from "./collection";
 
 /** Scoped queries share contract shapes with the server. */
@@ -79,15 +80,15 @@ async function detail<T>(path: string, householdId: string, signal: AbortSignal)
   try { return await apiFetch<T>(path, { householdId, signal }); }
   catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error; }
 }
-export function useSummary(householdId: string) {
+export function useSummary(householdId: string, schedule?: ReadScheduler) {
   return useQuery<DashboardSummary>({ queryKey: queryKeys.summary(householdId),
-    queryFn: ({ signal }) => apiFetch("/dashboard", { householdId, signal }) });
+    queryFn: ({ signal }) => { const read = () => apiFetch<DashboardSummary>("/dashboard", { householdId, signal }); return schedule ? schedule(signal, read) : read(); } });
 }
-export function useObligations(householdId: string, filters: ObligationFilters = {}, enabled = true) {
+export function useObligations(householdId: string, filters: ObligationFilters = {}, enabled = true, schedule?: ReadScheduler) {
   return useCollection<ObligationView>(queryKeys.obligations(householdId, filters), householdId, pathWithFilters("/obligations", {
     status: filters.status, member_id: filters.memberId, direction: filters.direction,
     due_within_days: filters.dueWithinDays, q: filters.search, due_after: filters.dueAfter, due_before: filters.dueBefore,
-  }), enabled);
+  }), enabled, schedule);
 }
 export function useObligation(householdId: string, id: string) {
   return useQuery<ObligationView | null>({ queryKey: queryKeys.obligation(householdId, id), enabled: id.length > 0,
