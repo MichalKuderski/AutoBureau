@@ -1,10 +1,16 @@
 // @vitest-environment node
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRecoveryInitiator, createRecoveryController, type RecoveryPorts } from "./account-recovery";
 import type { AccountProvider } from "./account-provider";
 import type { VerifiedPrincipal } from "./jwt";
 import type { AuthConfig } from "./config";
 import { ProviderError } from "./provider";
+import { TokenError } from "./jwt";
+import { recoveryPhase } from "./recovery-diagnostics";
+import { setLogSink, resetLogSink, type LogRecord } from "../observability";
+const records: LogRecord[] = [];
+beforeEach(() => { records.length = 0; setLogSink(record => records.push(record)); });
+afterEach(() => resetLogSink());
 const user = "a0000000-0000-4000-8000-000000000001", factor = "a0000000-0000-4000-8000-000000000002", session = "a0000000-0000-4000-8000-000000000003";
 const config: AuthConfig = { allowedOrigins: ["https://pellum.invalid"], cookieName: "ab_session", refreshCookieName: "ab_session_refresh",
   issuer: "https://auth.invalid", audience: "authenticated", jwks: { keys: { keys: [] } }, algorithms: ["RS256"], apiUrl: "https://auth.invalid", anonKey: "public-fixture" };
@@ -136,4 +142,73 @@ it("public initiation composes without a candidate household, verifier or accoun
  const initiate=createRecoveryInitiator(config,{recover},{limit});
  expect((await initiate(request(),{email:"public@example.invalid"})).status).toBe(202);
  expect(recover).toHaveBeenCalledExactlyOnceWith("public@example.invalid");
+});
+
+
+describe("recovery diagnostic projection", () => {
+  it("uses a fresh response reference and never records request data or raw errors", async () => {
+    const f = setup();
+    const req = request(); req.headers.set("x-request-id", input.password);
+    const message = `${input.password} ${input.tokenHash} private-person@example.test arbitrary-sensitive-string`;
+    vi.mocked(f.ports.verifyJwt).mockRejectedValue(new TokenError("audience", message));
+    const response = await f.controller.complete(req, input);
+    const reference = response.headers.get("x-request-id");
+    expect(reference).toMatch(/^[0-9a-f-]{36}$/); expect(reference).not.toBe(input.password);
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ event: "auth.recovery_failed", trace_id: reference, status: 403,
+      meta: { phase: "jwt_validation", category: "identity", code: "audience", mutation_outcome: "not_attempted" } });
+    expect(records[0]).not.toHaveProperty("error_message"); expect(records[0]).not.toHaveProperty("stack");
+    const captured = JSON.stringify(records) + await response.text();
+    for (const value of [input.password, input.tokenHash, "private-person@example.test", "arbitrary-sensitive-string", user, session]) expect(captured).not.toContain(value);
+    expect(f.provider.updatePassword).not.toHaveBeenCalled();
+  });
+  it("records only the database code at the failing membership phase", async () => {
+    const f = setup();
+    vi.mocked(f.ports.verifyJwt).mockImplementation(async () => {
+      recoveryPhase("membership_read");
+      throw Object.assign(new Error("secret SQL arguments"), { code: "P2028", meta: { query: input.password } });
+    });
+    expect((await f.controller.complete(request(), input)).status).toBe(403);
+    expect(records[0]?.meta).toEqual({ phase: "membership_read", category: "database", code: "P2028", mutation_outcome: "not_attempted" });
+    expect(JSON.stringify(records)).not.toContain("secret SQL");
+  });
+  it.each(["update", "audit", "revoke"] as const)("records %s failure without claiming an unchanged password", async phase => {
+    const f = setup(); const cause = new ProviderError("unavailable", input.password, 504,
+      { failure: "timeout", durationMs: 10000, requestId: factor });
+    if (phase === "update") vi.mocked(f.provider.updatePassword).mockRejectedValue(cause);
+    if (phase === "audit") vi.mocked(f.ports.audit).mockResolvedValueOnce(undefined).mockRejectedValueOnce(cause);
+    if (phase === "revoke") vi.mocked(f.provider.revoke).mockRejectedValue(cause);
+    const response = await f.controller.complete(request(), input);
+    expect(records).toHaveLength(1);
+    expect(records[0]?.meta).toMatchObject({ phase: phase === "update" ? "password_update" : phase === "audit" ? "audit_update" : "revocation",
+      mutation_outcome: phase === "update" ? "unconfirmed" : "acknowledged", upstream_status: 504, upstream_failure: "timeout", upstream_request_id: factor });
+    expect(await response.text()).not.toMatch(/wasn't changed|not changed/i);
+    expect(response.headers.getSetCookie()).toHaveLength(2);
+    expect(f.provider.updatePassword).toHaveBeenCalledTimes(1);
+  });
+  it("preserves rate refusal and identifies token replay without another update", async () => {
+    const limited = setup(); vi.mocked(limited.ports.limit).mockResolvedValue(false);
+    const refusal = await limited.controller.complete(request(), input);
+    expect(refusal.status).toBe(429); expect(refusal.headers.get("x-request-id")).toBe(records[0]?.trace_id);
+    expect(records[0]?.meta?.phase).toBe("request_rate_limit"); expect(limited.provider.redeemRecovery).not.toHaveBeenCalled();
+    records.length = 0;
+    const f = setup(); const success = await f.controller.complete(request(), input);
+    expect(success.headers.get("x-request-id")).toBeTruthy(); expect(records).toHaveLength(0);
+    const replay = await f.controller.complete(request(), input);
+    expect(replay.headers.get("x-request-id")).not.toBe(success.headers.get("x-request-id"));
+    expect(records).toHaveLength(1); expect(records[0]?.meta).toMatchObject({ phase: "redemption", code: "invalid-code", mutation_outcome: "not_attempted" });
+    expect(f.provider.updatePassword).toHaveBeenCalledTimes(1);
+  });
+  it("keeps overlapping requests' phases, failures and references isolated", async () => {
+    const a = setup(), b = setup();
+    let release!: () => void; const held = new Promise<void>(r => { release = r; });
+    let entered!: () => void; const started = new Promise<void>(r => { entered = r; });
+    vi.mocked(a.ports.verifyJwt).mockImplementation(async () => { entered(); await held; throw new TokenError("signature", "private"); });
+    vi.mocked(b.provider.updatePassword).mockRejectedValue(new ProviderError("unavailable", "private"));
+    const first = a.controller.complete(request(), input); await started;
+    const second = await b.controller.complete(request(), input); release(); const response = await first;
+    expect(records).toHaveLength(2);
+    expect(records.find(r => r.trace_id === response.headers.get("x-request-id"))?.meta).toMatchObject({ phase: "jwt_validation", code: "signature", mutation_outcome: "not_attempted" });
+    expect(records.find(r => r.trace_id === second.headers.get("x-request-id"))?.meta).toMatchObject({ phase: "password_update", mutation_outcome: "unconfirmed" });
+  });
 });
