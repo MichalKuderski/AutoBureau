@@ -216,7 +216,8 @@ export function DashboardScreen() {
 
 function StatRow() {
   const { household } = useHousehold();
-  const { data, isPending, isError, error, refetch } = useSummary(household.id);
+  const schedule = dashboardReadScheduler(useQueryClient());
+  const { data, isPending, isError, error, refetch } = useSummary(household.id, schedule);
 
   if (isPending) {
     return (
@@ -263,7 +264,8 @@ function StatRow() {
  */
 function CoveragePanel() {
   const { household } = useHousehold();
-  const { data } = useSummary(household.id);
+  const schedule = dashboardReadScheduler(useQueryClient());
+  const { data } = useSummary(household.id, schedule);
   if (!data) return null;
 
   if (data.coverage.expected === null) return <Card><CardHeader><CardTitle>Building your ledger</CardTitle></CardHeader><CardContent>
