@@ -1,3 +1,4 @@
+import { recoveryPhase, recoveryFailure, withRecoveryDiagnostics } from "./recovery-diagnostics";
 import { z } from "zod";
 import { CsrfError, assertSameSiteRequest } from "../http/csrf";
 import { ProviderError } from "./provider";
@@ -72,7 +73,11 @@ export async function composeAccountRoutes(request: Request, config: AuthConfig,
     const ports: RecoveryPorts = {
       ...createDatabaseRecoveryInitiationPorts(db, request),
       async verifyJwt(token) {
-        const p = await verifier.verify(token), memberships = await membershipsVia(db)(p.userId);
+        recoveryPhase("jwt_validation");
+        const p = await verifier.verify(token);
+        recoveryPhase("membership_read");
+        const memberships = await membershipsVia(db)(p.userId);
+        recoveryPhase("owner_selection");
         const candidate = request.headers.get("x-household-id");
         if (candidate !== null && !z.string().uuid().safeParse(candidate).success) throw new Error("Recovery refused");
         const member = candidate ? memberships.find(m => m.householdId === candidate) : memberships.length === 1 ? memberships[0] : undefined;
@@ -99,11 +104,18 @@ const refusal = (message: string) => (status: number) => Response.json({ error: 
 
 /** The only export the account/recovery route files may call. */
 export async function accountMount(request: Request): Promise<Response> {
+  return new URL(request.url).pathname === "/v1/auth/recovery/complete"
+    ? withRecoveryDiagnostics(() => mount(request)) : mount(request);
+}
+
+async function mount(request: Request): Promise<Response> {
+  recoveryPhase("mount_gate");
   const mode = accountMountMode(process.env);
   const denied = refusal(mode === "local-synthetic" ? "Local account operation is unavailable." : "Account operation is unavailable.");
   if (mode === "unavailable") return denied(404);
   try {
     const config = authConfigFromEnv();
+    recoveryPhase("request_validation");
     return await composeAccountRoutes(request, config, passwordPolicyFor(process.env, config.apiUrl), denied);
-  } catch (e) { return denied(e instanceof CsrfError ? 403 : e instanceof RequestContextError ? e.status : 503); }
+  } catch (e) { recoveryFailure(e); return denied(e instanceof CsrfError ? 403 : e instanceof RequestContextError ? e.status : 503); }
 }

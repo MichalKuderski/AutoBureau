@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "@/components/ui/alert";
-import { apiFetch } from "@/lib/api-client";
+import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
+import { ApiError, apiFetch } from "@/lib/api-client";
+import { dashboardReadScheduler } from "@/lib/domain/read-scheduler";
 import { useHousehold } from "@/providers/household-provider";
 
 export interface BillingStatus {
@@ -19,10 +22,15 @@ const day = (iso: string | null) => iso ? new Date(iso).toLocaleDateString("en-U
 /** Owner-only; non-owners get 403 and see nothing. Display only — never authorization. */
 export function useBillingStatus() {
   const { household } = useHousehold();
-  return useQuery({
+  const schedule = dashboardReadScheduler(useQueryClient());
+  const query = useQuery({
     queryKey: ["household", household.id, "billing"], retry: false, enabled: household.role === "owner",
-    queryFn: () => apiFetch<BillingStatus>(`/households/${household.id}/billing`, { householdId: household.id }),
+    // Every observer (shell and settings) must use the same transport scheduler.
+    queryFn: ({ signal }) => schedule(signal, () => apiFetch<BillingStatus>(`/households/${household.id}/billing`, { householdId: household.id, signal })),
   });
+  // Disabled observers can retain cached data. Never display owner-only details after
+  // a role change or a failed refresh, including a current server access refusal.
+  return { ...query, data: household.role === "owner" && !query.isError ? query.data : undefined };
 }
 
 /**
@@ -51,7 +59,20 @@ export function describeBilling(b: BillingStatus): { tone: "info" | "warning" | 
 
 /** App-wide notice for the two states an owner must act on. */
 export function BillingBanner() {
+  const { household } = useHousehold();
   const status = useBillingStatus();
+  if (household.role !== "owner") return null;
+  if (status.isError) {
+    if (status.error instanceof ApiError && status.error.isAuth) {
+      return <ErrorState title="Your session ended" description="Sign in again to check billing status." showSignIn className="mb-5" />;
+    }
+    const refused = status.error instanceof ApiError && status.error.status === 403;
+    return <Alert tone="warning" title="Billing status unavailable" className="mb-5"
+      action={refused ? undefined : <Button variant="secondary" size="sm" loading={status.isFetching}
+        onClick={() => { void status.refetch({ cancelRefetch: false }); }}>Retry billing status</Button>}>
+      {refused ? "You don't have access to billing details." : "We couldn't check your current billing status. Try again."}
+    </Alert>;
+  }
   if (!status.data || (status.data.state !== "grace" && status.data.state !== "past_due")) return null;
   const d = describeBilling(status.data)!;
   return (

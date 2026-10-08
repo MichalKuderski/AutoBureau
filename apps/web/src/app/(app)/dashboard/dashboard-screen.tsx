@@ -1,5 +1,7 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
+import { dashboardReadScheduler } from "@/lib/domain/read-scheduler";
 import Link from "next/link";
 import { CollectionMore } from "@/components/patterns/collection-more";
 import { PageHeader } from "@/components/patterns/page-header";
@@ -27,10 +29,11 @@ import { useToast } from "@/components/ui/toast";
  */
 export function DashboardScreen() {
   const { household, viewer } = useHousehold();
-  const summary = useSummary(household.id);
-  const actionNeeded = useObligations(household.id, { status: ["action_needed"] });
-  const upcoming = useObligations(household.id, { status: ["upcoming", "action_needed", "in_progress", "waiting"], dueWithinDays: 45 });
-  const entitlements = useObligations(household.id, { direction: "owed_to_household", status: ["upcoming", "action_needed", "in_progress", "waiting", "missed"] });
+  const schedule = dashboardReadScheduler(useQueryClient());
+  const summary = useSummary(household.id, schedule);
+  const actionNeeded = useObligations(household.id, { status: ["action_needed"] }, true, schedule);
+  const upcoming = useObligations(household.id, { status: ["upcoming", "action_needed", "in_progress", "waiting"], dueWithinDays: 45 }, true, schedule);
+  const entitlements = useObligations(household.id, { direction: "owed_to_household", status: ["upcoming", "action_needed", "in_progress", "waiting", "missed"] }, true, schedule);
   const updateStatus = useUpdateObligationStatus(household.id);
   const { toast } = useToast();
 
@@ -63,7 +66,11 @@ export function DashboardScreen() {
       <PageHeader
         title={`Good ${timeOfDay()}, ${firstName}`}
         description={
-          summary.data
+          summary.isError || actionNeeded.isError || upcoming.isError
+            ? "Some dashboard information couldn't be loaded. Check the affected sections below."
+            : summary.isPending || actionNeeded.isPending || upcoming.isPending
+            ? "Loading dashboard information."
+            : summary.data
             ? summaryLine(summary.data.action_needed, summary.data.upcoming_30d)
             : undefined
         }
@@ -105,7 +112,7 @@ export function DashboardScreen() {
           <EmptyState
             tone="reassuring"
             icon={<Icon.Check className="size-5" />}
-            title="Nothing needs you right now"
+            title="No saved obligations need action"
             description="No saved obligations need action right now. Add your important records to start building a clearer picture."
           />
         ) : (
@@ -125,7 +132,7 @@ export function DashboardScreen() {
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <section aria-labelledby="coming-up">
           <h2 id="coming-up" className="mb-3 text-xl">
-            Coming up
+            Coming up · next 45 days
           </h2>
           {upcoming.isPending ? (
             <SkeletonList count={3} />
@@ -209,7 +216,8 @@ export function DashboardScreen() {
 
 function StatRow() {
   const { household } = useHousehold();
-  const { data, isPending, isError, error, refetch } = useSummary(household.id);
+  const schedule = dashboardReadScheduler(useQueryClient());
+  const { data, isPending, isError, error, refetch } = useSummary(household.id, schedule);
 
   if (isPending) {
     return (
@@ -256,7 +264,8 @@ function StatRow() {
  */
 function CoveragePanel() {
   const { household } = useHousehold();
-  const { data } = useSummary(household.id);
+  const schedule = dashboardReadScheduler(useQueryClient());
+  const { data } = useSummary(household.id, schedule);
   if (!data) return null;
 
   if (data.coverage.expected === null) return <Card><CardHeader><CardTitle>Building your ledger</CardTitle></CardHeader><CardContent>
@@ -313,7 +322,5 @@ function timeOfDay(): string {
 }
 
 function summaryLine(action: number, upcoming: number): string {
-  if (action === 0 && upcoming === 0) return "Nothing needs you, and nothing is coming up soon.";
-  if (action === 0) return `Nothing needs you today. ${upcoming} coming up in the next month.`;
-  return `${action} ${action === 1 ? "thing needs" : "things need"} your attention. ${upcoming} coming up in the next month.`;
+  return `${action} saved ${action === 1 ? "obligation needs" : "obligations need"} action. ${upcoming} due in the next 30 days.`;
 }

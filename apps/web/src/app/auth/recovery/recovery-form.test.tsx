@@ -41,15 +41,40 @@ describe("recovery landing page", () => {
     await userEvent.type(screen.getByLabelText(/authenticator code/i), "12 34 56");
     await userEvent.click(screen.getByRole("button", { name: /save new password/i }));
     expect(fetchMock).toHaveBeenCalledWith("/v1/auth/recovery/complete", expect.objectContaining({ body: JSON.stringify({ tokenHash: "synthetic_hash", password: "a-long-synthetic-passphrase", code: "123456" }) }));
-    expect(await screen.findByText(/signed out everywhere/i)).toBeInTheDocument();
+    expect(await screen.findByText(/existing access may continue until sessions expire/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /sign in/i })).toHaveAttribute("href", "/sign-in");
   });
-  it("a refused completion says the link worked once and to request a new one", async () => {
+  it("a refused completion does not claim the password was unchanged", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "x" }), { status: 403 })));
     render(<RecoveryForm available tokenHash="synthetic_hash" />);
     await userEvent.type(screen.getByLabelText(/^new password/i), "a-long-synthetic-passphrase");
     await userEvent.type(screen.getByLabelText(/confirm new password/i), "a-long-synthetic-passphrase");
     await userEvent.click(screen.getByRole("button", { name: /save new password/i }));
-    expect(await screen.findByText(/this link works once, so request a new one/i)).toBeInTheDocument();
+    expect(await screen.findByText(/we couldn.t complete the reset/i)).toBeInTheDocument();
+    expect(screen.queryByText(/password wasn.t changed|^not changed$/i)).not.toBeInTheDocument();
   });
+});
+
+it.each([403, 503])("shows only a validated support reference on HTTP %s", async status => {
+  const reference = "a0000000-0000-4000-8000-000000000123";
+  vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "private provider detail" }), { status, headers: { "x-request-id": reference } })));
+  render(<RecoveryForm available tokenHash="synthetic_hash" />);
+  await userEvent.type(screen.getByLabelText(/^new password/i), "a-long-synthetic-passphrase");
+  await userEvent.type(screen.getByLabelText(/confirm new password/i), "a-long-synthetic-passphrase");
+  await userEvent.click(screen.getByRole("button", { name: /save new password/i }));
+  expect(await screen.findByText(`Reference: ${reference}`)).toBeInTheDocument();
+  expect(screen.queryByText(/private provider detail|password wasn't changed/i)).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Request a new link" })).toHaveAttribute("href", "/forgot-password");
+});
+it.each(["network", "unsafe-reference"])("does not claim unchanged or show untrusted details after %s failure", async mode => {
+  vi.stubGlobal("fetch", vi.fn(async () => {
+    if (mode === "network") throw new Error("sensitive transport error");
+    return new Response(null, { status: 503, headers: { "x-request-id": "sensitive-reference-value" } });
+  }));
+  render(<RecoveryForm available tokenHash="synthetic_hash" />);
+  await userEvent.type(screen.getByLabelText(/^new password/i), "a-long-synthetic-passphrase");
+  await userEvent.type(screen.getByLabelText(/confirm new password/i), "a-long-synthetic-passphrase");
+  await userEvent.click(screen.getByRole("button", { name: /save new password/i }));
+  expect(await screen.findByText("Reset not confirmed")).toBeInTheDocument();
+  expect(screen.queryByText(/Reference:|sensitive|wasn't changed/i)).not.toBeInTheDocument();
 });

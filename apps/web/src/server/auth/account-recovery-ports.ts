@@ -1,3 +1,4 @@
+import { recoveryPhase, recoveryReference } from "./recovery-diagnostics";
 import { auditAccountSecurity, readAccountSecurityAdmission, runAsUser, type Database } from "@autobureau/db";
 import type { JwtVerifier } from "./jwt";
 import type { RecoveryPorts } from "./account-recovery";
@@ -15,7 +16,7 @@ import { traceIdFrom } from "../observability";
 export function createDatabaseRecoveryPorts(db: Database, householdId: string, request: Request, verifier: JwtVerifier,
   passwordPolicy: (password: string) => Promise<PasswordVerdict> = createPasswordPolicy()): RecoveryPorts {
   async function limit(identifier: string, policies: readonly PolicyName[]) {
-    const result = await enforceRateLimit({ db, request, identifier, policies, traceId: traceIdFrom(request), route: "account-recovery" });
+    const result = await enforceRateLimit({ db, request, identifier, policies, traceId: recoveryReference() ?? traceIdFrom(request), route: "account-recovery" });
     if (result?.status === 503) throw new ProviderError("unavailable", "Recovery is briefly unavailable");
     return result === null;
   }
@@ -29,7 +30,9 @@ export function createDatabaseRecoveryPorts(db: Database, householdId: string, r
     },
     async admit(principal, phase = "redeemed") {
       if (!principal.assurance || principal.expiresAt <= Math.floor(Date.now()/1000)) throw new Error("Recovery refused");
+      recoveryPhase("user_rate_limit");
       if (phase === "redeemed" && !await limit(principal.userId, RECOVERY_USER_POLICIES)) throw new ProviderError("rate-limited", "Recovery refused");
+      recoveryPhase("db_admission");
       const admission = await runAsUser(principal.userId, () => readAccountSecurityAdmission(db, householdId, principal.userId));
       if (phase === "commit" && admission.requiresMfa) {
         const now = Math.floor(Date.now()/1000);
@@ -51,7 +54,7 @@ export function createDatabaseRecoveryInitiationPorts(db: Database, request: Req
     if (candidate !== request || clientIpFrom(request) === null) return false;
     const result = await enforceRateLimit({ db, request, identifier: email ?? "recovery-completion",
       policies: email === undefined ? RECOVERY_COMPLETE_POLICIES : RECOVERY_START_POLICIES,
-      traceId: traceIdFrom(request), route: "account-recovery" });
+      traceId: recoveryReference() ?? traceIdFrom(request), route: "account-recovery" });
     if (result?.status === 503) throw new ProviderError("unavailable", "Recovery is briefly unavailable");
     return result === null;
   } };

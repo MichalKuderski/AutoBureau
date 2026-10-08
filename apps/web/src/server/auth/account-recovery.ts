@@ -3,6 +3,7 @@ import type { AuthConfig } from "./config";
 import type { AccountProvider } from "./account-provider";
 import type { VerifiedPrincipal } from "./jwt";
 import { accountOperationEvidence, authorizeAccountOperation, type AccountOperationEvidence } from "./account-operation-policy";
+import { recoveryPhase, recoveryFailure, recoveryMutation, withRecoveryDiagnostics } from "./recovery-diagnostics";
 import { ProviderError } from "./provider";
 import { assertSameSiteRequest } from "../http/csrf";
 import { appendCookies, clearedSessionCookies } from "./session";
@@ -39,65 +40,90 @@ export function createRecoveryController(config: AuthConfig, provider: AccountPr
   return {
     initiate: createRecoveryInitiator(config, provider, ports),
     async complete(request: Request, input: unknown): Promise<Response> {
-      let consumed = false;
-      try {
-        if (request.method !== "POST") return refuse(); assertSameSiteRequest(request, config);
-        const parsed = finish.safeParse(input); if (!parsed.success) return refuse();
-        const value = parsed.data;
-        if (await ports.limit(request) !== true) return reply({ error: "Try again later." }, 429);
-        if (await ports.passwordAllowed(value.password) !== true) return refuse();
-        consumed = true; const startedAt = clock();
-        let tokens = await provider.redeemRecovery(value.tokenHash);
-        let principal = await ports.verifyJwt(tokens.accessToken);
-        const now = clock();
-        if (!principal.assurance || principal.expiresAt <= now || principal.issuedAt === undefined || principal.issuedAt < startedAt - 1 || principal.issuedAt > now || !Number.isSafeInteger(now)) return refuse();
-        await ports.admit(principal, "redeemed");
-        const factorReadAt = clock();
-        const factors = await provider.factors(tokens.accessToken);
-        if (clock() - factorReadAt > 60) return refuse();
-        if (factors.userId !== principal.userId) return refuse();
-        // A recovery link cannot know the factor ID before its one-use token is redeemed, so a
-        // code alone selects the account's SINGLE verified factor. Several verified factors
-        // still require an explicit ID; no code, a wrong code or no factor still refuses.
-        const verifiedNow = factors.factors.filter(f => f.status === "verified");
-        const factorId = value.factorId?.toLowerCase() ?? (verifiedNow.length === 1 ? verifiedNow[0]!.id : undefined);
-        if (verifiedNow.length > 0) {
-          if (!factorId || !value.code || !verifiedNow.some(f => f.id === factorId)) return refuse();
-          const challenge = await provider.challenge(tokens.accessToken, factorId), at = clock();
-          if (challenge.expiresAt <= at || challenge.expiresAt > at + 300) return refuse();
-          tokens = await provider.verify(tokens.accessToken, factorId, challenge.id, value.code);
-          const elevated = await ports.verifyJwt(tokens.accessToken);
-          if (elevated.userId !== principal.userId || elevated.assurance?.sessionId !== principal.assurance.sessionId || elevated.assurance.level !== "aal2"
-            || elevated.expiresAt <= clock() || !elevated.assurance.methods.some(m => m.method === "totp" && m.timestamp >= at - 1 && m.timestamp <= clock())) return refuse();
-          principal = elevated;
-        } else if (value.factorId || value.code || principal.assurance.level !== "aal1") return refuse();
-        // Re-read after challenge/verification: a removed factor, newly enrolled
-        // factor or user mismatch cannot authorize a password change from stale state.
-        const checkedAt = clock();
-        const currentFactors = await provider.factors(tokens.accessToken);
-        if (currentFactors.userId !== principal.userId) return refuse();
-        const verified = currentFactors.factors.filter(f => f.status === "verified");
-        const usedFactor = verifiedNow.length > 0 ? factorId : undefined;
-        if (usedFactor) {
-          if (!verified.some(f => f.id === usedFactor)) return refuse();
-        } else if (verified.length > 0) return refuse();
-        const evidence = accountOperationEvidence(principal, currentFactors, checkedAt, usedFactor);
-        authorizeAccountOperation("recovery", evidence, false, clock());
-        await ports.admit(principal, "commit");
-        await ports.audit(principal, "attempted", evidence);
-        authorizeAccountOperation("recovery", evidence, false, clock());
-        const updated = await provider.updatePassword(tokens.accessToken, value.password);
-        if (updated.userId !== principal.userId) return refuse();
-        await ports.audit(principal, "password-acknowledged", evidence);
-        await provider.revoke(tokens.accessToken);
-        await ports.audit(principal, "revocation-acknowledged", evidence);
-        return appendCookies(reply({ passwordChanged: true, signInRequired: true, accessTokensMayRemainValidUntilExpiry: true }), clearedSessionCookies(config));
-      } catch (e) {
-        const failed = reply({ error: "Recovery request could not be completed. Request a new recovery link before trying again." }, e instanceof ProviderError && e.reason === "unavailable" ? 503 : 403);
-        // An ambiguous provider outcome is never retried. Local cookies are cleared
-        // without claiming the provider mutation/revocation did or did not commit.
-        return consumed ? appendCookies(failed, clearedSessionCookies(config)) : failed;
-      }
+      return withRecoveryDiagnostics(async () => {
+        let consumed = false;
+        try {
+          recoveryPhase("request_validation");
+          if (request.method !== "POST") return refuse(); assertSameSiteRequest(request, config);
+          const parsed = finish.safeParse(input); if (!parsed.success) return refuse();
+          const value = parsed.data;
+          recoveryPhase("request_rate_limit");
+          if (await ports.limit(request) !== true) return reply({ error: "Try again later." }, 429);
+          recoveryPhase("password_policy");
+          if (await ports.passwordAllowed(value.password) !== true) return refuse();
+          consumed = true; const startedAt = clock();
+          recoveryPhase("redemption");
+          let tokens = await provider.redeemRecovery(value.tokenHash);
+          recoveryPhase("jwt_validation");
+          let principal = await ports.verifyJwt(tokens.accessToken);
+          recoveryPhase("assurance_check");
+          const now = clock();
+          if (!principal.assurance || principal.expiresAt <= now || principal.issuedAt === undefined || principal.issuedAt < startedAt - 1 || principal.issuedAt > now || !Number.isSafeInteger(now)) return refuse();
+          recoveryPhase("db_admission");
+          await ports.admit(principal, "redeemed");
+          const factorReadAt = clock();
+          recoveryPhase("factor_read");
+          const factors = await provider.factors(tokens.accessToken);
+          if (clock() - factorReadAt > 60) return refuse();
+          if (factors.userId !== principal.userId) return refuse();
+          // A recovery link cannot know the factor ID before its one-use token is redeemed, so a
+          // code alone selects the account's SINGLE verified factor. Several verified factors
+          // still require an explicit ID; no code, a wrong code or no factor still refuses.
+          const verifiedNow = factors.factors.filter(f => f.status === "verified");
+          const factorId = value.factorId?.toLowerCase() ?? (verifiedNow.length === 1 ? verifiedNow[0]!.id : undefined);
+          if (verifiedNow.length > 0) {
+            if (!factorId || !value.code || !verifiedNow.some(f => f.id === factorId)) return refuse();
+            recoveryPhase("mfa_challenge");
+            const challenge = await provider.challenge(tokens.accessToken, factorId), at = clock();
+            if (challenge.expiresAt <= at || challenge.expiresAt > at + 300) return refuse();
+            recoveryPhase("mfa_verification");
+            tokens = await provider.verify(tokens.accessToken, factorId, challenge.id, value.code);
+            const elevated = await ports.verifyJwt(tokens.accessToken);
+            recoveryPhase("mfa_verification");
+            if (elevated.userId !== principal.userId || elevated.assurance?.sessionId !== principal.assurance.sessionId || elevated.assurance.level !== "aal2"
+              || elevated.expiresAt <= clock() || !elevated.assurance.methods.some(m => m.method === "totp" && m.timestamp >= at - 1 && m.timestamp <= clock())) return refuse();
+            principal = elevated;
+          } else if (value.factorId || value.code || principal.assurance.level !== "aal1") return refuse();
+          // Re-read after challenge/verification: a removed factor, newly enrolled
+          // factor or user mismatch cannot authorize a password change from stale state.
+          const checkedAt = clock();
+          recoveryPhase("factor_recheck");
+          const currentFactors = await provider.factors(tokens.accessToken);
+          if (currentFactors.userId !== principal.userId) return refuse();
+          const verified = currentFactors.factors.filter(f => f.status === "verified");
+          const usedFactor = verifiedNow.length > 0 ? factorId : undefined;
+          if (usedFactor) {
+            if (!verified.some(f => f.id === usedFactor)) return refuse();
+          } else if (verified.length > 0) return refuse();
+          recoveryPhase("authorization");
+          const evidence = accountOperationEvidence(principal, currentFactors, checkedAt, usedFactor);
+          authorizeAccountOperation("recovery", evidence, false, clock());
+          recoveryPhase("db_admission");
+          await ports.admit(principal, "commit");
+          recoveryPhase("audit_attempt");
+          await ports.audit(principal, "attempted", evidence);
+          recoveryPhase("authorization");
+          authorizeAccountOperation("recovery", evidence, false, clock());
+          recoveryPhase("password_update");
+          recoveryMutation("unconfirmed");
+          const updated = await provider.updatePassword(tokens.accessToken, value.password);
+          if (updated.userId !== principal.userId) return refuse();
+          recoveryMutation("acknowledged");
+          recoveryPhase("audit_update");
+          await ports.audit(principal, "password-acknowledged", evidence);
+          recoveryPhase("revocation");
+          await provider.revoke(tokens.accessToken);
+          recoveryPhase("audit_revocation");
+          await ports.audit(principal, "revocation-acknowledged", evidence);
+          return appendCookies(reply({ passwordChanged: true, signInRequired: true, accessTokensMayRemainValidUntilExpiry: true }), clearedSessionCookies(config));
+        } catch (e) {
+          recoveryFailure(e);
+          const failed = reply({ error: "Recovery could not be completed. If you already submitted a new password, try signing in with it. If you still need to reset it, request a new link." }, e instanceof ProviderError && e.reason === "unavailable" ? 503 : 403);
+          // An ambiguous provider outcome is never retried. Local cookies are cleared
+          // without claiming the provider mutation/revocation did or did not commit.
+          return consumed ? appendCookies(failed, clearedSessionCookies(config)) : failed;
+        }
+      });
     },
   };
 }
