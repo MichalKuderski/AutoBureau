@@ -1,14 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/field";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import { DEFAULT_DESTINATION, safeDestination } from "@/server/http/public-routes";
-import { dynamicHref } from "@/lib/routes";
 import { isPlausibleEmail } from "@/lib/password";
 
 /**
@@ -41,7 +39,6 @@ import { isPlausibleEmail } from "@/lib/password";
  * `?next=/obligations` and then chooses the emailed link lands on `/dashboard`.
  */
 export function SignInForm({ next = DEFAULT_DESTINATION }: { next?: string } = {}) {
-  const router = useRouter();
   const [mode, setMode] = useState<"password" | "link">("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -55,6 +52,26 @@ export function SignInForm({ next = DEFAULT_DESTINATION }: { next?: string } = {
   const [linkSentTo, setLinkSentTo] = useState<string | null>(null);
   /** Form-level failure — the server never says *which* half was wrong, and neither do we. */
   const [formError, setFormError] = useState<string | null>(null);
+
+  // A ref closes the interval before React commits the disabled button. Each attempt
+  // owns its completion; leaving the form invalidates it even if fetch ignores abort.
+  const activeRequest = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const abandon = () => {
+      activeRequest.current?.abort();
+      activeRequest.current = null;
+    };
+    const leaveDocument = () => {
+      abandon();
+      // A back/forward-cache restoration must not resurrect a permanently busy form.
+      setPending(false);
+    };
+    window.addEventListener("pagehide", leaveDocument);
+    return () => {
+      window.removeEventListener("pagehide", leaveDocument);
+      abandon();
+    };
+  }, []);
 
   if (linkSentTo) {
     return (
@@ -90,13 +107,7 @@ export function SignInForm({ next = DEFAULT_DESTINATION }: { next?: string } = {
   }
 
   const submit = async () => {
-    // Redundant, deliberately. `Button` disables itself while `loading`, and that alone
-    // stops every duplicate the tests can construct — removing this line leaves them all
-    // green. It stays because the cost of being wrong is asymmetric: a second magic-link
-    // request overwrites the first one's verifier cookie, silently killing the link
-    // already sitting in the user's inbox, and a disabled attribute is a rendering
-    // artefact while this is not.
-    if (pending) return;
+    if (activeRequest.current) return;
 
     const nextErrors: typeof errors = {};
     if (!isPlausibleEmail(email)) {
@@ -109,64 +120,51 @@ export function SignInForm({ next = DEFAULT_DESTINATION }: { next?: string } = {
     setFormError(null);
     if (Object.keys(nextErrors).length > 0) return;
 
-    if (mode === "link") {
-      const address = email.trim();
-      setPending(true);
-      try {
-        // The magic-link endpoint is called through apiFetch so the established CSRF and
-        // same-origin credential handling remain centralized.
-        await apiFetch<void>("/auth/magic-link", { method: "POST", body: { email: address } });
-      } catch (cause) {
-        setPending(false);
-        // Every failure that reaches here is a fact about the *request* — rate limiting,
-        // an unverifiable origin, a malformed body, the deployment being unconfigured or
-        // the provider unreachable. None is a fact about the address: the endpoint
-        // answers 204 for one it could not send to, so there is no "no such account"
-        // branch to render and none may be invented here.
-        setFormError(
-          cause instanceof ApiError
-            ? (cause.problem.detail ?? "We couldn't send the link. Please try again.")
-            : "We couldn't send the link. Please try again.",
-        );
-        return;
-      }
-      // Cleared before the confirmation replaces the form, so that "Use a password
-      // instead" comes back to a live submit button rather than a stuck spinner.
-      setPending(false);
-      setLinkSentTo(address);
-      return;
-    }
-
+    const request = new AbortController();
+    activeRequest.current = request;
+    const startingUrl = window.location.href;
+    const isCurrent = () => activeRequest.current === request && !request.signal.aborted
+      && window.location.href === startingUrl;
+    let navigating = false;
     setPending(true);
     try {
-      // ADR-009 D2: the session is established server-side. `apiFetch` attaches the D4
-      // CSRF header and `credentials: "same-origin"`; the response carries no token, only
-      // `Set-Cookie`. Nothing token-shaped is read, stored, or inspected on this side.
+      if (mode === "link") {
+        const address = email.trim();
+        // Preserve the magic-link endpoint's PKCE and non-enumerating confirmation.
+        await apiFetch<void>("/auth/magic-link", {
+          method: "POST", body: { email: address }, signal: request.signal,
+        });
+        if (isCurrent()) setLinkSentTo(address);
+        return;
+      }
+
+      // ADR-009 D2/D4: the server establishes HttpOnly cookies; apiFetch keeps the
+      // same-origin credentials and CSRF header. No tokens reach client-side storage.
       await apiFetch<void>("/auth/sign-in", {
         method: "POST",
         body: { email: email.trim(), password },
+        signal: request.signal,
       });
-      // The session now lives in cookies the browser will not show us, so the destination
-      // must be re-fetched from the server rather than rendered from anything held here.
-      //
-      // Blueprint P0-13. `next` was already validated by `page.tsx` before it became a
-      // prop; it is validated again here, immediately before navigation. That is the
-      // same entry-and-exit shape the PKCE flow already uses for its stored destination
-      // (`magic-link/route.ts` on the way in, `auth/callback/route.ts` on the way out),
-      // and for the same reason: it is the check nearest the actual navigation, so it
-      // holds however this component is constructed. Both calls are the one
-      // `safeDestination` — the rules are not written twice.
-      router.replace(dynamicHref(safeDestination(next)));
-      router.refresh();
+      if (!isCurrent()) return;
+      // Revalidate the page's destination at the navigation boundary (P0-13). A single
+      // document replacement reads the new cookies and discards prior router/query
+      // caches. replace + refresh can start two overlapping streamed server renders.
+      // Preserve history replacement so Back does not return to this submitted form.
+      window.location.replace(safeDestination(next));
+      navigating = true;
     } catch (cause) {
-      setPending(false);
-      if (cause instanceof ApiError) {
-        // The endpoint already collapses "wrong password" and "no such account" into one
-        // answer; repeating its detail verbatim keeps that property instead of guessing.
-        setFormError(cause.problem.detail ?? "We couldn't sign you in. Please try again.");
-        return;
+      if (!isCurrent()) return;
+      const fallback = mode === "link"
+        ? "We couldn't send the link. Please try again."
+        : "We couldn't sign you in. Please try again.";
+      // Request failures never establish whether an account exists. Abandoning the
+      // request suppresses this UI completion; it cannot roll back server-side work.
+      setFormError(cause instanceof ApiError ? (cause.problem.detail ?? fallback) : fallback);
+    } finally {
+      if (activeRequest.current === request && !navigating) {
+        activeRequest.current = null;
+        setPending(false);
       }
-      setFormError("We couldn't sign you in. Please try again.");
     }
   };
 
@@ -238,6 +236,7 @@ export function SignInForm({ next = DEFAULT_DESTINATION }: { next?: string } = {
 
         <Button
           variant="link"
+          disabled={pending}
           className="self-center text-sm"
           onClick={() => {
             setMode(mode === "password" ? "link" : "password");
