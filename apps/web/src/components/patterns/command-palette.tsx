@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/icon";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { useHousehold } from "@/providers/household-provider";
 import { useObligations } from "@/lib/domain/queries";
+import { dashboardReadScheduler } from "@/lib/domain/read-scheduler";
 import { formatDueLabel } from "@/lib/format";
 
 /**
@@ -74,7 +76,8 @@ export function CommandPalette() {
 
   useFocusTrap(panelRef, open, () => setOpen(false));
 
-  const search = useObligations(household.id, { search: query }, open && query.trim().length > 0);
+  const schedule = dashboardReadScheduler(useQueryClient());
+  const search = useObligations(household.id, { search: query }, open && query.trim().length > 0, schedule);
   const obligations = search.data;
 
   useEffect(() => {

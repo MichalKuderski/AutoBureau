@@ -67,3 +67,33 @@ Supabase and the database; passing it does not prove hosted auth, tenant policy,
 BFCache behavior or elimination of database timeouts. Real BFCache restoration is
 not claimed from the unit pagehide simulation. Full CI must still pass, followed
 by the existing required reviewer gate before an isolated preview can be tested.
+
+## Dashboard shell scheduling and billing recovery (October 2026)
+
+BillingBanner mounts outside DashboardScreen, and the command palette is a sibling
+of AppShell. Both previously bypassed the dashboard read scheduler. Billing now
+schedules in its shared hook (including the settings observer), and interactive
+obligation search uses the same QueryClient queue. Reads retain captured household
+scope and AbortSignal. No mutations, server admission checks or provider gates move.
+
+A failed billing read now shows an explicit status warning instead of silently
+hiding. Transient failure permits one manual retry; billing still has no automatic
+retry. A 401 offers sign-in, and 403 suppresses retry. Failed refreshes and loss of
+owner role hide cached billing details/actions. Billing-OFF responses do not offer
+provider actions. Scheduling is local to the QueryClient: other tabs, server work,
+route transitions and mutations are not globally serialized, and a slow billing
+read can delay panels. Closing search alone does not promise transport cancellation.
+
+The full-shell regression mounts the real shell, dashboard, palette and an extra
+billing-settings observer. It covers refresh/search overlap, explicit recovery,
+queued household cancellation with an unsettled transport, role changes and stale
+401/403/500 responses. Collection continuation remains covered by the existing
+collection tests; the shell fixture uses exhausted pages.
+
+`node scripts/dashboard-shell-browser.mjs` runs an optional production-mode Next
+fixture importing those same components, using the Playwright/Chromium variables
+above. Browser requests are restricted to loopback; every API response is synthetic.
+It asserts one initial billing request, visible failure, one explicit recovery
+request despite duplicate clicks, shared serialization during refresh/search, and
+no provider actions for billing OFF. This is not hosted performance or auth/RLS
+acceptance, and the underlying P2028 cause remains unresolved.
