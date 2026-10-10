@@ -97,7 +97,7 @@ export function createLocalExportArchiveVault(root: string, key: KeyObject, cust
   if (key.type !== "secret" || key.symmetricKeySize !== 32) return refuse();
   async function directory() {
     const p = resolve(root), s = await lstat(p);
-    if (!p.startsWith("/private/tmp/pellum-export-vault-") || !s.isDirectory() || s.isSymbolicLink() || (s.mode & 0o077) !== 0 || s.uid !== process.getuid?.() || await realpath(p) !== p) return refuse();
+    if (!(p.startsWith("/private/tmp/pellum-export-vault-") || p.startsWith("/tmp/pellum-export-vault-")) || !s.isDirectory() || s.isSymbolicLink() || (s.mode & 0o077) !== 0 || s.uid !== process.getuid?.() || await realpath(p) !== p) return refuse();
     return p;
   }
   async function paths(householdId: string, requestId: string) {

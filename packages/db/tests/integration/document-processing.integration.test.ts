@@ -124,7 +124,7 @@ it('direct SQL cannot complete without a transactional outbox intent or edit cha
 
 it('local copy response loss reconciles exact bytes before ready; export excludes storage/lease identities',async()=>{
  const{hh,owner}=await household(),f=await clean(hh),c=await registerCleanCustody(db,hh,f.scan);
- const root=mkdtempSync('/private/tmp/pellum-clean-custody-');
+ const root=mkdtempSync(`${process.platform === 'linux' ? '/tmp' : '/private/tmp'}/pellum-clean-custody-`);
  try{const store=localCleanCustody(root),ref={householdId:hh,objectId:c.objectId,sha256:Buffer.from(c.sha256).toString('hex'),size:c.sizeBytes};
   store.copy(ref,f.bytes);store.copy(ref,f.bytes);expect(store.verify(ref).exactBytes).toBe(true);
   const id=await markCleanCustodyReady(db,hh,c.id),req=randomUUID();await runAsUser(owner,()=>requestOwnerExport(appDb,hh,req));

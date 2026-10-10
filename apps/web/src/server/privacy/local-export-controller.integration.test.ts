@@ -15,7 +15,7 @@ afterAll(async()=>{if(admin){const where={householdId:{in:households}};await adm
 async function fixture(){
  const user=randomUUID(),hh=randomUUID(),requestId=randomUUID();users.push(user);households.push(hh);
  await admin.user.create({data:{id:user,email:`${user}@example.test`}});await admin.household.create({data:{id:hh,name:"PUBLIC partial export",createdBy:user}});await admin.householdUser.create({data:{householdId:hh,userId:user,role:"owner"}});
- const dir=await mkdtemp('/private/tmp/pellum-local-export-http-');dirs.push(dir);await chmod(dir,0o700);
+ const dir=await mkdtemp(`${process.platform === 'linux' ? '/tmp' : '/private/tmp'}/pellum-local-export-http-`);dirs.push(dir);await chmod(dir,0o700);
  const vault=createLocalExportVault(dir,createSecretKey(randomBytes(32))),now=Math.floor(Date.now()/1000);
  const p:VerifiedPrincipal={userId:user,email:undefined,issuedAt:now,expiresAt:now+600,assurance:{sessionId:randomUUID(),level:"aal1",methods:[{method:"password",timestamp:now}]}};
  const ports={verifyJwt:vi.fn(async()=>p),factors:vi.fn(async()=>({userId:user,factors:[]})),limit:vi.fn(async()=>true),admit:(h:string,principal:VerifiedPrincipal)=>runAsUser(principal.userId,()=>readAccountSecurityAdmission(db,h,principal.userId))};
