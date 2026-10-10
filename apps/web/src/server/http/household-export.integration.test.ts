@@ -3,6 +3,7 @@ import { mkdtemp, chmod, rm } from "node:fs/promises";
 
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { domainHarness } from "@/test/integration/domain-harness";
+import { exportArchiveStorage } from "@/server/privacy/export-storage";
 
 let h: Awaited<ReturnType<typeof domainHarness>>;
 let exports_: typeof import("@/app/v1/households/[id]/exports/route");
@@ -12,8 +13,8 @@ let base: string, vault: string, custody: string;
 const mounted = () => Object.assign(process.env, { LOCAL_PRIVACY_STORAGE: "synthetic-only", LOCAL_EXPORT_VAULT: vault, LOCAL_CLEAN_CUSTODY_ROOT: custody, LOCAL_EXPORT_KEY: randomBytes(32).toString("hex") });
 beforeAll(async () => {
   h = await domainHarness(); base = `/v1/households/${h.household}/exports`;
-  vault = await mkdtemp("/private/tmp/pellum-export-vault-"); await chmod(vault, 0o700);
-  custody = await mkdtemp("/private/tmp/pellum-clean-custody-"); await chmod(custody, 0o700);
+  vault = await mkdtemp(`${process.platform === 'linux' ? '/tmp' : '/private/tmp'}/pellum-export-vault-`); await chmod(vault, 0o700);
+  custody = await mkdtemp(`${process.platform === 'linux' ? '/tmp' : '/private/tmp'}/pellum-clean-custody-`); await chmod(custody, 0o700);
   [exports_, revoke, download] = await Promise.all([import("@/app/v1/households/[id]/exports/route"), import("@/app/v1/households/[id]/exports/revoke/route"), import("@/app/v1/households/[id]/exports/[requestId]/route")]);
 });
 afterEach(() => { for (const k of ["LOCAL_PRIVACY_STORAGE", "LOCAL_EXPORT_VAULT", "LOCAL_CLEAN_CUSTODY_ROOT", "LOCAL_EXPORT_KEY"]) delete process.env[k]; });
@@ -25,6 +26,16 @@ const names = (zip: Buffer) => { const end = zip.lastIndexOf(Buffer.from([0x50, 
   for (let i = 0, p = zip.readUInt32LE(end + 16); i < zip.readUInt16LE(end + 10); i++) { const n = zip.readUInt16LE(p + 28); out.push(zip.subarray(p + 46, p + 46 + n).toString()); p += 46 + n; } return out; };
 
 describe("owner export routes", () => {
+  it("keeps local storage unavailable in hosted runtimes and with unapproved roots", () => {
+    mounted();
+    const env = { ...process.env };
+    expect(exportArchiveStorage(env)).not.toBeNull();
+    for (const override of [
+      { NODE_ENV: "production" }, { VERCEL: "1" }, { AWS_EXECUTION_ENV: "AWS_Lambda_nodejs22.x" },
+      { LOCAL_PRIVACY_STORAGE: "" }, { DATABASE_URL: "postgresql://app_user:synthetic@example.test/pellum_test" },
+      { LOCAL_EXPORT_VAULT: "/tmp/unapproved" }, { LOCAL_CLEAN_CUSTODY_ROOT: "/tmp/unapproved" },
+    ]) expect(exportArchiveStorage({ ...env, ...override })).toBeNull();
+  });
   it("say plainly that export is unavailable where no reviewed storage is mounted, creating nothing", async () => {
     const status = await exports_.GET(await h.request(base));
     expect(await status.json()).toEqual({ available: false, latest: null });
