@@ -26,6 +26,19 @@ beforeEach(() => {
 });
 
 describe("dashboard partial-read messaging", () => {
+  it("keeps the greeting stable when the clock crosses noon", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-10-10T11:59:59Z"));
+      const view = renderScreen(<DashboardScreen />);
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Hello, Dana");
+      vi.setSystemTime(new Date("2026-10-10T12:00:00Z"));
+      view.rerender(<DashboardScreen />);
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Hello, Dana");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it("keeps valid zero statistics and the scoped empty list without global reassurance when upcoming fails", () => {
     upcoming.isError = true;
     renderScreen(<DashboardScreen />);

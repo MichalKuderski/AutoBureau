@@ -97,3 +97,24 @@ It asserts one initial billing request, visible failure, one explicit recovery
 request despite duplicate clicks, shared serialization during refresh/search, and
 no provider actions for billing OFF. This is not hosted performance or auth/RLS
 acceptance, and the underlying P2028 cause remains unresolved.
+
+## Deterministic dashboard greeting
+
+The greeting uses `Hello, <first name>` so server and client do not independently
+read their local clocks during hydration. The previous time-of-day greeting
+reproduced React 418 in both development and production: the server rendered
+`Good afternoon` while the browser rendered `Good morning`. Matching timezone and
+clock controls did not fail. This shared-code defect is separate from database
+latency and the blocked Vercel feedback script; no CSP or auth policy changes.
+
+`node scripts/dashboard-hydration-browser.mjs` uses the existing Playwright and
+Chromium variables above. It imports the real shell/dashboard/providers into a
+synthetic loopback fixture, fixes constructor time only in the test harness, and
+compares the response HTML heading with the hydrated heading. Four clean contexts
+cover matching timezone/time, different timezones with different or matching
+old greeting buckets, and a one-second crossing of noon. Every case requires the
+same `Hello, Dana` heading and zero console/page errors. All non-loopback requests
+are refused. Set `HYDRATION_MODE=development` for React's expanded diagnostics;
+the default uses a production build. These optional browser tests require local
+Chromium; regular CI does not install it. They do not prove hosted auth, CSP or
+database behavior, and the first-name privacy behavior is unchanged.
