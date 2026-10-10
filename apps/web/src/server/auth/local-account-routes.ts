@@ -1,3 +1,4 @@
+import { recoveryFailure } from "./recovery-diagnostics";
 import { z } from "zod";
 import type { AuthConfig } from "./config";
 import { readCookie } from "./context";
@@ -31,6 +32,6 @@ export function createLocalAccountRoutes(config: AuthConfig, controllers: {
       const input: unknown = await jsonBody(request, z.unknown(), 4096);
       if (route === "security") return controllers.security(request, token!, input);
       return controllers[route](request, input);
-    } catch { return denied(403); }
+    } catch (cause) { recoveryFailure(cause); return denied(403); }
   };
 }

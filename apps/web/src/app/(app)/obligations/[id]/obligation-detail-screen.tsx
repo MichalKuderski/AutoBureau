@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { concealedDenial } from "@/lib/domain/document-review";
 import { cn } from "@/lib/cn";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -70,7 +71,7 @@ export function ObligationDetailScreen({ id }: { id: string }) {
 
   return (
     <Shell>
-      <Detail obligation={query.data} canWrite={can("write")} />
+      <Detail key={`${household.id}:${id}`} obligation={query.data} canWrite={can("write")} />
     </Shell>
   );
 }
@@ -332,6 +333,7 @@ function Detail({ obligation, canWrite }: { obligation: ObligationView; canWrite
       }} />}
       {sourceDocumentId ? (
         <SourceDocumentDrawer
+          key={`${household.id}:${sourceDocumentId}`}
           open={sourceOpen}
           documentId={sourceDocumentId}
           onClose={() => setSourceOpen(false)}
@@ -522,7 +524,7 @@ function FreshnessNote({ obligation }: { obligation: ObligationView }) {
  * queue uses, so a correction made from here is the identical flow — and there is
  * exactly one implementation of "show me what you read".
  */
-function SourceDocumentDrawer({
+export function SourceDocumentDrawer({
   open,
   documentId,
   onClose,
@@ -533,32 +535,42 @@ function SourceDocumentDrawer({
 }) {
   const { household } = useHousehold();
   const query = useDocument(household.id, documentId ?? "");
+  const content = useRef<HTMLDivElement>(null);
+  const focusAfterRetry = useRef(false);
+  useEffect(() => {
+    if (focusAfterRetry.current && !query.isFetching) { content.current?.focus(); focusAfterRetry.current = false; }
+  }, [query.isFetching]);
+  const visible = !query.isError ? query.data : null;
 
   return (
     <Modal
       variant="drawer"
       open={open && documentId !== null}
       onClose={onClose}
-      title={query.data?.title ?? "Source document"}
-      {...(query.data
+      title={visible?.title ?? "Source document"}
+      {...(visible
         ? {
-            description: `${query.data.member_name ?? "Whole household"} · added ${formatDate(query.data.created_at, { locale: household.locale, timeZone: household.timezone })}`,
+            description: `${visible.member_name ?? "Whole household"} · added ${formatDate(visible.created_at, { locale: household.locale, timeZone: household.timezone })}`,
           }
         : {})}
     >
+      <div ref={content} tabIndex={-1} aria-live="polite" aria-busy={query.isFetching}>
       {query.isPending ? (
         <SkeletonGroup className="flex flex-col gap-3" label="Loading document">
           <Skeleton className="h-4 w-2/3" />
           <Skeleton className="h-4 w-1/2" />
           <Skeleton className="h-24 w-full rounded-md" />
         </SkeletonGroup>
-      ) : query.data ? (
-        <ReviewPanel document={query.data} onDone={onClose} />
+      ) : query.isError && !concealedDenial(query.error) ? (
+        <ErrorState {...describeError(query.error)} onRetry={() => { focusAfterRetry.current = true; void query.refetch(); }} />
+      ) : visible ? (
+        <ReviewPanel document={visible} onDone={onClose} />
       ) : (
         <p className="text-sm text-ink-secondary">
-          That document is no longer available. The facts it produced are still in your ledger.
+          That document is unavailable.
         </p>
       )}
+      </div>
     </Modal>
   );
 }

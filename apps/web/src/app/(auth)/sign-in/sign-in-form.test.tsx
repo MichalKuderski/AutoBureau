@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderScreen } from "@/test/render";
 import { CSRF_HEADER } from "@/lib/csrf";
@@ -23,10 +23,11 @@ import { SignInForm } from "./sign-in-form";
  * response that caused it.
  */
 
-const { replace, refresh } = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn() }));
+const { routerReplace, refresh } = vi.hoisted(() => ({ routerReplace: vi.fn(), refresh: vi.fn() }));
+let replace: ReturnType<typeof vi.spyOn>;
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace, refresh, push: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({ replace: routerReplace, refresh, push: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
 }));
 
 /** 204 is the endpoint's only success, and it carries no body. */
@@ -46,13 +47,17 @@ const PROBLEM = (status: number, detail: string): Response =>
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  replace.mockClear();
+  replace = vi.spyOn(window.location, "replace").mockImplementation(() => {});
+  routerReplace.mockClear();
   refresh.mockClear();
   fetchMock = vi.fn().mockImplementation(() => Promise.resolve(NO_CONTENT()));
   vi.stubGlobal("fetch", fetchMock);
 });
 
 afterEach(() => {
+  expect(routerReplace).not.toHaveBeenCalled();
+  expect(refresh).not.toHaveBeenCalled();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
@@ -370,7 +375,7 @@ describe("P0-06 Test F · the password path is untouched", () => {
       password: "correct horse battery staple",
     });
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/dashboard"));
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("still refuses to submit without a password, without reaching the network", async () => {
@@ -422,7 +427,7 @@ describe("P0-13 Test A · a valid destination is honoured", () => {
     await signInWithPassword();
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/obligations"));
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(refresh).not.toHaveBeenCalled();
   });
 });
 
@@ -556,5 +561,133 @@ describe("P0-13 Test J · the magic-link path is untouched", () => {
 
     expect(replace).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+function deferredResponse() {
+  let resolve!: (value: Response) => void;
+  let reject!: (cause: unknown) => void;
+  const promise = new Promise<Response>((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+
+async function fillPasswordForm() {
+  await userEvent.type(screen.getByLabelText("Email"), "someone@example.test");
+  await userEvent.type(screen.getByLabelText("Password"), "synthetic-password");
+  return screen.getByRole("button", { name: /^sign in$/i }).closest("form")!;
+}
+
+describe("one fresh document navigation owned by the live submission", () => {
+  it("locks synchronous duplicate submissions before the disabled state commits", async () => {
+    const response = deferredResponse();
+    fetchMock.mockReturnValue(response.promise);
+    renderScreen(<SignInForm next="/obligations?member=m-1" />);
+    const form = await fillPasswordForm();
+    act(() => {
+      // Bypass the disabled button and dispatch within one React batch: a state-only
+      // pending guard still sees the previous render and would POST twice here.
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /sign in/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: LINK_MODE })).toBeDisabled();
+    expect(lastRequest()[1]).toMatchObject({ credentials: "same-origin" });
+    expect((lastRequest()[1].headers as Record<string, string>)[CSRF_HEADER]).toBeDefined();
+    await act(async () => { response.resolve(NO_CONTENT()); });
+    expect(replace).toHaveBeenCalledExactlyOnceWith("/obligations?member=m-1");
+    fireEvent.submit(form);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["success", "failure"])("ignores late %s after unmount even when transport ignores abort", async (outcome) => {
+    const response = deferredResponse();
+    fetchMock.mockReturnValue(response.promise);
+    const view = renderScreen(<SignInForm />);
+    await signInWithPassword();
+    const signal = lastRequest()[1].signal!;
+    view.unmount();
+    expect(signal.aborted).toBe(true);
+    await act(async () => {
+      if (outcome === "success") response.resolve(NO_CONTENT());
+      else response.reject(new TypeError("network"));
+    });
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("does not let an abandoned completion navigate or unlock a newer form", async () => {
+    const old = deferredResponse(), current = deferredResponse();
+    fetchMock.mockReturnValueOnce(old.promise).mockReturnValueOnce(current.promise);
+    const previous = renderScreen(<SignInForm next="/obligations" />);
+    await signInWithPassword();
+    previous.unmount();
+    renderScreen(<SignInForm next="/dashboard" />);
+    const form = await fillPasswordForm();
+    fireEvent.submit(form);
+    await act(async () => { old.resolve(NO_CONTENT()); });
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /sign in/i })).toBeDisabled();
+    fireEvent.submit(form);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await act(async () => { current.resolve(NO_CONTENT()); });
+    expect(replace).toHaveBeenCalledExactlyOnceWith("/dashboard");
+  });
+
+  it("ignores completion when navigation changed the URL before unmount", async () => {
+    const response = deferredResponse();
+    fetchMock.mockReturnValue(response.promise);
+    const originalUrl = window.location.href;
+    renderScreen(<SignInForm />);
+    await signInWithPassword();
+    window.history.replaceState(null, "", "/forgot-password");
+    try {
+      await act(async () => { response.resolve(NO_CONTENT()); });
+      expect(replace).not.toHaveBeenCalled();
+    } finally {
+      window.history.replaceState(null, "", originalUrl);
+    }
+  });
+
+  it("abandons pagehide work and permits a fresh submission after restoration", async () => {
+    const old = deferredResponse(), current = deferredResponse();
+    fetchMock.mockReturnValueOnce(old.promise).mockReturnValueOnce(current.promise);
+    renderScreen(<SignInForm />);
+    await signInWithPassword();
+    const signal = lastRequest()[1].signal!;
+    fireEvent(window, new Event("pagehide"));
+    expect(signal.aborted).toBe(true);
+    expect(screen.getByRole("button", { name: /sign in/i })).not.toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    await act(async () => { old.resolve(NO_CONTENT()); });
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /sign in/i })).toBeDisabled();
+    await act(async () => { current.resolve(NO_CONTENT()); });
+    expect(replace).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases the lock after an error for one explicit retry", async () => {
+    fetchMock.mockResolvedValueOnce(PROBLEM(503, "Please try again."));
+    renderScreen(<SignInForm />);
+    await signInWithPassword();
+    expect(await screen.findByText("Please try again.")).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(replace).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not show an abandoned magic-link confirmation on a later form", async () => {
+    const response = deferredResponse();
+    fetchMock.mockReturnValue(response.promise);
+    const first = renderScreen(<SignInForm />);
+    await requestLink("someone@example.test");
+    first.unmount();
+    renderScreen(<SignInForm />);
+    await act(async () => { response.resolve(NO_CONTENT()); });
+    expect(screen.getByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Check your email" })).not.toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
   });
 });

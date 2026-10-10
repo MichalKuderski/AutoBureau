@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { dashboardPhase } from "../observability/dashboard-render";
 import { AccountSecurityRefused, readHouseholdSessionAdmission, runAsUser, runWithHouseholdSessionScope, type Database } from "@autobureau/db";
 import type { RequestContext } from "./context";
 import type { VerifiedPrincipal } from "./jwt";
@@ -30,10 +31,10 @@ export async function withHouseholdSession<T>(db:Database,ctx:RequestContext,pri
   if(!mode || p.userId!==ctx.userId || !a || !z.string().uuid().safeParse(a.sessionId).success)return refuse();
   const admission=()=>readHouseholdSessionAdmission(db,ctx.householdId,ctx.userId,ctx.role);
   return runAsUser(ctx.userId,async()=>{
-    const before=await admission();
+    const before=await dashboardPhase("admission_before", admission);
     if(p.expiresAt<=before.now)return refuse();
     const checkedAt=clock();
-    const state=factors.parse(await provider.factors(token));
+    const state=factors.parse(await dashboardPhase("provider_factors", () => provider.factors(token)));
     if(state.userId!==p.userId)return refuse();
     const verifiedTotp=state.factors.some(f=>f.status==="verified");
     const check=(current:{requiresMfa:boolean;now:number})=>{
@@ -45,10 +46,10 @@ export async function withHouseholdSession<T>(db:Database,ctx:RequestContext,pri
       } else if(a.level!=="aal1")return refuse();
       if(mode==="recent")requireRecentAccountAuth(p,{userId:p.userId,sessionId:a.sessionId,checkedAt,verifiedTotp},now);
     };
-    check(await admission());
+    check(await dashboardPhase("admission_after_factors", admission));
     return runWithHouseholdSessionScope(ctx.householdId,ctx.userId,ctx.role,check,async()=>{
-      const result=await task();
-      check(await admission()); // no serialized body/capability escapes after policy drift
+      const result=await dashboardPhase("session_task", task);
+      check(await dashboardPhase("admission_after_task", admission)); // no serialized body/capability escapes after policy drift
       return result;
     });
   });

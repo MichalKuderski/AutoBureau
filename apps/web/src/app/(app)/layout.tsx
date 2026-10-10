@@ -26,6 +26,8 @@ import {
 import { createJwtVerifier } from "@/server/auth/jwt";
 import { getDatabase } from "@/server/db";
 import { ONBOARDING_PATH, SIGN_IN_PATH } from "@/server/http/public-routes";
+import { DASHBOARD_RENDER_HEADER } from "@/server/http/dashboard-render-marker";
+import { dashboardPhase, dashboardResolution, withDashboardRender } from "@/server/observability/dashboard-render";
 
 /**
  * Authenticated route group (ADR-009 D1/D3).
@@ -82,7 +84,7 @@ async function ownHouseholds(
   const token = readCookie(requestHeaders.get("cookie"), deps.cookieName);
   if (token === null) return [];
   const principal = await deps.verifier.verify(token);
-  return householdOptions(db,principal,token,createAccountProvider(config));
+  return dashboardPhase("household_options", () => householdOptions(db,principal,token,createAccountProvider(config)));
 }
 
 /**
@@ -90,28 +92,23 @@ async function ownHouseholds(
  * It signals by throwing, and a catch-all would swallow the redirect and render the
  * authenticated shell to someone who is not entitled to it.
  */
-async function resolve(): Promise<Resolution> {
+async function resolve(requestHeaders: Headers): Promise<Resolution> {
   let config;
   let db;
   try {
-    config = authConfigFromEnv();
-    db = getDatabase();
+    ({ config, db } = await dashboardPhase("configuration", async () => ({ config: authConfigFromEnv(), db: getDatabase() })));
   } catch {
     // Unreachable in practice — middleware denies every non-public route when the
     // deployment is unconfigured — but failing to sign-in is the only safe answer.
     return { kind: "sign-in" };
   }
 
-  const requestHeaders = await headers();
-
+  const verifier = createJwtVerifier({
+    jwks: config.jwks, issuer: config.issuer, audience: config.audience, algorithms: config.algorithms,
+  });
   const deps = {
-    verifier: createJwtVerifier({
-      jwks: config.jwks,
-      issuer: config.issuer,
-      audience: config.audience,
-      algorithms: config.algorithms,
-    }),
-    memberships: membershipsVia(db),
+    verifier: { verify: (token: string) => dashboardPhase("identity_verify", () => verifier.verify(token)) },
+    memberships: (userId: string) => dashboardPhase("memberships", () => membershipsVia(db)(userId)),
     cookieName: config.cookieName,
   };
 
@@ -134,7 +131,7 @@ async function resolve(): Promise<Resolution> {
   let ctx;
   try {
     try {
-      ctx = await resolveRequestContext(request(preference), deps);
+      ctx = await dashboardPhase("context", () => resolveRequestContext(request(preference), deps));
     } catch (cause) {
       // A preference the server refuses is discarded, not fatal. Membership can be
       // revoked, a cookie can be edited, and an id can go stale between sessions — in
@@ -151,7 +148,7 @@ async function resolve(): Promise<Resolution> {
         cause instanceof RequestContextError &&
         (cause.reason === "not-a-member" || cause.reason === "malformed-household");
       if (!refusedPreference) throw cause;
-      ctx = await resolveRequestContext(request(null), deps);
+      ctx = await dashboardPhase("context_fallback", () => resolveRequestContext(request(null), deps));
     }
   } catch (cause) {
     if (cause instanceof RequestContextError && cause.reason === "unauthenticated") {
@@ -194,11 +191,12 @@ async function resolve(): Promise<Resolution> {
   const token = readCookie(requestHeaders.get("cookie"), config.cookieName)!;
   const principal = await deps.verifier.verify(token);
   const provider = createAccountProvider(config);
-  const households = await householdOptions(db,principal,token,provider);
+  const households = await dashboardPhase("household_options", () => householdOptions(db,principal,token,provider));
 
   // One short scoped transaction, no network I/O inside it. RLS is what scopes the
   // household rows: the queries name no household id and the policy decides.
-  const data = await withHouseholdSession(db,ctx,principal,token,provider,"registry.read", () => db.withHousehold(ctx.householdId, async (tx) => {
+  const data = await dashboardPhase("shell_session", async () => {
+    const result = await withHouseholdSession(db,ctx,principal,token,provider,"registry.read", () => dashboardPhase("shell_read", () => db.withHousehold(ctx.householdId, async (tx) => {
     const household = await tx.household.findFirst({
       select: { name: true, emailAlias: true },
     });
@@ -219,7 +217,9 @@ async function resolve(): Promise<Resolution> {
       },
     });
     return { household, members, entitlement, user };
-  }));
+    })));
+    return result;
+  });
 
   const profile = data.user?.profile;
   const email = data.user?.email ?? "";
@@ -253,8 +253,13 @@ async function resolve(): Promise<Resolution> {
 }
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const requestHeaders = await headers();
   let resolved:Resolution;
-  try{resolved = await resolve();}catch(e){
+  try{resolved = await withDashboardRender(requestHeaders.get(DASHBOARD_RENDER_HEADER) === "1", async () => {
+    const result = await resolve(requestHeaders);
+    dashboardResolution(result.kind);
+    return result;
+  });}catch(e){
     if(e instanceof AccountSecurityRefused)return <main className="mx-auto max-w-xl p-6"><h1>Verify your account security</h1><p>Your household data stays locked until account security checks pass.</p><a href="/account-security">Open account security</a></main>;
     throw e;
   }

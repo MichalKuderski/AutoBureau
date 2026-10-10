@@ -4,6 +4,7 @@ import { authConfigFromEnv, type AuthConfig } from "@/server/auth/config";
 import { readCookie } from "@/server/auth/context";
 import { TokenError, VerificationUnavailableError, createJwtVerifier, type JwtVerifier } from "@/server/auth/jwt";
 import { NONCE_HEADER, buildCsp, createNonce } from "@/server/http/csp";
+import { DASHBOARD_RENDER_HEADER } from "@/server/http/dashboard-render-marker";
 import {
   DEFAULT_DESTINATION,
   SIGN_IN_PATH,
@@ -147,6 +148,8 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
         // the `nonce` above, so the script the browser receives and the policy it
         // enforces are the same value by construction.
         const headers = new Headers(request.headers);
+        headers.delete(DASHBOARD_RENDER_HEADER);
+        if (request.method === "GET" && request.nextUrl.pathname === "/dashboard") headers.set(DASHBOARD_RENDER_HEADER, "1");
         headers.set(NONCE_HEADER, nonce);
         headers.set("content-security-policy", csp);
         return NextResponse.next({ request: { headers } });

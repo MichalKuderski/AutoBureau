@@ -3,7 +3,7 @@ import {randomUUID,createHash} from 'node:crypto';
 import {afterEach,it,expect} from 'vitest';
 import {localCleanCustody} from '../../src/local-clean-custody.js';
 const roots:string[]=[];afterEach(()=>{for(const r of roots.splice(0))rmSync(r,{recursive:true,force:true});});
-function fixture(){const root=mkdtempSync('/private/tmp/pellum-clean-custody-');roots.push(root);const bytes=Buffer.from(`PUBLIC SYNTHETIC ${randomUUID()}`),r={householdId:randomUUID(),objectId:randomUUID(),sha256:createHash('sha256').update(bytes).digest('hex'),size:bytes.length};return{root,bytes,r,port:localCleanCustody(root),path:`${root}/${r.householdId}.${r.objectId}`};}
+function fixture(){const root=mkdtempSync(`${process.platform === 'linux' ? '/tmp' : '/private/tmp'}/pellum-clean-custody-`);roots.push(root);const bytes=Buffer.from(`PUBLIC SYNTHETIC ${randomUUID()}`),r={householdId:randomUUID(),objectId:randomUUID(),sha256:createHash('sha256').update(bytes).digest('hex'),size:bytes.length};return{root,bytes,r,port:localCleanCustody(root),path:`${root}/${r.householdId}.${r.objectId}`};}
 it('reconciles response loss by verifying an existing exact immutable copy',()=>{const f=fixture();f.port.copy(f.r,f.bytes);f.port.copy(f.r,f.bytes);expect(f.port.verify(f.r)).toEqual({scope:'local-synthetic',exactBytes:true});});
 it('separates unlink acknowledgement from independent absence readback',()=>{const f=fixture();f.port.copy(f.r,f.bytes);expect(f.port.observe(f.r).state).toBe('remaining');expect(f.port.remove(f.r)).toEqual({acknowledged:true,absenceProven:false});expect(f.port.observe(f.r)).toEqual({state:'absent',finalReceiptIssuable:false});});
 it.each(['hash','size','tenant','object'])('refuses changed %s binding',field=>{const f=fixture();f.port.copy(f.r,f.bytes);const r={...f.r};if(field==='hash')r.sha256='0'.repeat(64);if(field==='size')r.size++;if(field==='tenant')r.householdId=randomUUID();if(field==='object')r.objectId=randomUUID();expect(()=>f.port.verify(r)).toThrow();});
@@ -12,3 +12,11 @@ it('refuses symlink and hardlink objects',()=>{const f=fixture(),g=fixture();g.p
 it('refuses root permission drift and corrupted copies',()=>{const f=fixture();f.port.copy(f.r,f.bytes);writeFileSync(f.path,Buffer.alloc(f.bytes.length));expect(()=>f.port.verify(f.r)).toThrow();chmodSync(f.root,0o755);expect(()=>f.port.observe(f.r)).not.toThrow();expect(f.port.observe(f.r).state).toBe('unknown');expect(()=>f.port.copy(f.r,f.bytes)).toThrow();});
 it('refuses path traversal and permissive object modes',()=>{const f=fixture();expect(()=>f.port.verify({...f.r,objectId:'../escape'})).toThrow();f.port.copy(f.r,f.bytes);chmodSync(f.path,0o644);expect(()=>f.port.verify(f.r)).toThrow();});
 it('missing custody root is unknown, never evidence that its objects were erased',()=>{const f=fixture();rmSync(f.root,{recursive:true});expect(f.port.observe(f.r).state).toBe('unknown');});
+it('refuses unapproved roots, root symlinks and noncanonical paths',()=>{
+ const f=fixture(),base=process.platform==='linux'?'/tmp':'/private/tmp';
+ const other=mkdtempSync(`${base}/pellum-unapproved-`);roots.push(other);
+ expect(()=>localCleanCustody(other)).toThrow();
+ const alias=`${f.root}-link`;symlinkSync(f.root,alias);roots.push(alias);
+ expect(()=>localCleanCustody(alias)).toThrow();
+ expect(()=>localCleanCustody(`${f.root}/../${f.root.split('/').pop()}`)).toThrow();
+});

@@ -8,8 +8,8 @@ import { CSRF_HEADER, CSRF_HEADER_VALUE, isSafeMethod } from "./csrf";
  * things at once: every error arrives as a typed ProblemDetails instead of an
  * arbitrary throw; the household header is attached in exactly one place, so a
  * screen cannot accidentally query without tenant scope; and idempotency keys are
- * generated for unsafe methods automatically, so a double-tapped button on a flaky
- * train connection cannot create two obligations.
+ * generated for unsafe methods automatically, for individual requests. Logical actions must retain an explicit key across
+ * retries; generating a key here cannot deduplicate separate invocations.
  */
 
 export class ApiError extends Error {
@@ -55,7 +55,7 @@ export interface RequestOptions {
   idempotencyKey?: string | undefined;
 }
 
-function newIdempotencyKey(): string {
+export function newIdempotencyKey(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }

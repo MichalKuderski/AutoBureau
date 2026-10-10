@@ -101,6 +101,18 @@ function extendWithAudit(prisma: PrismaClient) {
 }
 type AuditedClient = ReturnType<typeof extendWithAudit>;
 
+
+export interface TransactionTiming {
+  operation: "principal" | "household" | "identity" | "global";
+  outcome: "success" | "acquisition_failed" | "execution_failed";
+  acquisition_ms: number;
+  /** Callback entry through transaction settlement, including commit/rollback. */
+  execution_ms: number | null;
+  waiting_at_start: number;
+  active_at_start: number;
+  code?: string;
+}
+
 export class Database {
   /**
    * The audit extension must be applied before any transaction opens: a
@@ -109,8 +121,42 @@ export class Database {
    */
   private readonly client: AuditedClient;
 
-  constructor(private readonly prisma: PrismaClient) {
+  constructor(private readonly prisma: PrismaClient, private readonly observe?: (event: TransactionTiming) => void) {
     this.client = extendWithAudit(prisma);
+  }
+
+  private waiting = 0;
+  private active = 0;
+
+  /** Observations cover this handle's audited scopes only, not the remote pooler. */
+  private async transaction<T>(operation: TransactionTiming["operation"], fn: (tx: Prisma.TransactionClient) => Promise<T>,
+    options: { timeout: number; maxWait: number }): Promise<T> {
+    const start = performance.now();
+    const waiting = this.waiting++, active = this.active;
+    let entered: number | undefined, code: string | undefined;
+    let outcome: TransactionTiming["outcome"] = "success";
+    try {
+      return await this.client.$transaction(async tx => {
+        entered = performance.now(); this.waiting--; this.active++;
+        return fn(tx as unknown as Prisma.TransactionClient);
+      }, options);
+    } catch (cause) {
+      outcome = entered === undefined ? "acquisition_failed" : "execution_failed";
+      // Never inspect messages, stacks, SQL, arguments, or error getters.
+      try {
+        const value = cause && typeof cause === "object" ? Object.getOwnPropertyDescriptor(cause, "code")?.value : undefined;
+        if (typeof value === "string" && /^P[0-9]{4}$/.test(value)) code = value;
+      } catch { /* Diagnostics must not change the original refusal. */ }
+      throw cause;
+    } finally {
+      const end = performance.now();
+      if (entered === undefined) this.waiting--; else this.active--;
+      const ms = (n: number) => Math.min(600_000, Math.max(0, Math.round(n)));
+      try { this.observe?.({ operation, outcome, acquisition_ms: ms((entered ?? end) - start),
+        execution_ms: entered === undefined ? null : ms(end - entered),
+        waiting_at_start: Math.min(1000, waiting), active_at_start: Math.min(1000, active), ...(code ? { code } : {}) });
+      } catch { /* Observer failure cannot alter data or authorization outcomes. */ }
+    }
   }
 
   /**
@@ -134,7 +180,7 @@ export class Database {
     if (!UUID_RE.test(userId)) {
       throw new ScopeError(`userId is not a valid UUID: ${JSON.stringify(userId)}`);
     }
-    return this.client.$transaction(
+    return this.transaction("principal",
       async (tx) => {
         await tx.$executeRaw`SELECT set_config('request.user_id', ${userId}, true)`;
         return fn(tx as unknown as ScopedClient);
@@ -164,7 +210,7 @@ export class Database {
       throw new ScopeError(`householdId is not a valid UUID: ${JSON.stringify(householdId)}`);
     }
     return withAuditUnit(householdId, options.verb, (flush) =>
-      this.client.$transaction(
+      this.transaction("household",
         async (tx) => {
           await tx.$executeRaw`SELECT set_config('request.household_id', ${householdId}, true)`;
           // Phase 2 carries the principal too, so `audit_log.actor_id` is stamped by the
@@ -216,7 +262,7 @@ export class Database {
       throw new ScopeError(`userId is not a valid UUID: ${JSON.stringify(userId)}`);
     }
     return withAuditUnit(null, undefined, (flush) =>
-      this.client.$transaction(
+      this.transaction("identity",
         async (tx) => {
           await tx.$executeRaw`SELECT set_config('request.user_id', ${userId}, true)`;
           const result = await fn(tx as unknown as ScopedClient);
@@ -272,7 +318,7 @@ export class Database {
     if (!GLOBAL_TABLES.has(table)) {
       throw new ScopeError(`${JSON.stringify(table)} is not a global table`);
     }
-    return this.client.$transaction(
+    return this.transaction("global",
       async (tx) => fn(tx as unknown as GlobalClient),
       {
         timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
@@ -393,11 +439,11 @@ export class Database {
   }
 }
 
-export function createDatabase(databaseUrl?: string): Database {
+export function createDatabase(databaseUrl?: string, observe?: (event: TransactionTiming) => void): Database {
   // Branch rather than pass a union-typed options object: Prisma's `Subset<>`
   // constraint plus exactOptionalPropertyTypes rejects `{...} | {}`.
   const prisma = databaseUrl
     ? new PrismaClient({ datasourceUrl: databaseUrl })
     : new PrismaClient();
-  return new Database(prisma);
+  return new Database(prisma, observe);
 }

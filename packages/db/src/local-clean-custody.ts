@@ -9,7 +9,7 @@ const refuse=():never=>{throw new Error("Local clean custody refused");};
  * model transport. This is not cloud durability or an independent restore authority.
  * No filename, URI or arbitrary metadata is accepted. */
 export function localCleanCustody(root:string){
- const validRoot=()=>{const s=lstatSync(root);if(!root.startsWith('/private/tmp/pellum-clean-custody-')||!s.isDirectory()||s.isSymbolicLink()||(s.mode&0o077)||realpathSync(root)!==root)refuse();};
+ const validRoot=()=>{const s=lstatSync(root);if(!(root.startsWith('/private/tmp/pellum-clean-custody-')||root.startsWith('/tmp/pellum-clean-custody-'))||!s.isDirectory()||s.isSymbolicLink()||(s.mode&0o077)||realpathSync(root)!==root)refuse();};
  validRoot();
  const file=(r:Reference)=>{validRoot();if(!uuid.test(r.householdId)||!uuid.test(r.objectId)||!/^[a-f0-9]{64}$/.test(r.sha256)||!Number.isInteger(r.size)||r.size<1||r.size>25*1024*1024)refuse();return join(root,`${r.householdId}.${r.objectId}`);};
  const verify=(r:Reference,b:Uint8Array)=>{if(b.byteLength!==r.size||createHash('sha256').update(b).digest('hex')!==r.sha256)refuse();};

@@ -1,6 +1,6 @@
 /** Explicit LOCAL proof command only; never silently executed against hosted DBs. */
 import { createHash, randomUUID } from "node:crypto";
-import { mkdtempSync, realpathSync, rmSync, readFileSync } from "node:fs";
+import { rmSync, readFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
 import { it, expect,vi } from "vitest";
 import { DELETION_COMPONENTS } from "@autobureau/contracts";
@@ -24,6 +24,7 @@ import { syntheticObjectStore } from "../../../../scripts/synthetic-object-store
 import * as storageModule from "../../../../apps/web/src/server/storage/quarantine.js";
 import {createDocumentUpload,completeDocumentUpload} from "../../../../apps/web/src/server/domain/document-upload.js";
 import { ADMIN_URL, APP_URL, bootstrapDatabase, grantAppUserLogin } from "../integration/setup.js";
+import { createDocumentProofRoots } from "./document-proof-roots.js";
 it("joins real local immutable storage, ClamAV, restricted journals, cited review, outbox and truthful erasure progress", async()=>{
   const url=new URL(ADMIN_URL);
   if(url.hostname!=="127.0.0.1"||![["55540","/pellum_adr018_final"],["55541","/pellum_billing_20260921"],["55544","/pellum_custody_final_20260921"],["55545","/pellum_results_20260921"],["55546","/pellum_results_final_20260921"],["55548","/pellum_retirement_final_20260921"]].some(([port,path])=>url.port===port&&url.pathname===path))throw new Error("Disposable local proof endpoint required");
@@ -33,8 +34,7 @@ it("joins real local immutable storage, ClamAV, restricted journals, cited revie
   const admin=new PrismaClient({datasourceUrl:ADMIN_URL}),app=new PrismaClient({datasourceUrl:APP_URL});
   const roles=["app_document_worker","app_retention_worker","app_deletion_verifier","app_dispatcher"];
   const clients:PrismaClient[]=[];const hh=randomUUID(),owner=randomUUID();let doc=randomUUID(),seal=randomUUID();
-  const root=realpathSync(mkdtempSync("/private/tmp/pellum-document-lifecycle-"));
-  const custodyRoot=realpathSync(mkdtempSync("/private/tmp/pellum-clean-custody-"));
+  const { root, custodyRoot } = createDocumentProofRoots();
   const previous={issuer:process.env.AUTH_ISSUER,scope:process.env.VERCEL_ENV,intake:process.env.DOCUMENT_INTAKE_ENABLED};
   try {
     for(const role of roles){await admin.$executeRawUnsafe(`ALTER ROLE ${role} LOGIN PASSWORD 'local_proof_only'`);const u=new URL(ADMIN_URL);u.username=role;u.password="local_proof_only";clients.push(new PrismaClient({datasourceUrl:u.toString()}));}

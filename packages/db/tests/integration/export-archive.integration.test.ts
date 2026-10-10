@@ -1,5 +1,5 @@
 import { randomUUID, createSecretKey, randomBytes, createHash } from "node:crypto";
-import { mkdtemp, chmod, rm, readFile, writeFile, copyFile, readdir } from "node:fs/promises";
+import { mkdtemp, chmod, rm, readFile, writeFile, copyFile, readdir, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { crc32 } from "node:zlib";
 import { PrismaClient } from "@prisma/client";
@@ -16,8 +16,8 @@ const owner = randomUUID(), other = randomUUID(), households: string[] = [], key
 beforeAll(async () => {
   await bootstrapDatabase(); await grantAppUserLogin(); admin = adminClient(); app = new PrismaClient({ datasourceUrl: APP_URL }); db = new Database(app);
   await admin.user.createMany({ data: [owner, other].map(id => ({ id, email: `${id}@example.test` })) });
-  vaultRoot = await mkdtemp("/private/tmp/pellum-export-vault-"); await chmod(vaultRoot, 0o700);
-  custodyRoot = await mkdtemp("/private/tmp/pellum-clean-custody-"); await chmod(custodyRoot, 0o700);
+  vaultRoot = await mkdtemp(`${process.platform === 'linux' ? '/tmp' : '/private/tmp'}/pellum-export-vault-`); await chmod(vaultRoot, 0o700);
+  custodyRoot = await mkdtemp(`${process.platform === 'linux' ? '/tmp' : '/private/tmp'}/pellum-clean-custody-`); await chmod(custodyRoot, 0o700);
 }, 120_000);
 afterAll(async () => {
   if (admin) {
@@ -72,6 +72,22 @@ function unzip(zip: Buffer) {
 const lines = (b: Buffer | undefined) => (b?.toString("utf8") ?? "").split("\n").filter(Boolean).map(l => JSON.parse(l));
 
 describe("export v3 archive", () => {
+  it("refuses an unapproved vault root, root symlink and permission drift", async () => {
+    const f = await fixture();
+    const other = await mkdtemp(`${process.platform === 'linux' ? '/tmp' : '/private/tmp'}/pellum-unapproved-`);
+    const alias = `${vaultRoot}-link`;
+    await symlink(vaultRoot, alias);
+    const buildAt = (root: string) => runAsUser(owner, () => createLocalExportArchiveVault(root, key, localCleanCustody(custodyRoot)).build(db, f.hh, f.requestId));
+    try {
+      await expect(buildAt(other)).rejects.toThrow();
+      await expect(buildAt(alias)).rejects.toThrow();
+      await chmod(vaultRoot, 0o755);
+      await expect(buildAt(vaultRoot)).rejects.toThrow();
+    } finally {
+      await chmod(vaultRoot, 0o700);
+      await rm(alias); await rm(other, { recursive: true });
+    }
+  });
   it("contains every category with names, free text, attributes, audit and the verified original, and says what is missing", async () => {
     const f = await fixture({ unscanned: true });
     const built = await runAsUser(owner, () => vault().build(db, f.hh, f.requestId));
