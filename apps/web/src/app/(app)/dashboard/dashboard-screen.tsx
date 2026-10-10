@@ -64,7 +64,7 @@ export function DashboardScreen() {
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
-        title={`Good ${timeOfDay()}, ${firstName}`}
+        title={`Hello, ${firstName}`}
         description={
           summary.isError || actionNeeded.isError || upcoming.isError
             ? "Some dashboard information couldn't be loaded. Check the affected sections below."
@@ -312,13 +312,6 @@ function CoveragePanel() {
       </CardContent>
     </Card>
   );
-}
-
-function timeOfDay(): string {
-  const h = new Date().getHours();
-  if (h < 12) return "morning";
-  if (h < 18) return "afternoon";
-  return "evening";
 }
 
 function summaryLine(action: number, upcoming: number): string {
