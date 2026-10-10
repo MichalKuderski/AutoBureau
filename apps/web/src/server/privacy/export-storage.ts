@@ -14,7 +14,7 @@ export function exportArchiveStorage(env: Readonly<Record<string, string | undef
     const database = new URL(env.DATABASE_URL ?? "");
     if (database.hostname !== "127.0.0.1" || database.username !== "app_user" || !database.pathname.startsWith("/pellum_")) return null;
     const root = env.LOCAL_EXPORT_VAULT ?? "", custody = env.LOCAL_CLEAN_CUSTODY_ROOT ?? "", key = env.LOCAL_EXPORT_KEY ?? "";
-    if (!root.startsWith("/private/tmp/pellum-export-vault-") || !custody.startsWith("/private/tmp/pellum-clean-custody-") || !/^[a-f0-9]{64}$/.test(key)) return null;
+    if (!(root.startsWith("/private/tmp/pellum-export-vault-") || root.startsWith("/tmp/pellum-export-vault-")) || !(custody.startsWith("/private/tmp/pellum-clean-custody-") || custody.startsWith("/tmp/pellum-clean-custody-")) || !/^[a-f0-9]{64}$/.test(key)) return null;
     return createLocalExportArchiveVault(root, createSecretKey(Buffer.from(key, "hex")), localCleanCustody(custody));
   } catch { return null; }
 }
