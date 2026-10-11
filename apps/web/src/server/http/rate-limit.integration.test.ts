@@ -1,10 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import type { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
+import type { Database, GlobalClient } from "@autobureau/db";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { SignJWT, exportJWK, generateKeyPair, type JSONWebKeySet } from "jose";
-import { adminClient, assertExpectedServer, grantAppUserLogin } from "@/test/integration/database";
+import { APP_URL, adminClient, assertExpectedServer, grantAppUserLogin } from "@/test/integration/database";
 import { CSRF_HEADER, CSRF_HEADER_VALUE } from "@/lib/csrf";
 import type { LogRecord } from "@/server/observability";
 
@@ -498,25 +499,71 @@ describe("H · the 429 response contract (ADR-013 D10)", () => {
     expect(Math.abs(header - (row?.remaining ?? -999))).toBeLessThanOrEqual(2);
   });
 
-  it("H4b Retry-After shrinks as the window is consumed", async () => {
-    await attemptSignIn(6);
-    const first = Number(
-      (await signIn(signInRequest({ email: EMAIL, password: "wrong" }))).headers.get("retry-after"),
-    );
+  it.each([
+    { name: "H4b Retry-After shrinks while the same counter remains live", remaining: 120 },
+    { name: "H4c near-expiry counters are swept rather than reporting a zero countdown", remaining: 3 },
+  ])("$name", async ({ remaining }) => {
+    // One real app_user transaction fixes PostgreSQL now(). JavaScript fake timers
+    // cannot control it. Only this test's limiter calls reuse the transaction; H1–H3
+    // above still exercise the route and ordinary withGlobalTable path end to end.
+    const app = new PrismaClient({ datasources: { db: { url: APP_URL() } } });
+    try {
+      await app.$transaction(async (tx) => {
+        const [identity] = await tx.$queryRaw<Array<{ role: string }>>`SELECT current_user AS role`;
+        expect(identity?.role).toBe("app_user");
+        const db = {
+          withGlobalTable: async <T>(table: "auth_rate_limits", work: (client: GlobalClient) => Promise<T>) => {
+            expect(table).toBe("auth_rate_limits");
+            return work(tx as unknown as GlobalClient);
+          },
+        } as Database;
+        const { enforceRateLimit, SIGN_IN_POLICIES } = await import("./rate-limit");
+        const count = () => enforceRateLimit({
+          db, request: signInRequest({ email: EMAIL, password: "wrong" }), identifier: EMAIL,
+          policies: SIGN_IN_POLICIES, traceId: "rate-limit-clock-fixture", route: "/v1/auth/sign-in",
+        });
+        for (let i = 0; i < 5; i += 1) expect(await count()).toBeNull();
+        expect((await count())?.status).toBe(429);
 
-    // Push the whole window five minutes into the past WITHOUT expiring it, so the same
-    // row is still the live one and only its remaining time changes.
-    await admin.$executeRawUnsafe(`
-      UPDATE auth_rate_limits SET expires_at = expires_at - interval '1 minute'
-    `);
-    const later = Number(
-      (await signIn(signInRequest({ email: EMAIL, password: "wrong" }))).headers.get("retry-after"),
-    );
+        // Seed an explicit remaining lifetime without changing the aligned row key.
+        // The original test subtracted 60s from an unknown lifetime: near a boundary
+        // that expired the row, and Number(null) hid the subsequent allowed verdict.
+        await tx.$executeRaw`
+          UPDATE auth_rate_limits SET expires_at = now() + ${remaining} * interval '1 second'
+        `;
+        const firstResponse = await count();
+        expect(firstResponse?.status).toBe(429);
+        expect(firstResponse?.headers.get("retry-after")).not.toBeNull();
+        const first = Number(firstResponse?.headers.get("retry-after"));
+        expect(first).toBe(remaining);
+        const [before] = await tx.$queryRaw<Array<{ id: string; attempts: number }>>`
+          SELECT id, attempts FROM auth_rate_limits WHERE policy = 'sign_in.identifier_ip'
+        `;
+        expect(before?.attempts).toBe(7);
 
-    // Strictly smaller, and by about the minute we removed. A limiter that restarted the
-    // clock on every rejection would hold a caller off forever.
-    expect(later).toBeLessThan(first);
-    expect(first - later).toBeGreaterThanOrEqual(55);
+        await tx.$executeRaw`UPDATE auth_rate_limits SET expires_at = expires_at - interval '1 minute'`;
+        const laterResponse = await count();
+        const [after] = await tx.$queryRaw<Array<{ id: string; attempts: number }>>`
+          SELECT id, attempts FROM auth_rate_limits WHERE policy = 'sign_in.identifier_ip'
+        `;
+        if (remaining === 120) {
+          expect(laterResponse?.status).toBe(429);
+          expect(laterResponse?.headers.get("retry-after")).not.toBeNull();
+          const later = Number(laterResponse?.headers.get("retry-after"));
+          expect(later).toBe(60);
+          expect(first - later).toBe(60);
+          expect(after?.id).toBe(before?.id);
+          expect(after?.attempts).toBe(8);
+        } else {
+          expect(laterResponse).toBeNull(); // Allowed, not a 429 with a shorter header.
+          expect(after?.id).not.toBe(before?.id);
+          expect(after?.attempts).toBe(1);
+        }
+        expect(records.filter((r) => r.event === "auth.rate_limit_unavailable")).toHaveLength(0);
+      });
+    } finally {
+      await app.$disconnect();
+    }
   });
 
   it("H4 SECURITY: emits no RateLimit-* headers", async () => {
