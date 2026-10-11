@@ -38,22 +38,25 @@ const imports = source => [...source.matchAll(/(?:from|import)\s*["']([^"']+)["'
 const ambient = source => /\b(?:fetch|eval|Function|WebSocket|XMLHttpRequest|require)\s*\(|\bimport\s*\(|\b(?:process|globalThis|console)\s*[.[]/.test(source);
 test('provider stub and local redactor have a closed dependency graph and no ambient authority', () => {
   const names = sourceFiles('services/ai/src').filter(x => !x.endsWith('.test.ts'));
-  assert.deepEqual(names.sort(), ['services/ai/src/canonical-pdf.ts', 'services/ai/src/gateway.ts', 'services/ai/src/redaction.ts']);
-  const parser = read(names[0]), gateway = read(names[1]), redactor = read(names[2]);
+  assert.deepEqual(names.sort(), ['services/ai/src/canonical-pdf.ts', 'services/ai/src/gateway.ts', 'services/ai/src/openai-boundary.ts', 'services/ai/src/redaction.ts']);
+  const parser = read(names[0]), gateway = read(names[1]), openai = read(names[2]), redactor = read(names[3]);
   assert.deepEqual(imports(parser), []); assert.equal(ambient(parser), false);
   assert.deepEqual(imports(gateway), ['./redaction.js']);
   assert.deepEqual(imports(redactor), ['./canonical-pdf.js', 'node:crypto']);
+  assert.deepEqual(imports(openai), ['./redaction.js', 'node:crypto']);
+  assert.equal(ambient(openai), false);
   assert.equal(ambient(gateway), false); assert.equal(ambient(redactor), false);
   assert.deepEqual(JSON.parse(read('services/ai/package.json')).dependencies ?? {}, {});
   for (const source of ['fetch("https://example.test")', 'process.env.KEY', 'globalThis["fetch"]()',
     'require("node:fs")', 'import("node:https")', 'console.log(input)', 'eval(input)']) assert.equal(ambient(source), true);
   for (const dependency of ['@autobureau/db', '@aws-sdk/client-kms', 'node:fs', 'openai']) {
     assert.notDeepEqual(imports(gateway + `\nimport x from '${dependency}'`), ['./redaction.js']);
+    assert.notDeepEqual(imports(openai + `\nimport x from '${dependency}'`), ['./redaction.js', 'node:crypto']);
   }
 });
 test('provider capability is not imported by application routes, queues or request handlers', () => {
   const bad = [...sourceFiles('apps/web/src'), ...sourceFiles('packages/db/src')]
-    .filter(x => !x.endsWith('.test.ts')).filter(x => /@autobureau\/ai-boundary|services\/ai|classifyWithLocalStub|takeProviderPayload/.test(read(x)));
+    .filter(x => !x.endsWith('.test.ts')).filter(x => /@autobureau\/ai-boundary|services\/ai|classifyWithLocalStub|takeProviderPayload|takeSourceBoundProviderPayload|createOfflineOpenAiRunner|runLiveOpenAi|openai-boundary/.test(read(x)));
   assert.deepEqual(bad, []);
 });
 
