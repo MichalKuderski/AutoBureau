@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type Prisma } from "@prisma/client";
 import type { Database, GlobalClient } from "@autobureau/db";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { SignJWT, exportJWK, generateKeyPair, type JSONWebKeySet } from "jose";
 import { APP_URL, adminClient, assertExpectedServer, grantAppUserLogin } from "@/test/integration/database";
 import { CSRF_HEADER, CSRF_HEADER_VALUE } from "@/lib/csrf";
@@ -18,6 +18,10 @@ import type { LogRecord } from "@/server/observability";
  * `withGlobalTable` access path, the database, its RLS policies, and the counters — "was
  * this attempt counted" is answered by rows Postgres actually holds, never by a spy. The
  * concurrency test drives genuinely parallel requests through the real upsert.
+ *
+ * Controlled: now() in limiter transactions, through a test-only PostgreSQL function
+ * and transaction-local search_path. Threshold tests share one instant; rollover tests
+ * explicitly advance it. No host clock or production code is changed.
  *
  * Not real: the identity provider, which is a local server speaking the documented GoTrue
  * contract. There is no Supabase project, and `provider.ts` says so itself. That is fine
@@ -46,6 +50,24 @@ let ACCESS = "";
 let signIn: (request: Request) => Promise<Response>;
 let magicLink: (request: Request) => Promise<Response>;
 let records: LogRecord[] = [];
+let databaseTime = new Date("2026-10-11T20:44:59.999Z");
+let restoreClock: () => void;
+let ordinaryGlobalTable: Database["withGlobalTable"];
+let useControlledClock = true;
+let expectedStoreOutage = false;
+
+// Only this suite's limiter transactions resolve now() through the fixture function.
+// The real Database method still owns each separate app_user transaction, including
+// concurrent requests. No verdict, SQL, threshold, lock or provider result is mocked.
+async function pinDatabaseClock(tx: Pick<Prisma.TransactionClient, "$queryRaw">, instant = databaseTime) {
+  await tx.$queryRaw`SELECT set_config('test.rate_limit_now', ${instant.toISOString()}, true)`;
+  await tx.$queryRaw`SELECT set_config('search_path', 'rate_limit_test_clock,pg_catalog,public', true)`;
+  const [clock] = await tx.$queryRaw<Array<{ role: string; instant: Date }>>`
+    SELECT current_user AS role, now() AS instant
+  `;
+  expect(clock?.role).toBe("app_user");
+  expect(clock?.instant).toEqual(instant);
+}
 
 /* ─────────────────────────────── helpers ─────────────────────────────── */
 
@@ -102,6 +124,13 @@ beforeAll(async () => {
   await assertExpectedServer();
   await grantAppUserLogin();
   admin = adminClient();
+  await admin.$executeRawUnsafe(`CREATE SCHEMA rate_limit_test_clock`);
+  await admin.$executeRawUnsafe(`
+    CREATE FUNCTION rate_limit_test_clock.now() RETURNS timestamptz
+    LANGUAGE sql STABLE SECURITY INVOKER
+    AS $$ SELECT pg_catalog.current_setting('test.rate_limit_now')::timestamptz $$
+  `);
+  await admin.$executeRawUnsafe(`GRANT USAGE ON SCHEMA rate_limit_test_clock TO app_user`);
 
   const { publicKey, privateKey } = await generateKeyPair("RS256", { extractable: true });
   const jwks: JSONWebKeySet = {
@@ -147,8 +176,20 @@ beforeAll(async () => {
   process.env["AUTH_COOKIE_NAME"] = COOKIE;
   process.env["APP_ORIGIN"] = ORIGIN;
 
-  const { resetDatabase } = await import("@/server/db");
+  const { getDatabase, resetDatabase } = await import("@/server/db");
   resetDatabase();
+  const db = getDatabase();
+  const original = db.withGlobalTable.bind(db);
+  ordinaryGlobalTable = original;
+  const clockSpy = vi.spyOn(db, "withGlobalTable").mockImplementation((table, work, options) => {
+    if (!useControlledClock) return original(table, work, options);
+    const instant = new Date(databaseTime);
+    return original(table, async (tx) => {
+      await pinDatabaseClock(tx, instant);
+      return work(tx);
+    }, options);
+  });
+  restoreClock = () => clockSpy.mockRestore();
 
   signIn = (await import("@/app/v1/auth/sign-in/route")).POST;
   magicLink = (await import("@/app/v1/auth/magic-link/route")).POST;
@@ -167,11 +208,16 @@ afterAll(async () => {
   await admin.household.deleteMany({ where: { createdBy: SUBJECT } });
   await admin.userProfile.deleteMany({ where: { userId: SUBJECT } });
   await admin.user.deleteMany({ where: { id: SUBJECT } });
+  restoreClock();
+  await admin.$executeRawUnsafe(`DROP SCHEMA rate_limit_test_clock CASCADE`);
   await admin.$disconnect();
   await new Promise<void>((resolve) => provider.close(() => resolve()));
 });
 
 beforeEach(async () => {
+  databaseTime = new Date("2026-10-11T20:44:59.999Z");
+  expectedStoreOutage = false;
+  useControlledClock = true;
   providerCalls = [];
   providerMode = "reject";
   records = [];
@@ -179,10 +225,47 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await clearCounters();
+  try {
+    if (!expectedStoreOutage) {
+      expect(records.filter((r) => r.event === "auth.rate_limit_unavailable")).toHaveLength(0);
+    }
+  } finally {
+    await clearCounters();
+  }
 });
 
 /* ─────────────────────────── counting behaviour ─────────────────────────── */
+
+describe("Clock fixture", () => {
+  it("uses the real transaction boundary and restores the ordinary database clock", async () => {
+    const { getDatabase } = await import("@/server/db");
+    const db = getDatabase();
+    await db.withGlobalTable("auth_rate_limits", async (tx) => {
+      const [row] = await tx.$queryRaw<Array<{ instant: Date; real: Date }>>`
+        SELECT now() AS instant, pg_catalog.now() AS real
+      `;
+      expect(row?.instant).toEqual(databaseTime);
+      expect(row?.real).not.toEqual(databaseTime);
+    });
+    // An unwrapped transaction on the same pooled client must not inherit SET LOCAL.
+    const [ordinary] = await ordinaryGlobalTable("auth_rate_limits", (tx) =>
+      tx.$queryRaw<Array<{ local: Date; real: Date; path: string }>>`
+        SELECT now() AS local, pg_catalog.now() AS real, current_setting('search_path') AS path
+      `,
+    );
+    expect(ordinary?.local).toEqual(ordinary?.real);
+    expect(ordinary?.path).not.toContain("rate_limit_test_clock");
+  });
+
+  it("also counts a route request with the ordinary database clock", async () => {
+    useControlledClock = false;
+    expect(await attemptSignIn(1)).toEqual([401]);
+    const rows = await counters();
+    expect(rows).toHaveLength(3);
+    expect(rows.every((row) => row.attempts === 1)).toBe(true);
+    expect(providerCalls).toHaveLength(1);
+  });
+});
 
 describe("A · counter creation and increment", () => {
   it("A1 the first attempt creates one row per enforced policy", async () => {
@@ -263,22 +346,25 @@ describe("C · window rollover", () => {
     await attemptSignIn(6);
     expect((await attemptSignIn(1))[0]).toBe(429);
 
-    // Age every counter past its window. The next request floors `now()` to a new window
-    // boundary, so it must key a NEW row rather than the exhausted one.
-    await admin.$executeRawUnsafe(`
-      UPDATE auth_rate_limits
-      SET window_started_at = window_started_at - interval '1 hour',
-          expires_at = expires_at - interval '1 hour'
-    `);
+    const [before] = await admin.$queryRaw<Array<{ id: string; window: Date }>>`
+      SELECT id, window_started_at AS window FROM auth_rate_limits
+      WHERE policy = 'sign_in.identifier_ip'
+    `;
+    expect(before?.window).toEqual(new Date("2026-10-11T20:30:00Z"));
+    // Advance the controlled database clock across the exact aligned boundary.
+    // Do not mutate counter keys or expiry to simulate a rollover.
+    databaseTime = new Date("2026-10-11T20:45:00.000Z");
 
     expect((await attemptSignIn(1))[0]).toBe(401);
 
-    const fresh = await admin.$queryRaw<Array<{ attempts: number }>>`
-      SELECT attempts FROM auth_rate_limits
-      WHERE policy = 'sign_in.identifier_ip' AND expires_at > now()
+    const fresh = await admin.$queryRaw<Array<{ id: string; window: Date; attempts: number }>>`
+      SELECT id, window_started_at AS window, attempts FROM auth_rate_limits
+      WHERE policy = 'sign_in.identifier_ip' AND expires_at > ${databaseTime}::timestamptz
     `;
     expect(fresh).toHaveLength(1);
     expect(fresh[0]?.attempts).toBe(1);
+    expect(fresh[0]?.id).not.toBe(before?.id);
+    expect(fresh[0]?.window).toEqual(databaseTime);
   });
 });
 
@@ -475,6 +561,8 @@ describe("H · the 429 response contract (ADR-013 D10)", () => {
     await attemptSignIn(5);
     const limited = await signIn(signInRequest({ email: EMAIL, password: "wrong" }));
 
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("retry-after")).not.toBeNull();
     const retryAfter = Number(limited.headers.get("retry-after"));
     expect(Number.isInteger(retryAfter)).toBe(true);
     // Bounded by the 15-minute window and never zero — a `Retry-After: 0` invites the
@@ -486,17 +574,19 @@ describe("H · the 429 response contract (ADR-013 D10)", () => {
   it("H3 Retry-After is the real remaining lifetime of the window that tripped", async () => {
     await attemptSignIn(6);
     const limited = await signIn(signInRequest({ email: EMAIL, password: "wrong" }));
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("retry-after")).not.toBeNull();
     const header = Number(limited.headers.get("retry-after"));
 
-    // Compared against the database's own arithmetic rather than a wall-clock delta: the
-    // window is aligned to a 15-minute boundary, so how much of it remains depends on when
-    // the suite happens to run, and an elapsed-time assertion would be flaky by design.
+    // Compare with the same controlled database instant, including the last millisecond
+    // before rollover. There is no wall-clock delay allowance or null-to-zero coercion.
     const [row] = await admin.$queryRaw<Array<{ remaining: number }>>`
-      SELECT ceil(extract(epoch FROM expires_at - now()))::int AS remaining
+      SELECT ceil(extract(epoch FROM expires_at - ${databaseTime}::timestamptz))::int AS remaining
       FROM auth_rate_limits WHERE policy = 'sign_in.identifier_ip'
     `;
     expect(row).toBeDefined();
-    expect(Math.abs(header - (row?.remaining ?? -999))).toBeLessThanOrEqual(2);
+    expect(header).toBe(row?.remaining);
+    expect(header).toBe(1);
   });
 
   it.each([
@@ -505,10 +595,11 @@ describe("H · the 429 response contract (ADR-013 D10)", () => {
   ])("$name", async ({ remaining }) => {
     // One real app_user transaction fixes PostgreSQL now(). JavaScript fake timers
     // cannot control it. Only this test's limiter calls reuse the transaction; H1–H3
-    // above still exercise the route and ordinary withGlobalTable path end to end.
+    // above still exercise the route and real withGlobalTable path with the controlled clock.
     const app = new PrismaClient({ datasources: { db: { url: APP_URL() } } });
     try {
       await app.$transaction(async (tx) => {
+        await pinDatabaseClock(tx);
         const [identity] = await tx.$queryRaw<Array<{ role: string }>>`SELECT current_user AS role`;
         expect(identity?.role).toBe("app_user");
         const db = {
@@ -605,6 +696,7 @@ describe("H · the 429 response contract (ADR-013 D10)", () => {
 describe("I · fail open, loudly (ADR-013 D7)", () => {
   /** The ADR's own named scenario: a live deployment whose migration has not landed. */
   async function withMissingTable(fn: () => Promise<void>): Promise<void> {
+    expectedStoreOutage = true;
     await admin.$executeRawUnsafe(`ALTER TABLE auth_rate_limits RENAME TO auth_rate_limits_hidden`);
     try {
       await fn();
@@ -747,30 +839,43 @@ describe("L · retention and cleanup (ADR-013 D11)", () => {
     await attemptSignIn(6);
     expect((await attemptSignIn(1))[0]).toBe(429);
 
-    // Expire the rows without deleting them. Correctness must not depend on a cleaner.
-    await admin.$executeRawUnsafe(`UPDATE auth_rate_limits SET expires_at = now() - interval '1s'`);
-    // The next request floors to a new window, so it keys a different row entirely.
-    await admin.$executeRawUnsafe(`
-      UPDATE auth_rate_limits SET window_started_at = window_started_at - interval '1 hour'
-    `);
-
-    expect((await attemptSignIn(1))[0]).toBe(401);
+    // Hold all exhausted rows so SKIP LOCKED cannot physically sweep them. The
+    // next window must still be usable. The lock is fixture setup; the request
+    // uses its own real app_user transactions, not the privileged admin client.
+    await admin.$transaction(async (tx) => {
+      const stale = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM auth_rate_limits FOR UPDATE
+      `;
+      expect(stale).toHaveLength(3);
+      databaseTime = new Date("2026-10-11T20:45:00.000Z");
+      expect((await attemptSignIn(1))[0]).toBe(401);
+      const rows = await tx.$queryRaw<Array<{ id: string; attempts: number; expired: boolean }>>`
+        SELECT id, attempts, expires_at <= ${databaseTime}::timestamptz AS expired
+        FROM auth_rate_limits
+      `;
+      expect(rows).toHaveLength(6);
+      expect(rows.filter((row) => row.expired).map((row) => row.id).sort())
+        .toEqual(stale.map((row) => row.id).sort());
+      expect(rows.filter((row) => row.expired).every((row) => row.attempts === 7)).toBe(true);
+      expect(rows.filter((row) => !row.expired)).toHaveLength(3);
+      expect(rows.filter((row) => !row.expired).every((row) => row.attempts === 1)).toBe(true);
+    });
   });
 
   it("L2 an increment opportunistically sweeps its own policy's expired rows", async () => {
-    await admin.$executeRawUnsafe(`
+    await admin.$executeRaw`
       INSERT INTO auth_rate_limits (policy, bucket, window_started_at, attempts, expires_at)
-      SELECT 'sign_in.identifier', repeat(md5(g::text), 2), now() - interval '2 hours', 3,
-             now() - interval '1 hour'
+      SELECT 'sign_in.identifier', repeat(md5(g::text), 2), ${databaseTime}::timestamptz - interval '2 hours', 3,
+             ${databaseTime}::timestamptz - interval '1 hour'
       FROM generate_series(1, 5) g
-    `);
+    `;
     expect(await countRows("sign_in.identifier")).toBe(5);
 
     await attemptSignIn(1);
 
     // The five lapsed rows are gone; only this attempt's live row remains.
     const remaining = await admin.$queryRaw<Array<{ attempts: number; expired: boolean }>>`
-      SELECT attempts, expires_at <= now() AS expired
+      SELECT attempts, expires_at <= ${databaseTime}::timestamptz AS expired
       FROM auth_rate_limits WHERE policy = 'sign_in.identifier'
     `;
     expect(remaining).toHaveLength(1);
@@ -780,12 +885,12 @@ describe("L · retention and cleanup (ADR-013 D11)", () => {
   it("L3 the sweep is bounded, so one request can never do unbounded work", async () => {
     // 150 expired rows against a LIMIT of 100: the request must still succeed promptly and
     // must not attempt to delete all of them in one statement.
-    await admin.$executeRawUnsafe(`
+    await admin.$executeRaw`
       INSERT INTO auth_rate_limits (policy, bucket, window_started_at, attempts, expires_at)
-      SELECT 'magic_link.ip', repeat(md5(g::text), 2), now() - interval '2 hours', 1,
-             now() - interval '1 hour'
+      SELECT 'magic_link.ip', repeat(md5(g::text), 2), ${databaseTime}::timestamptz - interval '2 hours', 1,
+             ${databaseTime}::timestamptz - interval '1 hour'
       FROM generate_series(1, 150) g
-    `);
+    `;
     providerMode = "ok";
 
     expect((await magicLink(magicLinkRequest(EMAIL))).status).toBe(204);
@@ -802,11 +907,11 @@ describe("L · retention and cleanup (ADR-013 D11)", () => {
   });
 
   it("L4 a sweep never touches another policy's rows", async () => {
-    await admin.$executeRawUnsafe(`
+    await admin.$executeRaw`
       INSERT INTO auth_rate_limits (policy, bucket, window_started_at, attempts, expires_at)
-      VALUES ('magic_link.identifier', repeat('a', 64), now() - interval '2 hours', 1,
-              now() - interval '1 hour')
-    `);
+      VALUES ('magic_link.identifier', repeat('a', 64), ${databaseTime}::timestamptz - interval '2 hours', 1,
+              ${databaseTime}::timestamptz - interval '1 hour')
+    `;
     await attemptSignIn(1);
     expect(await countRows("magic_link.identifier")).toBe(1);
   });
