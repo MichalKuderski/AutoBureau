@@ -1,3 +1,4 @@
+import {diagnosticCaPath} from './staging-binding-ca.mjs';
 // This diagnostic is deliberately pinned to the known pre-migration baseline.
 export const project = 'kdqnfruwgocfqwpbpuxo';
 export function authority(env) {
@@ -19,12 +20,12 @@ export function connection(input) {
     connection_limit: /^\d+$/, connect_timeout: /^\d+$/, pool_timeout: /^\d+$/, pgbouncer: /^false$/};
   const seen = new Set();
   for (const [key, value] of u.searchParams) {
-    if (seen.has(key) || !allowed[key]?.test(value)) throw Error('Options refused');
+    if (seen.has(key) || (key==='sslcert'?value!==diagnosticCaPath:!allowed[key]?.test(value))) throw Error('Options refused');
     seen.add(key);
   }
   // Only validated routing and password survive; impose bounded client settings.
   u.search = ''; u.protocol = 'postgresql:'; u.port = '5432';
-  for (const [k,v] of Object.entries({schema:'public',sslmode:'require',sslaccept:'strict',
+  for (const [k,v] of Object.entries({schema:'public',sslmode:'require',sslaccept:'strict',sslcert:diagnosticCaPath,
     connection_limit:'1',connect_timeout:'5',pool_timeout:'5'})) u.searchParams.set(k,v);
   return u.toString();
 }

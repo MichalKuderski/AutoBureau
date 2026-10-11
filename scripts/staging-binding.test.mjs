@@ -9,6 +9,8 @@ import {authority,connection,project} from './staging-binding-policy.mjs';
 import {supervise} from './staging-binding-supervisor.mjs';
 import {stages,reasons,structuredReason,formatResults,blankResults} from './staging-binding-protocol.mjs';
 import {executeDiagnostic} from './staging-binding-core.mjs';
+import {diagnosticCaPath} from './staging-binding-ca.mjs';
+import './staging-binding.tls.test.mjs';
 const sha='a'.repeat(40),root=new URL('..',import.meta.url).pathname;
 const authorized={GITHUB_REPOSITORY:'MichalKuderski/AutoBureau',GITHUB_EVENT_NAME:'workflow_dispatch',
   GITHUB_REF:'refs/heads/main',GITHUB_ACTOR:'MichalKuderski',GITHUB_TRIGGERING_ACTOR:'MichalKuderski',
@@ -27,6 +29,8 @@ test('routing accepts only pinned direct/session target and imposes strict TLS a
     assert.equal(u.searchParams.get('sslaccept'),'strict');assert.equal(u.searchParams.get('sslmode'),'require');
     assert.equal(u.searchParams.get('connection_limit'),'1');assert.equal(u.searchParams.get('connect_timeout'),'5');
     assert.equal(u.searchParams.get('pool_timeout'),'5');
+    assert.equal(u.searchParams.get('sslcert'),diagnosticCaPath);
+    assert.equal(connection(u.toString()),u.toString()); // Worker revalidates the imposed URL.
   }
 });
 test('routing rejects alternate targets and unsafe option overrides',()=>{
@@ -36,6 +40,9 @@ test('routing rejects alternate targets and unsafe option overrides',()=>{
     direct+'?host=127.0.0.1',direct+'?sslmode=disable',direct+'?sslaccept=accept_invalid_certs',
     direct+'?schema=public&schema=other',direct+'?options=-c%20default_transaction_read_only%3Doff',
     direct+'?pgbouncer=true',direct.replace('synthetic%21value',''),
+    direct+'?sslcert=/tmp/arbitrary.crt',direct+'?sslrootcert=/tmp/arbitrary.crt',
+    direct+'?sslmode=verify-full',direct+'?sslidentity=/tmp/arbitrary.p12',
+    direct+'?sslcert='+encodeURIComponent(diagnosticCaPath)+'&sslcert='+encodeURIComponent(diagnosticCaPath),
     `postgresql://postgres.${project}:synthetic@aws-1-us-west-2.pooler.supabase.com:5432/postgres`])assert.throws(()=>connection(raw));
 });
 test('only validated structured data codes map; messages, getters, inherited codes and meta never do',()=>{
@@ -159,6 +166,8 @@ test('manual workflow and secret boundaries remain unchanged',async()=>{
   assert.equal(j.steps.filter(s=>JSON.stringify(s).includes('secrets.')).length,1);
   assert.deepEqual(j.steps.at(-1).env,{DATABASE_URL:'${{ secrets.STAGING_MIGRATION_DATABASE_URL }}',DIAGNOSTIC_APPROVAL:'${{ inputs.approval }}'});
   assert.equal(j.steps.at(-1).run,'node scripts/staging-binding-diagnostic.mjs');
+  const ca=j.steps.findIndex(s=>s.run==='node scripts/staging-binding-ca.mjs');
+  assert.ok(ca>0 && ca<j.steps.length-1);assert.equal(j.steps[ca].env,undefined);
   assert.ok(!/upload-artifact|migrate deploy|vercel|production/i.test(JSON.stringify(w)));
   assert.equal((await load('.github/workflows/deploy.yml')).jobs.staging.if,'${{ false }}');
 });
