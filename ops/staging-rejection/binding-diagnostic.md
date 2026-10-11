@@ -19,7 +19,7 @@ Do not dispatch it as part of this PR, approve a preview, or alter the migration
   `aws-0-us-west-2.pooler.supabase.com` host with `postgres.<project>`, port 5432,
   database `postgres`. Other hosts, transaction-pool port 6543, unknown options,
   duplicate options and permissive TLS settings fail before connection.
-- Certificate-verified TLS, one connection, five-second connect/pool limits.
+- Certificate- and hostname-verified TLS, one connection, five-second connect/pool limits.
 - An explicit connection attempt, then a separately confirmed read-only PostgreSQL transaction.
 - Database `postgres`, session/current role `postgres`, login capability.
 - All 48 baseline migration names/checksums and successful completion state, with
@@ -37,6 +37,33 @@ The fixed baseline intentionally refuses after any migration phase; revise throu
 review if a different diagnostic becomes necessary. Strict TLS or an unrecognized
 valid endpoint may refuse; investigate separately without weakening policy or
 replacing the secret just to obtain a pass.
+
+## Diagnostic-only public CA
+
+The diagnostic adds the reviewed [official Supabase public CA](https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt)
+through native Prisma's `sslcert` option. `sslmode=require` and `sslaccept=strict`
+remain mandatory. Prisma's native engine uses these options for certificate and
+hostname verification; libpq's `verify-full` is not a supported substitute here.
+The fixed module-relative file is `scripts/certificates/supabase-prod-ca-2021.crt`.
+Other CA paths, TLS identities, permissive options and duplicate options are refused.
+No environment variable or workflow input can select a trust file or change its pins.
+
+The 1,367-byte public PEM has SHA-256
+`700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7`.
+Its DER certificate fingerprint is
+`807025ad50d4ed219d2c9c7d299c004f824eb00cf7f65afef607d07b72e6cafa`.
+It expires on **2031-04-26 at 10:56:53 UTC** and contains no private key.
+A secret-free workflow step verifies the regular file, both pins, CA capability
+and validity dates. The worker repeats verification during `LOCAL_SETUP`, before
+constructing the driver. A missing, changed, expired or symlinked file fails closed.
+Replacement requires a reviewed code change. OS trust, migration-runner trust and
+stored connection credentials are unaffected.
+
+This addresses a possible missing trust anchor; it does not establish the cause of
+hosted run 38176377209's generic `TLS_FAILURE`, authenticate its password, or verify
+hosted database posture. That run's approval is consumed. Publishing this change
+does not authorize a hosted connection, dispatch, merge, preview approval or lifting
+the staging/schema holds. Production remains NO-GO.
 
 ## Write and output boundaries
 
@@ -128,6 +155,16 @@ GitHub runner-specific initialization. No hosted root cause has been established
 `node scripts/staging-binding.test.mjs` exercises routing, authority, workflow
 boundaries, hostile child output/IPC, partial progress, structured error mapping,
 local setup failures, process crashes and the supervisor timeout.
+It also imports the native TLS suite (`scripts/staging-binding.tls.test.mjs`), which
+generates disposable synthetic roots/leaves and runs Prisma **6.19.3**, engine
+`c2990dca591cba766e3b7ef5d9e8a84796e47ab7`, against loopback PostgreSQL TLS
+startup fixtures. Trusted DNS/IP identities connect; untrusted, expired and
+hostname-mismatched certificates return `TLS_FAILURE` before PostgreSQL startup.
+A test-only permissive mismatch control proves the refusal mechanism works;
+the hosted routing policy rejects that option. Packaged CLI tests reject missing
+or changed CA files and missing/changed pins before any driver construction,
+without exposing errors or synthetic canaries. The synthetic CA path substitution
+exists only in tests; the hosted worker has no local-target or trust override.
 `DIAGNOSTIC_TEST_DATABASE_URL` must name a **fresh disposable loopback** PostgreSQL
 database `postgres`, user `postgres`. Run
 `node scripts/staging-binding.integration.test.mjs` against that fixture only.
