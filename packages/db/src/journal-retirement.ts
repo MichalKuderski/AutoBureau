@@ -40,6 +40,9 @@ async function holdsFor(tx: ScopedClient, hh: string) {
 export async function claimJournalRetirement(db: Database, hh: string, deletionId: string) {
   if (!uuid.test(hh) || !uuid.test(deletionId)) throw new JournalRetirementRefused("Retirement planning refused");
   return runAsSystem("Claim ADR-019 retirement planning lease (no purge)", () => db.withHousehold(hh, async tx => {
+    // Match the DB guard's household lock before reading: locking only at INSERT
+    // lets simultaneous first claimants both observe absence and race the unique key.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended('retirement:'||${hh}::uuid::text,0))`;
     const [run] = await tx.$queryRaw<Array<{ id: string; state: string; expired: boolean; attempts: number }>>`SELECT id,state,lease_until<=clock_timestamp() AS expired,attempts
       FROM journal_retirement_runs WHERE deletion_id=${deletionId}::uuid AND household_id=${hh}::uuid`;
     const token = randomUUID();
