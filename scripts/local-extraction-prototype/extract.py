@@ -1,5 +1,5 @@
 """Offline synthetic source-to-candidate slice. No gateway, network, DB or secrets.
-Only the complete public boundary-PDF grammar for medical/utility bills is supported.
+Only explicitly supported public synthetic text-PDF grammars are accepted.
 Not an arbitrary PDF parser, scanner receipt, production redactor or write authority.
 """
 from dataclasses import dataclass
@@ -9,7 +9,17 @@ import re
 
 PREFIX = 'FICTIONAL TEST SAMPLE - NOT VALID FOR ANY REAL USE'
 SUFFIX = 'All details invented. No valid identity, account or payment reference.'
-TYPES = {'SYNTHETIC MEDICAL BILL': 'medical_bill', 'SYNTHETIC UTILITY BILL': 'utility_bill'}
+TYPES = {'SYNTHETIC MEDICAL BILL': 'medical_bill', 'SYNTHETIC UTILITY BILL': 'utility_bill',
+         'SYNTHETIC GOVERNMENT ID SAMPLE': 'government_id', 'SYNTHETIC INSURANCE POLICY': 'insurance_policy',
+         'SYNTHETIC VEHICLE REGISTRATION': 'vehicle_registration', 'SYNTHETIC RESIDENTIAL LEASE': 'lease',
+         'SYNTHETIC PRODUCT WARRANTY': 'warranty', 'SYNTHETIC SUBSCRIPTION RECEIPT': 'subscription_receipt'}
+# Printed-field observations only; this is not an obligation or renewal ontology.
+DATE_FIELDS = {'government_id': ('Expiration date', 'expiry_date'),
+               'insurance_policy': ('Coverage end date', 'expiry_date'),
+               'vehicle_registration': ('Registration expiration', 'expiry_date'),
+               'lease': ('Lease end date', 'end_date'),
+               'warranty': ('Warranty end date', 'expiry_date'),
+               'subscription_receipt': ('Payment received date', 'payment_received_date')}
 MONTHS = {name: i for i, name in enumerate(('January February March April May June July August September October November December').split(), 1)}
 
 
@@ -78,6 +88,70 @@ def _lines(raw):
     return lines, matches
 
 
+def _date_observation(value):
+    if value == 'Not supplied': return None, 'missing', 'missing_date'
+    if re.fullmatch(r'[0-9]{2}/[0-9]{2}/20[2-9][0-9] \(date order unspecified\)', value):
+        return None, 'ambiguous', 'ambiguous_date'
+    match = re.fullmatch(r'([A-Za-z]+) ([0-9]{1,2}), (20[2-9][0-9])', value)
+    if not match or match[1] not in MONTHS: raise ReviewRequired('unsupported_date_text')
+    try: return date(int(match[3]), MONTHS[match[1]], int(match[2])).isoformat(), 'supported', None
+    except ValueError: return None, 'invalid', 'invalid_calendar_date'
+
+
+def _nonpayment_observations(kind, body, cite):
+    """Six narrow source grammars. Values parsed from text, never fixture labels.
+    No expiry-to-renewal, warranty/deposit entitlement, cadence or payment inference.
+    """
+    label, role = DATE_FIELDS[kind]
+    fields = []; reasons = []
+    if kind == 'insurance_policy' and len(body) == 1 and body[0].startswith('Coverage cancelled effective '):
+        match = re.fullmatch(r'Coverage cancelled effective (.+)\. No replacement end date\.', body[0])
+        if not match: raise ReviewRequired()
+        value, status, reason = _date_observation(match[1])
+        # A printed future cancellation notice is not current effective coverage.
+        fields = [Field('cancellation_notice', 'present', 'supported', (cite(4),)),
+                  Field('cancellation_date', value, status, (cite(4),)),
+                  Field('expiry_date', None, 'missing', (cite(4),))]
+        reasons = ['cancelled_no_active_coverage_inference'] + ([reason] if reason else [])
+    elif kind == 'lease' and len(body) == 1 and body[0].startswith('Lease start: '):
+        match = re.fullmatch(r'Lease start: (.+)\. Lease end: (.+)\.', body[0])
+        if not match: raise ReviewRequired()
+        for name, text in [('start_date', match[1]), ('end_date', match[2])]:
+            value, status, reason = _date_observation(text)
+            fields.append(Field(name, value, status, (cite(4),)))
+            if reason: reasons.append(reason)
+        if all(f.status == 'supported' for f in fields) and fields[0].value > fields[1].value:
+            reasons.append('end_before_start')
+    elif kind == 'warranty' and body == ['Lifetime limited warranty. No calendar expiration specified.']:
+        fields = [Field('coverage_term', 'lifetime-limited', 'supported', (cite(4),)),
+                  Field('expiry_date', None, 'missing', (cite(4),))]
+        reasons = ['lifetime_scope_undefined_no_invented_expiry']
+    elif kind == 'subscription_receipt' and len(body) == 1 and body[0].startswith('Payment received: USD '):
+        match = re.fullmatch(r'Payment received: USD ([0-9]{1,6})\.([0-9]{2})\. Next renewal date not supplied\.', body[0])
+        if not match: raise ReviewRequired('invalid_receipt')
+        amount = int(match[1]) * 100 + int(match[2])
+        fields = [Field('paid_amount', amount, 'supported', (cite(4),)),
+                  Field('renewal_date', None, 'missing', (cite(4),))]
+        reasons = ['receipt_no_invented_renewal_or_payment']
+    else:
+        if not body or not body[0].startswith(label + ': '): raise ReviewRequired()
+        if len(body) != 1 and not (len(body) == 3 and body[1].startswith(label + ' in attached note: ')
+                                  and body[2] == 'Neither statement identifies which one supersedes the other.'):
+            raise ReviewRequired()
+        values = []; statuses = []; citations = []
+        for offset, line in enumerate(body[:2] if len(body) == 3 else body):
+            prefix = label + (': ' if offset == 0 else ' in attached note: ')
+            value, status, reason = _date_observation(line[len(prefix):])
+            values.append(value); statuses.append(status); citations.append(cite(4 + offset))
+            if reason: reasons.append(reason)
+        status = statuses[0]
+        if len(values) > 1:
+            status = 'invalid' if 'invalid' in statuses else 'ambiguous' if any(v is None for v in values) or len(set(values)) == 1 else 'conflicting'
+            reasons.append('multiple_date_statements')
+        fields = [Field(role, values[0] if status == 'supported' else None, status, tuple(citations))]
+    return fields, reasons
+
+
 def extract(raw):
     lines, matches = _lines(raw)
     if lines[0] != PREFIX or lines[-1] != SUFFIX or lines[1] not in TYPES:
@@ -92,6 +166,10 @@ def extract(raw):
               Field('issuer', 'Example Organization', 'supported', (cite(3),))]
     reasons = []; dates = []; date_refs = []; amount = None; amount_ref = None; blocked_payment = False
     body = lines[4:-1]
+    kind = TYPES[lines[1]]
+    if kind in DATE_FIELDS:
+        observations, issues = _nonpayment_observations(kind, body, cite)
+        return Result(source_hash, kind, tuple(fields + observations), tuple(sorted(set(issues))), None)
     specials = {
         'medical_bill': 'Balance due: USD 0.00. Paid in full. No payment due.',
         'utility_bill': 'Account credit: USD 25.00. No amount payable.'}
