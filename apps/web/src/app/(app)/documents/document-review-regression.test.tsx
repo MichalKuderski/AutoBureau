@@ -13,7 +13,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePat
 
 const doc = "document-a", resultId = "result-a";
 const base: DocumentResultView = { documentId: doc, resultId, state: "action-required", resultPeriodStart: "2026-09-01T00:00:00Z",
-  currentPeriodStart: "2026-10-01T00:00:00Z", chargedPeriodStart: null, capacity: { used: 3, limit: 10 }, canApply: true, canDiscard: true };
+  currentPeriodStart: "2026-10-01T00:00:00Z", chargedPeriodStart: null, capacity: { used: 3, limit: 10 }, canApply: true, canDiscard: true,
+  evidence: { kind: "public-synthetic-deadline", dueDate: "2028-02-29", page: 1 } };
 const done = { ...base, state: "applied", chargedPeriodStart: base.currentPeriodStart, canApply: false, canDiscard: false };
 const problem = (status: number) => Response.json({ type: "about:blank", title: "Unavailable", status }, { status });
 function deferred<T>() { let resolve!: (v: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
@@ -65,6 +66,8 @@ it.each([401, 403, 404])("removes cached result data after background %s", async
   await act(async () => { await client.invalidateQueries({ queryKey: ["household", HOUSEHOLD.id] }); });
   expect(client.getQueryData(["household", HOUSEHOLD.id, "document-result", doc])).toBeNull();
   await waitFor(() => expect(screen.queryByText(/read this document in September/)).not.toBeInTheDocument());
+  expect(screen.queryByText("February 29, 2028")).not.toBeInTheDocument();
+  expect(screen.queryByText(/View source text/)).not.toBeInTheDocument();
 });
 
 it("reconciles a committed write with a lost response without replaying it", async () => {
@@ -180,6 +183,7 @@ it("allows a new discard intent after an authoritative capacity refusal and fres
   setup(<DocumentResultPanel documentId={doc} />);
   await applyReading();
   fireEvent.click(await screen.findByRole("button", { name: "Discard reading…" }));
+  fireEvent.change(screen.getByLabelText("Reason for discarding"), { target: { value: "incorrect-reading" } });
   fireEvent.click(screen.getByRole("button", { name: "Discard reading" }));
   await screen.findByText(/You discarded this reading/);
   expect((posts[1]?.headers as Record<string, string>)["Idempotency-Key"]).not.toBe((posts[0]?.headers as Record<string, string>)["Idempotency-Key"]);
@@ -204,6 +208,7 @@ it("hides and removes a fresh owner cache when the role changes", async () => {
     <DocumentResultPanel documentId={doc} />
   </HouseholdProvider></QueryClientProvider>);
   expect(screen.queryByText(/read this document in September/)).not.toBeInTheDocument();
+  expect(screen.queryByText("February 29, 2028")).not.toBeInTheDocument();
   expect(view.client.getQueryData(["household", HOUSEHOLD.id, "document-result", doc])).toBeUndefined();
 });
 
@@ -396,4 +401,51 @@ it("does not resolve or refresh another household from a late manual status read
   expect(screen.queryByText(/Filed and counted/)).not.toBeInTheDocument();
   expect(view.client.getQueryState(["summary", "household-b"])?.isInvalidated).toBe(false);
   expect(view.client.getQueryData<{ intent: unknown }>(reviewKey)?.intent).not.toBeNull();
+});
+
+it("requires a rejection category, cancels without writing, and retries only the same category and key", async () => {
+  const response = deferred<Response>(), posts: RequestInit[] = [];
+  let committed = false;
+  const rejected = { ...base, state: "discarded", rejectionReason: "incorrect-reading", canApply: false, canDiscard: false };
+  vi.stubGlobal("fetch", vi.fn(async (_path, options: RequestInit) => {
+    if (options.method === "POST") { posts.push(options); if (posts.length === 1) return response.promise; committed = true; return Response.json(rejected); }
+    return Response.json(committed ? rejected : base);
+  }));
+  setup(<DocumentResultPanel documentId={doc} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Discard reading…" }));
+  expect(screen.getByRole("button", { name: "Discard reading" })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Reason for discarding"), { target: { value: "duplicate" } });
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(posts).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: "Discard reading…" }));
+  expect(screen.getByLabelText("Reason for discarding")).toHaveValue("");
+  fireEvent.change(screen.getByLabelText("Reason for discarding"), { target: { value: "incorrect-reading" } });
+  const button = screen.getByRole("button", { name: "Discard reading" });
+  fireEvent.click(button); fireEvent.click(button);
+  expect(posts).toHaveLength(1);
+  expect(JSON.parse(posts[0]!.body as string)).toEqual({ resultId, reason: "incorrect-reading" });
+  expect(screen.queryByLabelText("Reason for discarding")).not.toBeInTheDocument();
+  await act(async () => response.resolve(problem(503)));
+  fireEvent.click(await screen.findByRole("button", { name: "Retry same action" }));
+  await screen.findByText(/You discarded this reading/);
+  expect(posts).toHaveLength(2);
+  expect(posts[1]?.body).toBe(posts[0]?.body);
+  expect((posts[1]?.headers as Record<string,string>)["Idempotency-Key"]).toBe((posts[0]?.headers as Record<string,string>)["Idempotency-Key"]);
+  expect(screen.getByText(/Reason: The reading is incorrect/)).toBeInTheDocument();
+});
+
+it.each([401, 403, 404])("conceals a selected rejection reason and forbids replay after authorization loss %s", async status => {
+  let denied = false, posts = 0;
+  vi.stubGlobal("fetch", vi.fn(async (_path, options: RequestInit) => {
+    if (options.method === "POST") { posts++; denied = true; return problem(status); }
+    return denied ? problem(status) : Response.json(base);
+  }));
+  setup(<DocumentResultPanel documentId={doc} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Discard reading…" }));
+  fireEvent.change(screen.getByLabelText("Reason for discarding"), { target: { value: "duplicate" } });
+  fireEvent.click(screen.getByRole("button", { name: "Discard reading" }));
+  await waitFor(() => expect(screen.queryByRole("region", { name: "Reading" })).not.toBeInTheDocument());
+  expect(screen.queryByLabelText("Reason for discarding")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Retry same action" })).not.toBeInTheDocument();
+  expect(posts).toBe(1);
 });

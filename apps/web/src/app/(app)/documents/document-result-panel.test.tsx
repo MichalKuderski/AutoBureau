@@ -22,6 +22,30 @@ function serve(initial: DocumentResultView | number, action?: (kind: string) => 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("old-period result panel (PRD §21.3)", () => {
+  it("shows the proposed calendar date beside source text without fetching a file or applying", async () => {
+    const fetchMock = serve({ ...base, evidence: { kind: "public-synthetic-deadline", dueDate: "2028-02-29", page: 1 } });
+    const { container } = renderScreen(<DocumentResultPanel documentId={doc} />);
+    expect(await screen.findByText("February 29, 2028")).toHaveAttribute("datetime", "2028-02-29");
+    const summary = screen.getByText("View source text · page 1");
+    await userEvent.click(summary);
+    expect(container.querySelector("details")).toHaveAttribute("open");
+    expect(container.querySelector("mark")).toHaveTextContent("2028-02-29");
+    expect(screen.getByText(/stored PDF is not opened/i)).toBeInTheDocument();
+    expect(fetchMock.mock.calls.every(([p]) => String(p).endsWith("/result"))).toBe(true);
+  });
+  it("withholds source content when the server has no valid evidence while preserving accounting", async () => {
+    serve({ ...base, state: "applied", canApply: false, canDiscard: false, evidence: null, chargedPeriodStart: base.currentPeriodStart });
+    renderScreen(<DocumentResultPanel documentId={doc} />);
+    expect(await screen.findByText(/filed and counted in october 2026/i)).toBeInTheDocument();
+    expect(screen.queryByText(/View source text/)).not.toBeInTheDocument();
+  });
+  it("labels an applied date as filed without asking the owner to file again", async () => {
+    serve({ ...base, state: "applied", canApply: false, canDiscard: false, chargedPeriodStart: base.currentPeriodStart,
+      evidence: { kind: "public-synthetic-deadline", dueDate: "2028-02-29", page: 1 } });
+    renderScreen(<DocumentResultPanel documentId={doc} />);
+    expect(await screen.findByText("Filed due date")).toBeInTheDocument();
+    expect(screen.queryByText(/Check the source before filing/)).not.toBeInTheDocument();
+  });
   it("explains the held reading and applies it this month only after explicit confirmation", async () => {
     const fetchMock = serve(base, () => Response.json({ ...base, state: "applied", chargedPeriodStart: base.currentPeriodStart, canApply: false, canDiscard: false }));
     renderScreen(<DocumentResultPanel documentId={doc} />);
@@ -48,12 +72,16 @@ describe("old-period result panel (PRD §21.3)", () => {
   it("discard is confirmed, cancel returns focus, and the result states the original is kept", async () => {
     serve(base, () => Response.json({ ...base, state: "discarded", canApply: false, canDiscard: false }));
     renderScreen(<DocumentResultPanel documentId={doc} />);
-    await userEvent.click(await screen.findByRole("button", { name: /discard reading…/i }));
+    (await screen.findByRole("button", { name: /discard reading…/i })).focus();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(screen.getByLabelText("Reason for discarding")).toHaveFocus());
+    await userEvent.selectOptions(screen.getByLabelText("Reason for discarding"), "duplicate");
     await userEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
     await waitFor(() => expect(screen.getByRole("button", { name: /discard reading…/i })).toHaveFocus());
     await userEvent.click(screen.getByRole("button", { name: /discard reading…/i }));
+    await userEvent.selectOptions(screen.getByLabelText("Reason for discarding"), "incorrect-reading");
     await userEvent.click(screen.getByRole("button", { name: /^discard reading$/i }));
-    expect(await screen.findByText(/wasn't filed or counted, and your original document is still stored/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Discarding adds no charge/i)).toBeInTheDocument();
   });
   it("shows the server's refusal and renders nothing for non-owners", async () => {
     serve(base, () => Response.json({ type: "about:blank", title: "Conflict", status: 409, detail: "There's no processing room left this month, so this reading stays held. Nothing was charged." }, { status: 409, headers: { "content-type": "application/problem+json" } }));
