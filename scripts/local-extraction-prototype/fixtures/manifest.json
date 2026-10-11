@@ -1,0 +1,59 @@
+{
+  "status": "original-synthetic-drafts-not-independent-ground-truth",
+  "source": "Copied byte-for-byte from local corpus-boundaries preparation on 2026-10-11",
+  "scope": "12 medical_bill/utility_bill fixtures only; other six types unsupported",
+  "provider_called": false,
+  "runtime_imported": false,
+  "labels_reviewed": false,
+  "rights_reviewed": false,
+  "fixtures": [
+    {
+      "file": "medical_bill--ambiguous_numeric_date.pdf",
+      "sha256": "8fff9340851c7e24e9d1be8a219e2e47945d2c477bfc1571c3b1c8e95fcd9876"
+    },
+    {
+      "file": "medical_bill--conflicting_dates.pdf",
+      "sha256": "dcb26e03bf3ecc105d881a2048b87c9df42f97dc5a8ca088e4d1c16f9684e255"
+    },
+    {
+      "file": "medical_bill--explicit_date.pdf",
+      "sha256": "65a30ba934d76668cbb351db3579c59918f7dcddcd4699e9b1088fe69a9448a7"
+    },
+    {
+      "file": "medical_bill--missing_date.pdf",
+      "sha256": "40a756cc40cedfc6f1b56296b652daa016a9583a51a5c5d468aa8aa589d331c0"
+    },
+    {
+      "file": "medical_bill--type_specific_negative.pdf",
+      "sha256": "a930b10b4acfed180d4bd37254a46e4278cd1183725b3348ba1a05781d08d2d2"
+    },
+    {
+      "file": "medical_bill--valid_leap_day.pdf",
+      "sha256": "8d578dbcb5aee0b4c60101611ba5f4de2472542a8248d71da53d1f70c77eeb9e"
+    },
+    {
+      "file": "utility_bill--ambiguous_numeric_date.pdf",
+      "sha256": "d16fd133566da274225861df0cdaa4f7812d9f73afccad9f2d3e6a9956a572c2"
+    },
+    {
+      "file": "utility_bill--conflicting_dates.pdf",
+      "sha256": "d579368bff620677750276f3d2e00d479c18cbf31852b399acd06de02f6ae8c5"
+    },
+    {
+      "file": "utility_bill--explicit_date.pdf",
+      "sha256": "202bba14c5f63261f6d829d320b04bcf9a41e60d171f548dd08c7c515eead686"
+    },
+    {
+      "file": "utility_bill--missing_date.pdf",
+      "sha256": "0f3cb9bf180cfc8657ba8d535ee0f3533bc7c90d8f3c9adab6b6b921090a5047"
+    },
+    {
+      "file": "utility_bill--type_specific_negative.pdf",
+      "sha256": "409b23fb92c48bd98b438547c72f67c36573fcafbd5fdca7e12d58000d3cddd5"
+    },
+    {
+      "file": "utility_bill--valid_leap_day.pdf",
+      "sha256": "4c92e03aeb7c8342917f83c08ef0a910ae4acc9f9f2cbae1c3ac801c19b41abd"
+    }
+  ]
+}
