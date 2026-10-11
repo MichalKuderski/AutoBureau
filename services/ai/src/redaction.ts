@@ -18,6 +18,7 @@ export interface RedactionProvenance {
 export type ProviderPayload = Readonly<{ version: 1; task: "classify-public-fixture"; kind: "deadline-notice" }>;
 const parsed = new WeakMap<object, ParsedState>();
 const cleared = new WeakMap<object, ProviderPayload>();
+const clearedSources = new WeakMap<object, string>();
 export class DocumentBoundaryError extends Error {
   constructor() { super("Document requires local review; provider egress refused"); }
 }
@@ -63,6 +64,7 @@ export function redactParsedDocument(input: ParsedDocument): Readonly<{ capabili
   const state = parsed.get(input); if (!state) return deny();
   parsed.delete(input);
   const capability = Object.freeze({}) as ProviderInput;
+  clearedSources.set(capability, state.sha256);
   cleared.set(capability, Object.freeze({ version: 1, task: "classify-public-fixture", kind: "deadline-notice" }));
   const provenance: RedactionProvenance = Object.freeze({ sourceSha256: state.sha256, parser: state.parser,
     policy: "closed-enums-v1", retainedLocally: Object.freeze(["due-date"] as const),
@@ -74,7 +76,17 @@ export function redactParsedDocument(input: ParsedDocument): Readonly<{ capabili
 export function takeProviderPayload(input: ProviderInput): ProviderPayload {
   const value = cleared.get(input); if (!value) return deny();
   cleared.delete(input);
+  clearedSources.delete(input);
   if (!keyOnly(value, ["version", "task", "kind"]) || value.version !== 1
     || value.task !== "classify-public-fixture" || value.kind !== "deadline-notice") return deny();
   return value;
+}
+
+/** Local/mock adapter source binding. No additional field is exposed to a provider. */
+export function takeSourceBoundProviderPayload(input: ProviderInput, expectedSourceSha256: string): ProviderPayload {
+  const actual = clearedSources.get(input);
+  if (!actual || actual !== expectedSourceSha256) {
+    cleared.delete(input); clearedSources.delete(input); return deny();
+  }
+  return takeProviderPayload(input);
 }
