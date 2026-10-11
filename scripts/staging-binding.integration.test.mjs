@@ -7,7 +7,10 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createRequire} from 'node:module';
 import {spawnSync} from 'node:child_process';
-import {readOnly,inspectBinding} from './staging-binding-core.mjs';
+import {readOnly,executeDiagnostic} from './staging-binding-core.mjs';
+import {stages} from './staging-binding-protocol.mjs';
+import {createClient} from './staging-binding-client.mjs';
+import {cp,mkdir} from 'node:fs/promises';
 import {loadInventory,stagePrefix} from './rejection-rollout-core.mjs';
 const root=fileURLToPath(new URL('..',import.meta.url));
 const input=process.env.DIAGNOSTIC_TEST_DATABASE_URL;
@@ -20,6 +23,10 @@ const require=createRequire(new URL('../packages/db/package.json',import.meta.ur
 const {PrismaClient}=require('@prisma/client');
 const db=new PrismaClient({datasourceUrl:input,log:[]});
 const other=new PrismaClient({datasourceUrl:input,log:[]});
+async function inspectBinding({report=()=>{}}={}) {
+  const ok=await executeDiagnostic({root,createClient:()=>createClient(input),report:async event=>{if(event[1]===1)report(event[0]);}});
+  if(!ok)throw Error('Synthetic diagnostic failed');
+}
 const manifest=JSON.parse(await readFile(join(root,'scripts/rejection-rollout-manifest.json'),'utf8'));
 before(async()=>{
   const [{count}]=await db.$queryRawUnsafe("SELECT count(*)::int AS count FROM information_schema.tables WHERE table_schema='public'");
@@ -36,7 +43,7 @@ after(async()=>{await db.$disconnect();await other.$disconnect();});
 test('real 48-migration baseline authenticates and matches identity, ledger and schema',async()=>{
   const reports=[];
   await inspectBinding({root,db,report:n=>reports.push(n)});
-  assert.deepEqual(reports,[0,1,2,3]);
+  assert.deepEqual(reports,[0,1,2,3,4,5,6,7]);
 });
 test('PostgreSQL rejects persistent DML and DDL even for this superuser; negative control can write',async()=>{
   const [{superuser}]=await db.$queryRawUnsafe('SELECT rolsuper AS superuser FROM pg_roles WHERE rolname=current_user');
@@ -90,25 +97,108 @@ test('checksum drift, rolled-back ledger and weakened RLS fail closed',async()=>
   await db.$executeRawUnsafe('ALTER TABLE document_period_decisions ENABLE ROW LEVEL SECURITY');
   await inspectBinding({root,db,report:()=>{}});
 });
-test('real driver authentication errors cannot escape isolated worker stdout/stderr',async()=>{
-  const dir=await mkdtemp(join(tmpdir(),'binding-driver-'));
+// A local-only dependency adapter redirects the unchanged packaged entrypoint's
+// approved-shape synthetic URL to this disposable database. No hosted override
+// exists, and every real driver connection made by these tests is loopback.
+async function packaged(fn,{databaseUrl=input,clientSource}={}) {
+  const dir=await mkdtemp(join(tmpdir(),'binding-package-'));
   try {
-    const bad=new URL(input);bad.password='CANARY_SYNTHETIC_BAD_PASSWORD';
-    const path=join(dir,'worker.mjs');
-    await writeFile(path,`import {createRequire} from 'node:module';
-      const require=createRequire(${JSON.stringify(join(root,'packages/db/package.json'))});
-      const {PrismaClient}=require('@prisma/client');
-      const db=new PrismaClient({datasourceUrl:process.env.DATABASE_URL,log:['error']});
-      try{await db.$connect();process.exit(0);}catch(e){
-        console.error(e);console.log(process.env.DATABASE_URL);
-        if(e.errorCode==='P1000')process.send(0,()=>process.exit(1));else process.exit(1);
-      }`);
-    const supervisor=new URL('./staging-binding-supervisor.mjs',import.meta.url).href;
-    const source=`import {supervise} from ${JSON.stringify(supervisor)};
-      console.log(JSON.stringify(await supervise(${JSON.stringify(path)},{DATABASE_URL:process.env.LOCAL_FIXTURE_URL},5000)));`;
-    const r=spawnSync(process.execPath,['--input-type=module','-e',source],
-      {env:{LOCAL_FIXTURE_URL:bad.toString()},encoding:'utf8',timeout:8000});
-    assert.equal(r.status,0);assert.equal(r.stderr,'');assert.deepEqual(JSON.parse(r.stdout),{ok:false,count:1});
-    assert.ok(!r.stdout.includes('CANARY'));
-  } finally {await rm(dir,{recursive:true,force:true});}
+    for(const path of ['scripts','ops/staging-rejection','packages/db/prisma/migrations'])
+      await cp(join(root,path),join(dir,path),{recursive:true});
+    await mkdir(join(dir,'packages/db/node_modules/@prisma/client'),{recursive:true});
+    await writeFile(join(dir,'packages/db/package.json'),'{}');
+    const realClient=require.resolve('@prisma/client');
+    await writeFile(join(dir,'packages/db/node_modules/@prisma/client/index.js'),clientSource ??
+      `const {PrismaClient}=require(${JSON.stringify(realClient)});
+       module.exports.PrismaClient=class extends PrismaClient {
+         constructor(options){super({...options,datasourceUrl:${JSON.stringify(databaseUrl)}});}
+       };`);
+    const sha='a'.repeat(40),project='kdqnfruwgocfqwpbpuxo';
+    const env={GITHUB_REPOSITORY:'MichalKuderski/AutoBureau',GITHUB_EVENT_NAME:'workflow_dispatch',
+      GITHUB_REF:'refs/heads/main',GITHUB_ACTOR:'MichalKuderski',GITHUB_TRIGGERING_ACTOR:'MichalKuderski',
+      GITHUB_SHA:sha,DIAGNOSTIC_APPROVAL:`diagnostic:${sha}:${project}`,
+      DATABASE_URL:`postgresql://postgres:CANARY_SYNTHETIC@db.${project}.supabase.co:5432/postgres`};
+    const run=()=>spawnSync(process.execPath,['scripts/staging-binding-diagnostic.mjs'],
+      {cwd:dir,env,encoding:'utf8',timeout:35000});
+    return await fn({dir,run});
+  }finally{await rm(dir,{recursive:true,force:true});}
+}
+function fixedOutput(r) {
+  assert.equal(r.stderr,'');assert.ok(!r.stdout.includes('CANARY'));
+  const lines=r.stdout.trim().split('\n');assert.equal(lines.length,stages.length+3);
+  for(const line of lines)assert.match(line,/^[A-Z_]+ (?:PASS|NOT_RUN|FAIL(?: [A-Z_]+)?)$/);
+  return lines;
+}
+test('actual packaged CLI and worker complete every stage with the real local driver and stripped env',async()=>{
+  await packaged(async({run})=>{
+    const r=run(),lines=fixedOutput(r);assert.equal(r.status,0);
+    assert.ok(lines.every(l=>l.endsWith(' PASS')));
+  });
+});
+test('actual packaged startup, inventory and driver import/constructor failures classify LOCAL_SETUP',async()=>{
+  for(const source of ["throw Error('CANARY_IMPORT')",
+    "module.exports.PrismaClient=class{constructor(){console.log('CANARY');console.error('CANARY');throw Error('CANARY_INIT')}}"])
+    await packaged(async({run})=>{
+      const r=run(),lines=fixedOutput(r);assert.equal(r.status,1);
+      assert.ok(lines.includes('LOCAL_SETUP FAIL LOCAL_SETUP_FAILURE'));
+      assert.ok(lines.includes('CONNECT NOT_RUN'));
+    },{clientSource:source});
+  await packaged(async({dir,run})=>{
+    await rm(join(dir,'scripts/rejection-rollout-manifest.json'));
+    const r=run(),lines=fixedOutput(r);assert.equal(r.status,1);
+    assert.ok(lines.includes('LOCAL_SETUP FAIL LOCAL_SETUP_FAILURE'));
+    assert.ok(lines.includes('CONNECT NOT_RUN'));
+  });
+});
+test('actual packaged P1000 authentication rejection is distinct and leaks no raw error or URL',async()=>{
+  const bad=new URL(input);bad.password='CANARY_SYNTHETIC_BAD_PASSWORD';
+  await packaged(async({run})=>{
+    const r=run(),lines=fixedOutput(r);assert.equal(r.status,1);
+    assert.ok(lines.includes('LOCAL_SETUP PASS'));
+    assert.ok(lines.includes('CONNECT FAIL AUTH_REJECTED'));
+    assert.ok(lines.includes('READ_ONLY_CONFIRMATION NOT_RUN'));
+  },{databaseUrl:bad.toString()});
+});
+test('actual packaged identity mismatch is after successful connection/read-only confirmation',async()=>{
+  const otherDatabase=new URL(input);otherDatabase.pathname='/template1';
+  await packaged(async({run})=>{
+    const r=run(),lines=fixedOutput(r);assert.equal(r.status,1);
+    assert.ok(lines.includes('CONNECT PASS'));assert.ok(lines.includes('READ_ONLY_CONFIRMATION PASS'));
+    assert.ok(lines.includes('DATABASE_ROLE FAIL IDENTITY_MISMATCH'));
+    assert.ok(lines.includes('MIGRATION_CHECKSUMS NOT_RUN'));
+  },{databaseUrl:otherDatabase.toString()});
+});
+test('actual packaged post-transaction disconnect failure retains transaction pass but overall fails',async()=>{
+  const realClient=require.resolve('@prisma/client');
+  await packaged(async({run})=>{
+    const r=run(),lines=fixedOutput(r);assert.equal(r.status,1);
+    assert.ok(lines.includes('TRANSACTION_COMPLETED PASS'));
+    assert.ok(lines.includes('DISCONNECT FAIL UNKNOWN'));
+    assert.ok(lines.includes('PROCESS_COMPLETION FAIL REPORTED_FAILURE'));
+  },{clientSource:`const {PrismaClient}=require(${JSON.stringify(realClient)});
+    module.exports.PrismaClient=class extends PrismaClient {
+      constructor(options){super({...options,datasourceUrl:${JSON.stringify(input)}});}
+      async $disconnect(){await super.$disconnect();throw Error('CANARY_DISCONNECT');}
+    };`});
+});
+test('actual packaged TLS refusal is CONNECT failure without exposing provider text',async()=>{
+  const tls=new URL(input);tls.search='sslmode=require&sslaccept=strict';
+  await packaged(async({run})=>{
+    const r=run(),lines=fixedOutput(r);assert.equal(r.status,1);
+    assert.ok(lines.includes('CONNECT FAIL TLS_FAILURE'));
+    assert.ok(lines.includes('READ_ONLY_CONFIRMATION NOT_RUN'));
+  },{databaseUrl:tls.toString()});
+});
+test('actual packaged transaction completion error retains read stages and fails completion',async()=>{
+  const realClient=require.resolve('@prisma/client');
+  await packaged(async({run})=>{
+    const r=run(),lines=fixedOutput(r);assert.equal(r.status,1);
+    assert.ok(lines.includes('SCHEMA_POSTURE PASS'));
+    assert.ok(lines.includes('TRANSACTION_COMPLETED FAIL TRANSACTION_FAILURE'));
+    assert.ok(lines.includes('DISCONNECT NOT_RUN'));
+  },{clientSource:`const {PrismaClient}=require(${JSON.stringify(realClient)});
+    module.exports.PrismaClient=class extends PrismaClient {
+      constructor(options){super({...options,datasourceUrl:${JSON.stringify(input)}});}
+      async $transaction(...args){await super.$transaction(...args);throw {code:'P2028',message:'CANARY_TX'};}
+    };`});
 });

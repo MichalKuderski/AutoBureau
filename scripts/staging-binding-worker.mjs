@@ -1,19 +1,11 @@
-// Fixed hosted worker, never accepts SQL, callbacks, local target or phase inputs.
-import {createRequire} from 'node:module';
+// Fixed hosted entrypoint: no SQL, phase, factory or local-target inputs.
 import {fileURLToPath} from 'node:url';
-import {inspectBinding} from './staging-binding-core.mjs';
 import {connection} from './staging-binding-policy.mjs';
-let db;
+import {createClient} from './staging-binding-client.mjs';
+import {executeDiagnostic} from './staging-binding-core.mjs';
+const send=event=>new Promise((resolve,reject)=>process.send(event,error=>error?reject(Error('IPC failed')):resolve()));
 try {
-  const datasourceUrl=connection(process.env.DATABASE_URL);
-  const require=createRequire(new URL('../packages/db/package.json',import.meta.url));
-  const {PrismaClient}=require('@prisma/client');
-  db=new PrismaClient({datasourceUrl,log:[]});
-  await inspectBinding({root:fileURLToPath(new URL('..',import.meta.url)),db,report:n=>process.send(n)});
-  await db.$disconnect();
-  process.exit(0);
-} catch {
-  // Even disconnect errors and native crash output cannot reach the supervisor log.
-  try {await db?.$disconnect();} catch { /* fixed failure only */ }
-  process.exit(1);
-}
+  const ok=await executeDiagnostic({root:fileURLToPath(new URL('..',import.meta.url)),
+    createClient:()=>createClient(connection(process.env.DATABASE_URL)),report:send});
+  process.exit(ok?0:1);
+} catch {process.exit(1);}
