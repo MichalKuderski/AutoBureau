@@ -1,0 +1,38 @@
+name: Staging binding read-only diagnostic
+on:
+  workflow_dispatch:
+    inputs:
+      approval:
+        description: 'Separate approval: diagnostic:exact-main-SHA:kdqnfruwgocfqwpbpuxo'
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: staging-rejection-migration-only
+  cancel-in-progress: false
+jobs:
+  diagnostic:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.actor == 'MichalKuderski' && github.triggering_actor == 'MichalKuderski'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @autobureau/db exec prisma generate
+        env:
+          DATABASE_URL: postgresql://unused:unused@127.0.0.1:5432/unused
+      - name: Read-only diagnostic; fixed results only
+        run: node scripts/staging-binding-diagnostic.mjs
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}
+          DIAGNOSTIC_APPROVAL: ${{ inputs.approval }}
