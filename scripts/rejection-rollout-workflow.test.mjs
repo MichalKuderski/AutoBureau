@@ -53,3 +53,13 @@ test('new CI integration job has only a local fixture and no hosted environment 
   assert.ok(!/secrets\.|vercel|--prod|workflow_dispatch/.test(JSON.stringify(job)));
   assert.deepEqual(job.steps.filter(s=>s.run).map(s=>s.run),['pnpm install --frozen-lockfile','pnpm --filter @autobureau/db exec prisma generate','node scripts/rejection-rollout.test.mjs','node scripts/rejection-rollout-workflow.test.mjs','node scripts/rejection-rollout.integration.test.mjs']);
 });
+test('secret-scan exceptions pin only the three verified migration checksum fingerprints',()=>{
+  const prefix='bda2584078b1c8b9ab44f7199982ea1a78c4b6fd:scripts/rejection-rollout-manifest.json:generic-api-key:';
+  const exceptions=readFileSync(join(root,'.gitleaksignore'),'utf8').trim().split('\n').filter(line=>line.startsWith('bda2584078b1c8b9ab44f7199982ea1a78c4b6fd:'));
+  assert.deepEqual(exceptions,[8,9,46].map(line=>prefix+line));
+  const lines=readFileSync(join(root,'scripts/rejection-rollout-manifest.json'),'utf8').split('\n');
+  for(const [line,name] of [[8,'20260823000000_idempotency_keys'],[9,'20260825000000_auth_rate_limits'],[46,'20261001000003_plaid_credential_envelope_v2']]){
+    assert.ok(lines[line-1].includes(`"${name}"`));
+    assert.equal(manifest.baseline[name],createHash('sha256').update(readFileSync(join(root,manifest.paths[name]))).digest('hex'));
+  }
+});
