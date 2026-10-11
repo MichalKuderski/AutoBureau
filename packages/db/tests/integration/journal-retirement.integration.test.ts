@@ -50,7 +50,83 @@ async function sealed(manifestDaysAgo = 30, state: "verifying" | "fenced" = "ver
 }
 const refused = (p: Promise<unknown>) => p.then(() => "ok", e => String(e instanceof Error ? e.message : e));
 
+/** Hold the existing DB guard lock until both real worker claims are waiting on it.
+ * Old code reads absence before blocking at INSERT; fixed code blocks before its read.
+ * No query results are mocked, and the administrator only controls test scheduling. */
+async function simultaneousClaims(hh: string, deletionId: string, whileBlocked?: () => Promise<void>) {
+  let release!: () => void, ready!: (pid: number) => void;
+  const released = new Promise<void>(resolve => { release = resolve; });
+  const locked = new Promise<number>(resolve => { ready = resolve; });
+  const holder = admin.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended('retirement:'||${hh}::uuid::text,0))`;
+    const [row] = await tx.$queryRaw<Array<{ pid: number }>>`SELECT pg_backend_pid() AS pid`;
+    ready(row!.pid);
+    await released;
+  }, { timeout: 10_000 });
+  // Propagate holder setup failure rather than waiting forever for readiness.
+  const pid = await Promise.race([locked, holder.then(() => { throw new Error("Claim gate ended before ready"); })]);
+  const outcomes = Promise.allSettled([
+    claimJournalRetirement(retentionDb, hh, deletionId),
+    claimJournalRetirement(retentionDb, hh, deletionId),
+  ]);
+  try {
+    const deadline = Date.now() + 2_000;
+    let waiting = 0;
+    do {
+      const [row] = await admin.$queryRaw<Array<{ n: number }>>`SELECT count(*)::int AS n
+        FROM pg_locks w JOIN pg_stat_activity a ON a.pid=w.pid
+        JOIN pg_locks h ON h.pid=${pid} AND h.granted AND h.locktype='advisory'
+          AND (w.database,w.classid,w.objid,w.objsubid)=(h.database,h.classid,h.objid,h.objsubid)
+        WHERE w.locktype='advisory' AND NOT w.granted AND a.usename='app_retention_worker'`;
+      waiting = row!.n;
+      if (waiting === 2) break;
+      await new Promise(resolve => setTimeout(resolve, 10));
+    } while (Date.now() < deadline);
+    expect(waiting).toBe(2);
+    await whileBlocked?.();
+  } finally {
+    release();
+    await holder;
+    await outcomes; // settle worker transactions before fixture cleanup, including on failure
+  }
+  return outcomes;
+}
+
 describe("ADR-019 retirement planning (no purge)", () => {
+  it("serializes simultaneous initial claims and leaves another household unblocked", async () => {
+    const f = await sealed(), other = await sealed();
+    const outcomes = await simultaneousClaims(f.hh, f.deletionId, async () => {
+      expect((await claimJournalRetirement(retentionDb, other.hh, other.deletionId)).status).toBe("claimed");
+    });
+    expect(outcomes.map(o => o.status)).toEqual(["fulfilled", "fulfilled"]);
+    const claims = outcomes.map(o => { if (o.status === "rejected") throw o.reason; return o.value; });
+    expect(claims.map(c => c.status).sort()).toEqual(["busy", "claimed"]);
+    expect(new Set(claims.map(c => c.runId)).size).toBe(1);
+    expect(await admin.journalRetirementRun.findMany({ where: { householdId: f.hh }, select: { state: true, attempts: true } }))
+      .toEqual([{ state: "leased", attempts: 1 }]);
+  });
+  it("keeps serial claims on the same live lease without advancing attempts", async () => {
+    const f = await sealed();
+    const first = await claimJournalRetirement(retentionDb, f.hh, f.deletionId);
+    expect(first.status).toBe("claimed");
+    const before = await admin.journalRetirementRun.findUniqueOrThrow({ where: { id: first.runId } });
+    expect(await claimJournalRetirement(retentionDb, f.hh, f.deletionId))
+      .toEqual({ runId: first.runId, token: null, status: "busy" });
+    expect(await admin.journalRetirementRun.findUniqueOrThrow({ where: { id: first.runId } })).toEqual(before);
+  });
+  it("admits exactly one simultaneous takeover of an expired lease", async () => {
+    const f = await sealed();
+    const first = await claimJournalRetirement(retentionDb, f.hh, f.deletionId);
+    await admin.journalRetirementRun.update({ where: { id: first.runId }, data: { leaseUntil: new Date(Date.now() - 1000) } });
+    const outcomes = await simultaneousClaims(f.hh, f.deletionId);
+    expect(outcomes.map(o => o.status)).toEqual(["fulfilled", "fulfilled"]);
+    const claims = outcomes.map(o => { if (o.status === "rejected") throw o.reason; return o.value; });
+    expect(claims.map(c => c.status).sort()).toEqual(["busy", "claimed"]);
+    expect(claims.every(c => c.runId === first.runId)).toBe(true);
+    expect(claims.find(c => c.status === "claimed")!.token).not.toBe(first.token);
+    expect(await admin.journalRetirementRun.findUniqueOrThrow({ where: { id: first.runId } }))
+      .toMatchObject({ state: "leased", attempts: 2 });
+  });
   it("records a retain-only decision for every catalog class and seals a database-computed plan digest", async () => {
     const f = await sealed();
     const r = await planJournalRetirement(retentionDb, f.hh, f.deletionId);
