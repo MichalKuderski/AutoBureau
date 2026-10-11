@@ -20,6 +20,36 @@ env:
   DATABASE_URL: postgresql://app_user:app_local_only@localhost:5432/autobureau
 
 jobs:
+  rejection_rollout:
+    name: staging rejection rollout (isolated local DB)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: autobureau
+          POSTGRES_PASSWORD: ci_only
+          POSTGRES_DB: rollout_baseline
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U autobureau"
+          --health-interval 2s --health-timeout 2s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @autobureau/db exec prisma generate
+      - run: node scripts/rejection-rollout.test.mjs
+      - run: node scripts/rejection-rollout-workflow.test.mjs
+      - run: node scripts/rejection-rollout.integration.test.mjs
+        env:
+          ROLLOUT_TEST_DATABASE_URL: postgresql://autobureau:ci_only@127.0.0.1:5432/rollout_baseline
+
   verify:
     name: lint · build · typecheck · test
     runs-on: ubuntu-latest
