@@ -30,3 +30,15 @@ are unchanged between preproduction `13766613` and PR10 `92cabd6a`. The repair i
 a separate follow-up based on PR10; it does not alter PR10's approved deployment.
 This planning-library defect is separate from dashboard P2028 and does not prove
 that retirement is wired to a production worker. No purge authority is enabled.
+
+## Independent observation retries
+
+The verifier's read-before-insert path had the same race: two first observers
+could collide on `journal_retirement_observations_run_id_class_id_key`. It now
+takes the existing household lock before reading counts or stored observations.
+Concurrent callers reuse the same eleven immutable observations; a later retry
+returns the recorded snapshot even if retained rows have since changed. The
+deterministic lock-gated regression fails on the old observer and passes with
+the pre-read lock, including another household progressing while it is blocked.
+Role grants, immutable evidence, no-purge constraints and transaction limits are
+unchanged. This is a separate local follow-up; the published PR11 does not contain it.
