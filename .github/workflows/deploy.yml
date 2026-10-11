@@ -134,7 +134,8 @@ jobs:
   # migration is proved. Deploy order is always: migrate (expand) → deploy (doc 09 §4).
   staging:
     name: staging
-    if: github.event_name == 'push' || github.event.inputs.environment == 'staging'
+    # Temporary rollout hold: use the separately approved migration-only workflow.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     environment:
       name: staging

@@ -1,3 +1,6 @@
 84f41d088ef5e0f78852c23b4e7c981ae731609f:apps/web/src/server/observability/redact.test.ts:stripe-access-token:67
 84f41d088ef5e0f78852c23b4e7c981ae731609f:apps/web/src/server/observability/redact.test.ts:generic-api-key:69
 84f41d088ef5e0f78852c23b4e7c981ae731609f:apps/web/src/server/observability/redact.test.ts:jwt:19
+bda2584078b1c8b9ab44f7199982ea1a78c4b6fd:scripts/rejection-rollout-manifest.json:generic-api-key:8
+bda2584078b1c8b9ab44f7199982ea1a78c4b6fd:scripts/rejection-rollout-manifest.json:generic-api-key:9
+bda2584078b1c8b9ab44f7199982ea1a78c4b6fd:scripts/rejection-rollout-manifest.json:generic-api-key:46

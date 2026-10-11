@@ -1,0 +1,59 @@
+name: Staging rejection migration only
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        type: choice
+        options: [pause, reason, resume]
+        required: true
+      approval:
+        description: 'Owner approval: phase:exact-main-SHA:kdqnfruwgocfqwpbpuxo'
+        type: string
+        required: true
+      evidence:
+        description: 'Owner issue comment recording approved scope, recovery decision and prerequisites'
+        type: string
+        required: true
+      runtime_sha:
+        description: 'Resume only: separately verified reason-aware runtime SHA'
+        type: string
+      runtime_url:
+        description: 'Resume only: immutable staging Preview URL'
+        type: string
+      acceptance:
+        description: 'Resume only: verified acceptance run URL'
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: staging-rejection-migration-only
+  cancel-in-progress: false
+jobs:
+  migrate:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.actor == 'MichalKuderski' && github.triggering_actor == 'MichalKuderski'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @autobureau/db exec prisma generate
+        env:
+          DATABASE_URL: postgresql://unused:unused@127.0.0.1:5432/unused
+      - name: One approved migration phase; no deployment capability
+        run: node scripts/rejection-rollout.mjs
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_MIGRATION_DATABASE_URL }}
+          ROLLOUT_PHASE: ${{ inputs.phase }}
+          ROLLOUT_APPROVAL: ${{ inputs.approval }}
+          ROLLOUT_EVIDENCE: ${{ inputs.evidence }}
+          ROLLOUT_RUNTIME_SHA: ${{ inputs.runtime_sha }}
+          ROLLOUT_RUNTIME_URL: ${{ inputs.runtime_url }}
+          ROLLOUT_ACCEPTANCE: ${{ inputs.acceptance }}

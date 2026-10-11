@@ -1,0 +1,14 @@
+{
+  "source": "3695e6cbb219d46674bbc5ffd891de2793fd002c",
+  "jobs": {
+    "preview": "734b86c6a7f648ddad9353eaeba42bbbdfdde77cc4092f3576f532534d4dcf75",
+    "production_migrate": "eca61f5b50ad335ea701f2092912865560b1f0c0c4da95021e401bc34bf0310b",
+    "production_deploy": "b76cc7a6265aa2ed9971892fe4da182c6b9896ccc7f3d4b46a181adca9d5208d"
+  },
+  "top": {
+    "on": "216b799db8940633e3eb9105fd0f9e983f1f8bc090cad65758e3750cb7ac65f1",
+    "permissions": "d8d6aceb1abc41990618a503082c3badcca8897feee0976f222af5b74e30bec2",
+    "concurrency": "c9150c9c214bc2ef7deb30e5af068dbef9695797986bb7fa358651930c38ce6e"
+  },
+  "schema": "875b662381782273962b16b5cb9ce2b571ebfc2c0b092a36c3062910ec67a59f"
+}
