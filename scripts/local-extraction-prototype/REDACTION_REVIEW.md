@@ -1,6 +1,6 @@
 # Offline semantic redaction review package
 
-Status: local synthetic experiment, unpublished. No ADR018 amendment, live gateway,
+Status: draft offline synthetic review package. No ADR018 amendment, live gateway,
 transport, provider call, credential, payment or new application caller. OpenAI
 remains selected; neither candidate model was evaluated. The owner subsequently selected a privacy-first hybrid design direction; see
 [hybrid threat model](../../docs/engineering/proposals/adr018-projection/hybrid-threat-model.md).

@@ -1,6 +1,6 @@
 # Local source-to-candidate prototype
 
-Unpublished offline synthetic work, separate from deployed PR13. OpenAI remains the
+Draft offline synthetic review package, separate from deployed PR13. OpenAI remains the
 selected future provider; this module does not invoke it or mint provider capabilities.
 No network/client/DB/filesystem/credential authority exists in `extract.py`. Tests
 read only the 12 checked-in original synthetic fixtures; no real documents used.

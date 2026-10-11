@@ -1,7 +1,7 @@
 {
   "status": "original-synthetic-drafts-not-independent-ground-truth",
   "source": "Copied byte-for-byte from local corpus-boundaries preparation on 2026-10-11",
-  "scope": "12 medical_bill/utility_bill fixtures only; other six types unsupported",
+  "scope": "12 checked-in medical_bill/utility_bill fixtures; narrow observations for the other six types use generated synthetic test sources",
   "provider_called": false,
   "runtime_imported": false,
   "labels_reviewed": false,

@@ -62,7 +62,7 @@ decrypt authority. Write-only identifier custody is a separate trusted handoff.
 
 ## Evaluated tradeoff, without invented scores
 
-The offline package has41 passing methods and independent review, covering four
+The offline package has 41 passing methods and independent review, covering four
 semantic collision pairs and direct/indirect canaries in a closed grammar. This is
 functional negative-control evidence, not model evaluation or measured real-world
 redaction recall. For these exact statement patterns the deterministic local reader
