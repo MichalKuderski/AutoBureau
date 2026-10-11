@@ -1,5 +1,10 @@
 # ADR018 field projection and source mapping — design review draft
 
+**Functional review:** this typed contract cannot fulfill F7 extraction; it contains
+already extracted and labelled facts. See [functional assessment](functional-assessment.md)
+for all eight types and the recommended local source-to-candidate architecture.
+Do not seek provider approval for this contract as an extraction solution.
+
 Status: proposed, local synthetic investigation only; no policy amendment or provider
 activation. Base reviewed foundation is `4d7b7f8931e1585024a0e4d8d5cf81c5d66f5d52`
 (PR13). This directory and its additional tests are a separate change. They are not
@@ -137,12 +142,13 @@ integration, authorized egress, real RLS or provider accuracy.
 Safe to prepare locally: schemas, source-map reference checks, adversarial fixtures
 and fail-closed tests. **Not ready for provider activation or real extraction.**
 
-Owner/technical/privacy decision: review whether to authorize this precise typed
-projection (document type, roles, dates, amounts, state, ordinal slots), with named
-formats and evidence gates. Recommended next step is a synthetic-only prototype
-using complete local grammars, followed by independent leakage testing; real
-household data remains a separate approval. Do not interpret approval to publish
-PR13 as approval of this projection.
+Synthetic-only local prototypes and mocked tests are already authorized. The next
+useful step is source-to-candidate extraction with complete local grammars and
+independent functional/leakage evaluation, not an approval request for the typed
+projection. The substantive owner tradeoff is local extraction under unchanged
+egress restrictions versus a separately reviewed semantic-context projection.
+See the functional assessment. Real transmission/data remain separately gated;
+approval to publish PR13 does not approve either projection or activation.
 
 Product decision: confirm how the required eight-type fields and US-English capture
 formats will be covered when names/issuer context/images remain local. Confirm the
