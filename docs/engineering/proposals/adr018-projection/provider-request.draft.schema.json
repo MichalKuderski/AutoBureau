@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Design-only. No runtime imports or egress authority. Cross-field and source checks are additional.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": [
+        "typed-candidates-draft-1"
+      ]
+    },
+    "docType": {
+      "type": "string",
+      "enum": [
+        "government_id",
+        "insurance_policy",
+        "medical_bill",
+        "vehicle_registration",
+        "lease",
+        "utility_bill",
+        "warranty",
+        "subscription_receipt"
+      ]
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 63
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "amount_due",
+              "cancel_by_date",
+              "claim_deadline",
+              "credit_amount",
+              "deposit_amount",
+              "deposit_return_date",
+              "document_state",
+              "effective_date",
+              "end_date",
+              "expiry_date",
+              "issue_date",
+              "paid_amount",
+              "payment_due_date",
+              "period_end",
+              "period_start",
+              "premium_amount",
+              "purchase_date",
+              "refund_amount",
+              "renewal_amount",
+              "renewal_date",
+              "rent_amount",
+              "service_date",
+              "start_date",
+              "statement_date"
+            ]
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "date"
+                    ]
+                  },
+                  "value": {
+                    "type": "string",
+                    "pattern": "^20[2-9][0-9]-[0-1][0-9]-[0-3][0-9]$"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "money"
+                    ]
+                  },
+                  "minorUnits": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "currency": {
+                    "type": "string",
+                    "enum": [
+                      "USD"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "minorUnits",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "document-state"
+                    ]
+                  },
+                  "value": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "cancelled",
+                      "paid",
+                      "credit",
+                      "expired",
+                      "unknown"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "value"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "slot",
+          "role",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 64
+    }
+  },
+  "required": [
+    "version",
+    "docType",
+    "candidates"
+  ],
+  "additionalProperties": false
+}

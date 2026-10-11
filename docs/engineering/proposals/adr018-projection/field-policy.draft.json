@@ -1,0 +1,87 @@
+{
+  "status": "proposal-only-not-approved-for-egress",
+  "version": "typed-candidates-draft-1",
+  "docTypes": {
+    "government_id": [
+      "issue_date",
+      "expiry_date"
+    ],
+    "insurance_policy": [
+      "effective_date",
+      "expiry_date",
+      "premium_amount",
+      "payment_due_date"
+    ],
+    "medical_bill": [
+      "service_date",
+      "statement_date",
+      "payment_due_date",
+      "amount_due",
+      "credit_amount"
+    ],
+    "vehicle_registration": [
+      "issue_date",
+      "expiry_date",
+      "renewal_amount"
+    ],
+    "lease": [
+      "start_date",
+      "end_date",
+      "rent_amount",
+      "payment_due_date",
+      "deposit_amount",
+      "deposit_return_date"
+    ],
+    "utility_bill": [
+      "period_start",
+      "period_end",
+      "payment_due_date",
+      "amount_due",
+      "credit_amount"
+    ],
+    "warranty": [
+      "purchase_date",
+      "expiry_date",
+      "claim_deadline",
+      "refund_amount"
+    ],
+    "subscription_receipt": [
+      "purchase_date",
+      "renewal_date",
+      "cancel_by_date",
+      "paid_amount",
+      "refund_amount"
+    ]
+  },
+  "providerExcluded": [
+    "names",
+    "addresses",
+    "issuer_free_text",
+    "descriptions",
+    "identifiers",
+    "last_four",
+    "filenames",
+    "urls",
+    "raw_text",
+    "images",
+    "metadata",
+    "source_hash",
+    "tenant_id",
+    "document_id",
+    "source_coordinates",
+    "secret_references"
+  ],
+  "localOnly": [
+    "source_sha256",
+    "parser_policy",
+    "page",
+    "byte_start",
+    "byte_end",
+    "region",
+    "custody_receipt",
+    "household_id",
+    "processing_id",
+    "lease_token"
+  ],
+  "unknownType": "local-human-review"
+}
