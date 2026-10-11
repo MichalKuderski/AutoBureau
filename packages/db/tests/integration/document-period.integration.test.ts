@@ -74,7 +74,7 @@ async function usage(hh: string, n: number) {
 const as = <T,>(owner: string, fn: () => Promise<T>) => runAsUser(owner, fn);
 const state = (f: { hh: string; owner: string; doc: string }) => as(f.owner, () => readDocumentResultState(appDb, f.hh, f.doc));
 const apply = (f: { hh: string; owner: string; doc: string; result: { id: string } }) => as(f.owner, () => applyDocumentResult(appDb, f.hh, f.doc, f.result.id));
-const discard = (f: { hh: string; owner: string; doc: string; result: { id: string } }) => as(f.owner, () => discardDocumentResult(appDb, f.hh, f.doc, f.result.id));
+const discard = (f: { hh: string; owner: string; doc: string; result: { id: string } }) => as(f.owner, () => discardDocumentResult(appDb, f.hh, f.doc, f.result.id, "incorrect-reading"));
 const reason = (p: Promise<unknown>) => p.then(() => "ok", e => e instanceof DocumentResultRefused ? e.reason : String(e));
 const decisions = (hh: string) => appDb.withHousehold(hh, tx => tx.documentPeriodDecision.findMany());
 const snapshot = (id: string) => admin.documentResult.findUniqueOrThrow({ where: { id } });
@@ -154,8 +154,17 @@ describe("PRD §21.3 old-period results", () => {
     expect(await admin.documentProcessing.findUniqueOrThrow({ where: { id: f.processing } })).toMatchObject({ state: "started", chargedAt: null });
     expect(await appDb.withHousehold(f.hh, tx => tx.item.count())).toBe(0);
   });
-  it("discard never charges, keeps the original upload, and excludes a later apply", async () => {
-    const f = await work(await household(), true), original = await admin.document.findUniqueOrThrow({ where: { id: f.doc } });
+  it.each([null, "", "private document contents"])("the database rejects an absent or non-category reason %s", async invalid => {
+    const f = await work(await household(), true);
+    await expect(as(f.owner, () => appDb.withHousehold(f.hh, tx => tx.$executeRaw`INSERT INTO document_period_decisions(household_id,processing_id,result_id,owner_id,decision,rejection_reason)
+      VALUES(${f.hh}::uuid,${f.processing}::uuid,${f.result.id}::uuid,${f.owner}::uuid,'discard',${invalid})`))).rejects.toThrow();
+    expect(await state(f)).toMatchObject({ state: "action-required", canDiscard: true });
+    expect(await as(f.owner, () => appDb.withHousehold(f.hh, tx => tx.documentPeriodDecision.count()))).toBe(0);
+  });
+  it.each([true, false])("discard never charges, keeps the original upload, and excludes a later apply (old=%s)", async old => {
+    const f = await work(await household(), old), original = await admin.document.findUniqueOrThrow({ where: { id: f.doc } });
+    const auditCount = () => as(f.owner, () => appDb.withHousehold(f.hh, tx => tx.auditLog.count({ where: { targetId: f.doc, action: "document.processing_transitioned" } })));
+    const beforeAudit = await auditCount();
     expect(await discard(f)).toMatchObject({ state: "discarded", replayed: false });
     expect((await discard(f)).replayed).toBe(true);
     expect(await admin.documentProcessing.findUniqueOrThrow({ where: { id: f.processing } })).toMatchObject({ state: "cancelled", chargedAt: null, resultRef: null });
@@ -165,13 +174,21 @@ describe("PRD §21.3 old-period results", () => {
     expect(await readDocumentProcessingUsage(appDb, f.hh)).toMatchObject({ completed: 0 });
     expect(await reason(apply(f))).toBe("not-actionable");
     expect(await state(f)).toMatchObject({ state: "discarded", canApply: false, canDiscard: false });
+    const decision = await as(f.owner, () => appDb.withHousehold(f.hh, tx => tx.documentPeriodDecision.findUniqueOrThrow({ where: { resultId: f.result.id } })));
+    expect(decision).toMatchObject({ rejectionReason: "incorrect-reading", ownerId: f.owner, decision: "discard" });
+    await as(f.owner, () => discardDocumentResult(appDb, f.hh, f.doc, f.result.id, "duplicate"));
+    expect(await as(f.owner, () => appDb.withHousehold(f.hh, tx => tx.documentPeriodDecision.findUniqueOrThrow({ where: { resultId: f.result.id } })))).toEqual(decision);
+    expect(await auditCount()).toBe(beforeAudit + 1);
+    expect(await state(f)).toMatchObject({ rejectionReason: "incorrect-reading" });
     // The decision journal is immutable to the application role.
     await expect(as(f.owner, () => appDb.withHousehold(f.hh, tx => tx.$executeRaw`UPDATE document_period_decisions SET decision='apply-current-period' WHERE household_id=${f.hh}::uuid`))).rejects.toThrow();
     await expect(as(f.owner, () => appDb.withHousehold(f.hh, tx => tx.$executeRaw`DELETE FROM document_period_decisions WHERE household_id=${f.hh}::uuid`))).rejects.toThrow();
   });
   it("an applied result cannot then be discarded, and a current-month result needs no transfer", async () => {
     const f = await work(await household(), true); await apply(f);
+    const before = await as(f.owner, () => appDb.withHousehold(f.hh, tx => tx.documentProcessing.findUniqueOrThrow({ where: { id: f.processing } })));
     expect(await reason(discard(f))).toBe("not-actionable");
+    expect(await as(f.owner, () => appDb.withHousehold(f.hh, tx => tx.documentProcessing.findUniqueOrThrow({ where: { id: f.processing } })))).toEqual(before);
     const g = await work(await household(), false);
     expect(await state(g)).toMatchObject({ state: "awaiting-review", canApply: true });
     expect(await apply(g)).toMatchObject({ state: "applied", replayed: false });

@@ -1,3 +1,4 @@
+import { DocumentRejectionReasonSchema, type DocumentRejectionReason } from "@autobureau/contracts";
 import { currentActor, recordAudit } from "./audit.js";
 import { approveSyntheticResultInTransaction } from "./document-results.js";
 import type { Database, ScopedClient } from "./scoped.js";
@@ -18,6 +19,7 @@ export interface DocumentResultView {
   resultPeriodStart: string | null; currentPeriodStart: string; chargedPeriodStart: string | null;
   capacity: { used: number; limit: number } | null;
   canApply: boolean; canDiscard: boolean; localOnly: true;
+  rejectionReason: DocumentRejectionReason | null;
   evidence: ReturnType<typeof canonicalResultEvidence>;
 }
 export class DocumentResultRefused extends Error {
@@ -27,7 +29,7 @@ const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-
 type Row = {
   result_id: string | null; result_period: Date | null; current_start: Date; fenced: boolean; incompatible: boolean;
   work_state: string | null; result_ref: string | null; charged_at: Date | null; work_period: Date | null;
-  custody_ok: boolean; decision: string | null; used: bigint; plan_limit: number | null; reviewed: boolean;
+  custody_ok: boolean; decision: string | null; rejection_reason: DocumentRejectionReason | null; used: bigint; plan_limit: number | null; reviewed: boolean;
   source_bound: boolean; due_date: Date | null; source_sha256: Uint8Array | null; source_size: number | null;
   page: number | null; citation_start: number | null; citation_end: number | null;
 };
@@ -59,6 +61,7 @@ async function load(tx: ScopedClient, hh: string, documentId: string) {
         AND a.engine_digest=r.engine_digest AND a.signature_digest=r.signature_digest AND a.sandbox_digest=r.sandbox_digest
         AND d.sha256=r.source_sha256 AND d.size_bytes=c.size_bytes AND d.mime_type='application/pdf', false) AS source_bound,
       (SELECT x.decision FROM document_period_decisions x WHERE x.processing_id=w.id AND x.household_id=w.household_id) AS decision,
+      (SELECT x.rejection_reason FROM document_period_decisions x WHERE x.processing_id=w.id AND x.household_id=w.household_id) AS rejection_reason,
       (SELECT count(*) FROM document_processing o WHERE o.household_id=${hh}::uuid AND o.id IS DISTINCT FROM w.id AND o.period_start=t.start
         AND o.state IN ('reserved','started','indeterminate','completed')) AS used,
       (SELECT p.documents_per_month FROM effective_plan p WHERE p.household_id=${hh}::uuid) AS plan_limit,
@@ -76,10 +79,11 @@ function view(documentId: string, r: Row): DocumentResultView {
   const base = { documentId, resultId: r.result_id, resultPeriodStart: r.result_period?.toISOString() ?? null,
     currentPeriodStart: r.current_start.toISOString(), chargedPeriodStart: null as string | null,
     capacity: limit === null ? null : { used, limit }, canApply: false, canDiscard: false, localOnly: true as const,
+    rejectionReason: null as DocumentRejectionReason | null,
     evidence: null as ReturnType<typeof canonicalResultEvidence> };
   if (!r.result_id) return { ...base, state: "none" };
   if (r.fenced) return { ...base, state: "deletion-fenced" };
-  if (r.decision === "discard") return { ...base, state: "discarded" };
+  if (r.decision === "discard") return { ...base, state: "discarded", rejectionReason: r.rejection_reason };
   const proof = !r.incompatible && r.source_bound ? canonicalResultEvidence(r) : null;
   if (r.work_state === "completed" && r.result_ref === r.result_id && r.reviewed)
     return { ...base, state: "applied", chargedPeriodStart: r.work_period?.toISOString() ?? null,
@@ -142,8 +146,9 @@ export async function applyDocumentResult(db: Database, hh: string, documentId: 
   }
 }
 /** Discard: never charged, the original upload stays; the decision and cancellation are atomic. */
-export async function discardDocumentResult(db: Database, hh: string, documentId: string, resultId: string) {
+export async function discardDocumentResult(db: Database, hh: string, documentId: string, resultId: string, reason: DocumentRejectionReason) {
   const userId = owner();
+  if (!DocumentRejectionReasonSchema.safeParse(reason).success) throw new DocumentResultRefused("unavailable");
   if (!uuid.test(documentId) || !uuid.test(resultId)) throw new DocumentResultRefused("not-found");
   try {
     return await db.withHousehold(hh, async tx => {
@@ -154,8 +159,8 @@ export async function discardDocumentResult(db: Database, hh: string, documentId
       if (current.resultId !== resultId) throw new DocumentResultRefused("not-found");
       if (current.state === "discarded") return { state: "discarded" as const, replayed: true };
       if (!current.canDiscard) throw new DocumentResultRefused("not-actionable");
-      await tx.$executeRaw`INSERT INTO document_period_decisions(household_id,processing_id,result_id,owner_id,decision)
-        SELECT household_id,processing_id,id,${userId}::uuid,'discard' FROM document_results WHERE id=${resultId}::uuid AND household_id=${hh}::uuid`;
+      await tx.$executeRaw`INSERT INTO document_period_decisions(household_id,processing_id,result_id,owner_id,decision,rejection_reason)
+        SELECT household_id,processing_id,id,${userId}::uuid,'discard',${reason} FROM document_results WHERE id=${resultId}::uuid AND household_id=${hh}::uuid`;
       const n = await tx.$executeRaw`UPDATE document_processing w SET state='cancelled' FROM document_results r
         WHERE r.id=${resultId}::uuid AND r.household_id=${hh}::uuid AND w.id=r.processing_id AND w.household_id=r.household_id AND w.state IN ('started','indeterminate')`;
       if (n !== 1) throw new DocumentResultRefused("not-actionable");

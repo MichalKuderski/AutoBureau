@@ -56,3 +56,5 @@ export {DocumentQuotaSchema,type DocumentQuota} from './document-quota.js';
 export {canonicalDeadlinePdf,inspectCanonicalPdf,PDF_POLICY} from "./canonical-public-pdf.js";
 
 export * from "./journal-retirement.js";
+
+export * from "./document-rejection.js";

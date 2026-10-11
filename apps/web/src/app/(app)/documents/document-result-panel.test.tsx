@@ -72,12 +72,16 @@ describe("old-period result panel (PRD §21.3)", () => {
   it("discard is confirmed, cancel returns focus, and the result states the original is kept", async () => {
     serve(base, () => Response.json({ ...base, state: "discarded", canApply: false, canDiscard: false }));
     renderScreen(<DocumentResultPanel documentId={doc} />);
-    await userEvent.click(await screen.findByRole("button", { name: /discard reading…/i }));
+    (await screen.findByRole("button", { name: /discard reading…/i })).focus();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(screen.getByLabelText("Reason for discarding")).toHaveFocus());
+    await userEvent.selectOptions(screen.getByLabelText("Reason for discarding"), "duplicate");
     await userEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
     await waitFor(() => expect(screen.getByRole("button", { name: /discard reading…/i })).toHaveFocus());
     await userEvent.click(screen.getByRole("button", { name: /discard reading…/i }));
+    await userEvent.selectOptions(screen.getByLabelText("Reason for discarding"), "incorrect-reading");
     await userEvent.click(screen.getByRole("button", { name: /^discard reading$/i }));
-    expect(await screen.findByText(/wasn't filed or counted, and your original document is still stored/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Discarding adds no charge/i)).toBeInTheDocument();
   });
   it("shows the server's refusal and renders nothing for non-owners", async () => {
     serve(base, () => Response.json({ type: "about:blank", title: "Conflict", status: 409, detail: "There's no processing room left this month, so this reading stays held. Nothing was charged." }, { status: 409, headers: { "content-type": "application/problem+json" } }));

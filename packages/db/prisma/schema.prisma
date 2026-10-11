@@ -1071,6 +1071,7 @@ model DocumentPeriodDecision {
   resultId String @unique @map("result_id") @db.Uuid
   ownerId String @map("owner_id") @db.Uuid
   decision String
+  rejectionReason String? @map("rejection_reason")
   fromPeriodStart DateTime @map("from_period_start") @db.Timestamptz
   toPeriodStart DateTime? @map("to_period_start") @db.Timestamptz
   decidedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("decided_at") @db.Timestamptz

@@ -183,6 +183,7 @@ it("allows a new discard intent after an authoritative capacity refusal and fres
   setup(<DocumentResultPanel documentId={doc} />);
   await applyReading();
   fireEvent.click(await screen.findByRole("button", { name: "Discard reading…" }));
+  fireEvent.change(screen.getByLabelText("Reason for discarding"), { target: { value: "incorrect-reading" } });
   fireEvent.click(screen.getByRole("button", { name: "Discard reading" }));
   await screen.findByText(/You discarded this reading/);
   expect((posts[1]?.headers as Record<string, string>)["Idempotency-Key"]).not.toBe((posts[0]?.headers as Record<string, string>)["Idempotency-Key"]);
@@ -400,4 +401,51 @@ it("does not resolve or refresh another household from a late manual status read
   expect(screen.queryByText(/Filed and counted/)).not.toBeInTheDocument();
   expect(view.client.getQueryState(["summary", "household-b"])?.isInvalidated).toBe(false);
   expect(view.client.getQueryData<{ intent: unknown }>(reviewKey)?.intent).not.toBeNull();
+});
+
+it("requires a rejection category, cancels without writing, and retries only the same category and key", async () => {
+  const response = deferred<Response>(), posts: RequestInit[] = [];
+  let committed = false;
+  const rejected = { ...base, state: "discarded", rejectionReason: "incorrect-reading", canApply: false, canDiscard: false };
+  vi.stubGlobal("fetch", vi.fn(async (_path, options: RequestInit) => {
+    if (options.method === "POST") { posts.push(options); if (posts.length === 1) return response.promise; committed = true; return Response.json(rejected); }
+    return Response.json(committed ? rejected : base);
+  }));
+  setup(<DocumentResultPanel documentId={doc} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Discard reading…" }));
+  expect(screen.getByRole("button", { name: "Discard reading" })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Reason for discarding"), { target: { value: "duplicate" } });
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(posts).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: "Discard reading…" }));
+  expect(screen.getByLabelText("Reason for discarding")).toHaveValue("");
+  fireEvent.change(screen.getByLabelText("Reason for discarding"), { target: { value: "incorrect-reading" } });
+  const button = screen.getByRole("button", { name: "Discard reading" });
+  fireEvent.click(button); fireEvent.click(button);
+  expect(posts).toHaveLength(1);
+  expect(JSON.parse(posts[0]!.body as string)).toEqual({ resultId, reason: "incorrect-reading" });
+  expect(screen.queryByLabelText("Reason for discarding")).not.toBeInTheDocument();
+  await act(async () => response.resolve(problem(503)));
+  fireEvent.click(await screen.findByRole("button", { name: "Retry same action" }));
+  await screen.findByText(/You discarded this reading/);
+  expect(posts).toHaveLength(2);
+  expect(posts[1]?.body).toBe(posts[0]?.body);
+  expect((posts[1]?.headers as Record<string,string>)["Idempotency-Key"]).toBe((posts[0]?.headers as Record<string,string>)["Idempotency-Key"]);
+  expect(screen.getByText(/Reason: The reading is incorrect/)).toBeInTheDocument();
+});
+
+it.each([401, 403, 404])("conceals a selected rejection reason and forbids replay after authorization loss %s", async status => {
+  let denied = false, posts = 0;
+  vi.stubGlobal("fetch", vi.fn(async (_path, options: RequestInit) => {
+    if (options.method === "POST") { posts++; denied = true; return problem(status); }
+    return denied ? problem(status) : Response.json(base);
+  }));
+  setup(<DocumentResultPanel documentId={doc} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Discard reading…" }));
+  fireEvent.change(screen.getByLabelText("Reason for discarding"), { target: { value: "duplicate" } });
+  fireEvent.click(screen.getByRole("button", { name: "Discard reading" }));
+  await waitFor(() => expect(screen.queryByRole("region", { name: "Reading" })).not.toBeInTheDocument());
+  expect(screen.queryByLabelText("Reason for discarding")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Retry same action" })).not.toBeInTheDocument();
+  expect(posts).toBe(1);
 });

@@ -48,6 +48,13 @@ afterAll(async () => {
 });
 
 describe("PRD §21.3 old-period result routes", () => {
+  it.each([{}, { reason: "" }, { reason: "private text" }, { reason: "duplicate", detail: "extra" }])("requires a closed rejection category before any mutation: %j", async extra => {
+    const f = await heldResult();
+    const response = await discard.POST(await h.request(`/v1/documents/${f.doc}/result/discard`, { method: "POST", body: { resultId: f.result, ...extra } }));
+    expect(response.status).toBe(400);
+    const status = await read.GET(await h.request(`/v1/documents/${f.doc}/result`));
+    expect(await status.json()).toMatchObject({ state: "action-required", canDiscard: true });
+  });
   it("shows an owner the held result and refuses everyone else", async () => {
     const f = await heldResult(), path = `/v1/documents/${f.doc}/result`;
     const r = await read.GET(await h.request(path));
@@ -119,11 +126,11 @@ describe("PRD §21.3 old-period result routes", () => {
     expect((await apply.POST(await h.request(path, { method: "POST", body: { resultId: f.result } }))).status).toBe(200);
     expect(await h.admin.documentProcessing.count({ where: { id: f.processing, state: "completed" } })).toBe(1);
     expect(await h.admin.documentPeriodDecision.count({ where: { processingId: f.processing } })).toBe(1);
-    expect((await discard.POST(await h.request(`/v1/documents/${f.doc}/result/discard`, { method: "POST", body: { resultId: f.result } }))).status).toBe(409);
+    expect((await discard.POST(await h.request(`/v1/documents/${f.doc}/result/discard`, { method: "POST", body: { resultId: f.result, reason: "incorrect-reading" } }))).status).toBe(409);
   });
   it("discards without charging and keeps the original document", async () => {
     const f = await heldResult(2);
-    const r = await discard.POST(await h.request(`/v1/documents/${f.doc}/result/discard`, { method: "POST", body: { resultId: f.result } }));
+    const r = await discard.POST(await h.request(`/v1/documents/${f.doc}/result/discard`, { method: "POST", body: { resultId: f.result, reason: "incorrect-reading" } }));
     expect(r.status).toBe(200);
     expect(await r.json()).toMatchObject({ state: "discarded", canApply: false });
     expect(await h.admin.documentProcessing.findUniqueOrThrow({ where: { id: f.processing } })).toMatchObject({ state: "cancelled", chargedAt: null });
