@@ -34,7 +34,8 @@ test('migration workflow is manual, main-only and owner-only including reruns',(
 });
 test('migration workflow has no deployment/promotion command or credential',()=>{
   const steps=only.jobs.migrate.steps;
-  assert.deepEqual(steps.filter(s=>s.run).map(s=>s.run),['pnpm install --frozen-lockfile','pnpm --filter @autobureau/db exec prisma generate','node scripts/rejection-rollout.mjs']);
+  assert.deepEqual(steps.filter(s=>s.run).map(s=>s.run),['pnpm install --frozen-lockfile','node scripts/staging-migration-trust.mjs','pnpm --filter @autobureau/db exec prisma generate','node scripts/rejection-rollout.mjs']);
+  assert.equal(steps.find(s=>s.run==='node scripts/staging-migration-trust.mjs').env,undefined);
   assert.deepEqual(steps.filter(s=>s.uses).map(s=>s.uses),['actions/checkout@v4','pnpm/action-setup@v4','actions/setup-node@v4']);
   for(const s of steps){if(s.run)assert.ok(!s.run.includes('${{'));if(s.uses==='actions/checkout@v4'){assert.equal(s.with['persist-credentials'],false);assert.equal(s.with.ref,undefined);}}
   const text=readFileSync(join(root,'.github/workflows/staging-rejection-migration.yml'),'utf8');

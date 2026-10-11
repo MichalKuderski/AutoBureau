@@ -2,7 +2,7 @@ import {createHash,X509Certificate} from 'node:crypto';
 import {lstatSync,readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
-// Reviewed public Supabase CA, diagnostic only. No environment/input override.
+// Reviewed public Supabase CA for approved staging tools only. No environment/input override.
 // Source: https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt
 export const diagnosticCaPath=fileURLToPath(new URL('./certificates/supabase-prod-ca-2021.crt',import.meta.url));
 const pemSha256='700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7';

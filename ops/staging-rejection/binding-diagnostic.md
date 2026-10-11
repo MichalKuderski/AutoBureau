@@ -56,8 +56,9 @@ It expires on **2031-04-26 at 10:56:53 UTC** and contains no private key.
 A secret-free workflow step verifies the regular file, both pins, CA capability
 and validity dates. The worker repeats verification during `LOCAL_SETUP`, before
 constructing the driver. A missing, changed, expired or symlinked file fails closed.
-Replacement requires a reviewed code change. OS trust, migration-runner trust and
-stored connection credentials are unaffected.
+Replacement requires a reviewed code change. OS trust and stored connection credentials
+are unaffected. Migration-runner trust is configured separately through
+`scripts/staging-migration-trust.mjs`; the diagnostic does not execute that runner.
 
 This addresses a possible missing trust anchor; it does not establish the cause of
 hosted run 38176377209's generic `TLS_FAILURE`, authenticate its password, or verify

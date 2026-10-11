@@ -70,12 +70,33 @@ claimed here.
 
 ## Enforcement and postchecks
 
-The existing staging connection guard is retained and permits only Supabase project
-`kdqnfruwgocfqwpbpuxo`, database `/postgres`, direct/session port 5432 and the existing
-migration identity. Transaction-pool port 6543 and loopback are refused by the hosted
+The staging connection guard permits only Supabase project `kdqnfruwgocfqwpbpuxo`,
+database `/postgres`, direct host `db.kdqnfruwgocfqwpbpuxo.supabase.co` with `postgres`,
+or the verified session host `aws-0-us-west-2.pooler.supabase.com` with
+`postgres.kdqnfruwgocfqwpbpuxo`, port 5432. Transaction-pool port 6543 and loopback are refused by the hosted
 entrypoint. There is no test-mode/target-bypass switch in that entrypoint. Integration
 tests call the same orchestration module with a separate, explicit loopback-only
 database adapter. No hosted credential is used for tests.
+
+The migration runner reuses the diagnostic's reviewed public CA file and fixed PEM/DER
+pins through `scripts/staging-migration-trust.mjs`. Its secret-free workflow preflight
+checks the file, pins, CA capability and dates. The runner repeats verification before
+constructing Prisma and reconstructs one URL with `sslmode=require`, `sslaccept=strict`,
+the fixed absolute `sslcert` path, one connection and five-second connection/pool limits.
+The pre/postcheck client receives that URL as `datasourceUrl`; the migration subprocess
+receives the identical URL as its process-local `DATABASE_URL`, including when its
+schema is staged in a temporary directory. The stored credential is not changed.
+Unknown/duplicate options, routing overrides, permissive TLS settings, TLS identities
+and arbitrary CA paths are refused before either engine starts. There is no OS-wide
+trust change. The shared CA remains the 1,367-byte official public certificate with
+PEM SHA-256 `700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7`,
+DER fingerprint `807025ad50d4ed219d2c9c7d299c004f824eb00cf7f65afef607d07b72e6cafa`
+and expiry 2031-04-26 10:56:53 UTC. No private key is included.
+
+The query and migration engines use Prisma's native TLS options; libpq's `verify-full`
+is not substituted. CLI output is captured and discarded. Initialization, connection,
+migration and cleanup failures retain the fixed stop message; success is emitted only
+after disconnect completes. No raw driver error or credential is printed.
 
 The preserved upgrade preflight runs in a bounded READ ONLY transaction. The runner
 checks exact pause/reason constraint definitions and validation state, reason column
@@ -137,6 +158,25 @@ All database evidence is local PostgreSQL 16.15, matching the repository's CI im
 Hosted staging reports PostgreSQL 17.6; local evidence does not prove its performance,
 provider availability, backups or restore admission. The test cluster is disposable;
 the original local container and other worktrees are not modified.
+
+The added TLS suite is imported by `scripts/rejection-rollout.test.mjs`, so the existing
+isolated rollout CI job exercises actual Prisma 6.19.3 query and schema engines
+(`c2990dca591cba766e3b7ef5d9e8a84796e47ab7`) against disposable TLS-enabled loopback
+PostgreSQL fixtures. A trusted DNS identity supports a query and a one-file synthetic
+migration with ledger read-back; untrusted roots, expired/mismatched leaves and
+missing/tampered CA files are refused. A test-only permissive hostname control proves
+the refusal mechanism. Packaged entrypoint tests verify identical normalized URL
+forwarding to both real engines, early pin/URL refusal, captured CLI canaries and
+suppressed disconnect errors. Test-only constructors/CLI adapters change routing and
+CA only within temporary fixture trees; no hosted override is provided.
+
+Read-only diagnostic run 38179887258 passed on main `abd85bd7de684f6eee60cc5b2154ed0a0abed109`,
+including the exact 48-entry baseline. That is diagnostic binding evidence, not a hosted
+migration-engine test or phase authorization. Owner-reported backup status is **unknown**
+and restore capability is **unverified**. This establishes neither absence of backups
+nor acceptance of recovery risk. Recovery evidence/decision and separate exact-phase
+approval remain prerequisites. This trust change does not lift any deployment/schema
+hold or authorize a hosted workflow, SQL, migration, merge, preview or production action.
 
 Reproduce the new tests with installed workspace dependencies, an empty isolated
 pgvector PostgreSQL 16 cluster, and database `rollout_baseline` owned by local
