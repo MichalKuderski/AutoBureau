@@ -44,3 +44,23 @@ Local Chromium inspected 20 page/viewport combinations: /, /help, /privacy, /sec
 Reproduce using an existing Playwright installation (no download required):
 `PLAYWRIGHT_MODULE=/absolute/path/to/playwright CHROMIUM_EXECUTABLE=/absolute/path/to/chromium node scripts/help-trust-browser.mjs`.
 The script starts only a loopback server, has no application credentials and writes evidence/screenshots to a temporary directory.
+
+### PR15 onboarding review follow-up
+
+The document-step safety alert now links directly to `/security`, closing the missing
+onboarding entry point identified in review discussion `discussion_r4242052444`.
+The link has descriptive text, an underline and keyboard focus; uploads remain disabled
+and Continue remains available. No authorization, provider or data-handling behavior changes.
+
+The affected web aggregate passed 1,737 tests; the document-step suite passed 11.
+Web typecheck and focused lint passed. The initial aggregate could not bind loopback
+servers under the default sandbox; it passed with explicit local-network permission.
+`scripts/onboarding-security-browser.mjs` checks the real document-step component,
+security page and styles in an isolated loopback fixture with a synthetic draft.
+Tab/Enter navigation to Security status, the footer security link, browser Back,
+disabled upload and no horizontal overflow passed at desktop, mobile, dark and 320px.
+No page errors or external requests occurred. Final mobile and 320px screenshots were
+visually checked for readable wrapping and focus visibility. This fixture excludes
+hosted authentication and does not establish full onboarding E2E coverage.
+
+Copilot quota prevented a new Copilot review; do not record it as a review pass.

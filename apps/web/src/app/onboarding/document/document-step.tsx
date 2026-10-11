@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -85,6 +86,11 @@ export function DocumentStep() {
         Live AI reading is disabled. Document safety, key custody, recovery and hosted
         export and deletion still need verification. Keep your original records and
         existing reminders outside this preview.
+        <span className="mt-2 block">
+          <Link href="/security" className="underline underline-offset-4 hover:text-ink">
+            Read about security and what we can&apos;t see
+          </Link>
+        </span>
       </Alert>
 
       <StepFooter note="This step is optional. You can explore without uploading or forwarding anything.">

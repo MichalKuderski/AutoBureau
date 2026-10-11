@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderScreen } from "@/test/render";
 import { EMPTY_ONBOARDING } from "@/test/onboarding-fixture";
 import { OnboardingDraftProvider } from "../onboarding-provider";
@@ -27,6 +28,14 @@ describe("P0-10 Test A · no present-tense encryption claim", () => {
 });
 
 describe("Preview limits are explicit", () => {
+  it("offers a keyboard-accessible link to security and visibility limits", async () => {
+    renderStep();
+    const link = screen.getByRole("link", { name: "Read about security and what we can't see" });
+    expect(link).toHaveAttribute("href", "/security");
+    await userEvent.setup().tab();
+    expect(link).toHaveFocus();
+  });
+
   it("states the remaining verification and live-AI boundary", () => {
     renderStep();
     expect(screen.getByText(/Live AI reading is disabled/)).toBeInTheDocument();
