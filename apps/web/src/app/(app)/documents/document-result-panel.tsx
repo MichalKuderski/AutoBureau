@@ -15,6 +15,7 @@ export interface DocumentResultView {
     | "deletion-fenced" | "operator-review-required" | "incompatible-result";
   resultPeriodStart: string | null; currentPeriodStart: string; chargedPeriodStart: string | null;
   capacity: { used: number; limit: number } | null; canApply: boolean; canDiscard: boolean;
+  evidence?: { kind: "public-synthetic-deadline"; dueDate: string; page: 1 } | null;
 }
 /** Entitlement months are UTC calendar months (PRD §21.2), so they are named in UTC. */
 const month = (iso: string | null) => iso ? new Date(iso).toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }) : "";
@@ -67,6 +68,22 @@ function ScopedResultPanel({ householdId, documentId }: { householdId: string; d
   return (
     <div ref={retryRef} tabIndex={-1}><section aria-label="Reading" aria-busy={action.pending || result.isFetching} className="mb-4 flex flex-col gap-3">
       {!action.pending && !action.uncertain ? <>
+      {v.evidence ? <section aria-label="Date and source" className="grid gap-3 rounded-lg border border-line p-4 sm:grid-cols-2">
+        <div>
+          <h3 className="text-sm font-medium">Public synthetic deadline notice</h3>
+          <dl><dt className="mt-2 text-xs text-ink-secondary">{v.state === "applied" ? "Filed due date" : "Proposed due date"}</dt>
+            <dd><time dateTime={v.evidence.dueDate}>{new Date(`${v.evidence.dueDate}T00:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", year: "numeric", month: "long", day: "numeric" })}</time></dd></dl>
+          {v.state !== "applied" ? <p className="mt-2 text-xs text-ink-secondary">Check the source before filing. Corrections are not available yet.</p> : null}
+        </div>
+        <details key={v.resultId}>
+          <summary className="cursor-pointer text-sm text-accent">View source text · page 1</summary>
+          <blockquote className="mt-2 border-l-2 border-accent pl-3 text-sm">
+            <p>PELLUM PUBLIC DEADLINE NOTICE</p>
+            <p>Due: <mark>{v.evidence.dueDate}</mark></p>
+          </blockquote>
+          <p className="mt-2 text-xs text-ink-secondary">Source text matches the saved reading. The stored PDF is not opened here.</p>
+        </details>
+      </section> : null}
       {v.state === "action-required" ? (
         <Alert tone="warning" title="Action required">
           We read this document in {original}, but it wasn't filed before that month ended, so it hasn't been counted.

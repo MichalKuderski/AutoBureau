@@ -22,6 +22,30 @@ function serve(initial: DocumentResultView | number, action?: (kind: string) => 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("old-period result panel (PRD §21.3)", () => {
+  it("shows the proposed calendar date beside source text without fetching a file or applying", async () => {
+    const fetchMock = serve({ ...base, evidence: { kind: "public-synthetic-deadline", dueDate: "2028-02-29", page: 1 } });
+    const { container } = renderScreen(<DocumentResultPanel documentId={doc} />);
+    expect(await screen.findByText("February 29, 2028")).toHaveAttribute("datetime", "2028-02-29");
+    const summary = screen.getByText("View source text · page 1");
+    await userEvent.click(summary);
+    expect(container.querySelector("details")).toHaveAttribute("open");
+    expect(container.querySelector("mark")).toHaveTextContent("2028-02-29");
+    expect(screen.getByText(/stored PDF is not opened/i)).toBeInTheDocument();
+    expect(fetchMock.mock.calls.every(([p]) => String(p).endsWith("/result"))).toBe(true);
+  });
+  it("withholds source content when the server has no valid evidence while preserving accounting", async () => {
+    serve({ ...base, state: "applied", canApply: false, canDiscard: false, evidence: null, chargedPeriodStart: base.currentPeriodStart });
+    renderScreen(<DocumentResultPanel documentId={doc} />);
+    expect(await screen.findByText(/filed and counted in october 2026/i)).toBeInTheDocument();
+    expect(screen.queryByText(/View source text/)).not.toBeInTheDocument();
+  });
+  it("labels an applied date as filed without asking the owner to file again", async () => {
+    serve({ ...base, state: "applied", canApply: false, canDiscard: false, chargedPeriodStart: base.currentPeriodStart,
+      evidence: { kind: "public-synthetic-deadline", dueDate: "2028-02-29", page: 1 } });
+    renderScreen(<DocumentResultPanel documentId={doc} />);
+    expect(await screen.findByText("Filed due date")).toBeInTheDocument();
+    expect(screen.queryByText(/Check the source before filing/)).not.toBeInTheDocument();
+  });
   it("explains the held reading and applies it this month only after explicit confirmation", async () => {
     const fetchMock = serve(base, () => Response.json({ ...base, state: "applied", chargedPeriodStart: base.currentPeriodStart, canApply: false, canDiscard: false }));
     renderScreen(<DocumentResultPanel documentId={doc} />);

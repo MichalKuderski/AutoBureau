@@ -1,6 +1,7 @@
 import { currentActor, recordAudit } from "./audit.js";
 import { approveSyntheticResultInTransaction } from "./document-results.js";
 import type { Database, ScopedClient } from "./scoped.js";
+import { canonicalResultEvidence } from "./canonical-result-evidence.js";
 
 /**
  * PRD §21.3 — finished-but-unfiled results. Owner-only. The database is the authority:
@@ -17,6 +18,7 @@ export interface DocumentResultView {
   resultPeriodStart: string | null; currentPeriodStart: string; chargedPeriodStart: string | null;
   capacity: { used: number; limit: number } | null;
   canApply: boolean; canDiscard: boolean; localOnly: true;
+  evidence: ReturnType<typeof canonicalResultEvidence>;
 }
 export class DocumentResultRefused extends Error {
   constructor(readonly reason: "not-found" | "not-actionable" | "capacity" | "unavailable") { super("Document result action refused"); }
@@ -26,6 +28,8 @@ type Row = {
   result_id: string | null; result_period: Date | null; current_start: Date; fenced: boolean; incompatible: boolean;
   work_state: string | null; result_ref: string | null; charged_at: Date | null; work_period: Date | null;
   custody_ok: boolean; decision: string | null; used: bigint; plan_limit: number | null; reviewed: boolean;
+  source_bound: boolean; due_date: Date | null; source_sha256: Uint8Array | null; source_size: number | null;
+  page: number | null; citation_start: number | null; citation_end: number | null;
 };
 function owner() {
   const actor = currentActor();
@@ -47,6 +51,13 @@ async function load(tx: ScopedClient, hh: string, documentId: string) {
       coalesce(r.schema_version<>1 OR r.parser_version<>'canonical-public-deadline-pdf-v1' OR r.redactor_version<>'closed-enums-v1' OR r.source_sha256<>c.sha256, false) AS incompatible,
       w.state AS work_state, w.result_ref, w.charged_at, w.period_start AS work_period,
       coalesce(c.state='ready' AND c.review_at>t.at, false) AS custody_ok,
+      r.due_date, r.source_sha256, c.size_bytes AS source_size, r.page, r.citation_start, r.citation_end,
+      coalesce(r.custody_id=w.custody_id AND r.document_id=c.document_id AND r.object_id=c.object_id
+        AND r.scan_id=c.scan_id AND r.lease_token=w.lease_token
+        AND s.document_id=r.document_id AND s.sha256=r.source_sha256 AND s.size_bytes=c.size_bytes AND s.state='clean'
+        AND a.scan_id=s.id AND a.verdict='clean' AND a.failure='none' AND a.completed_at IS NOT NULL
+        AND a.engine_digest=r.engine_digest AND a.signature_digest=r.signature_digest AND a.sandbox_digest=r.sandbox_digest
+        AND d.sha256=r.source_sha256 AND d.size_bytes=c.size_bytes AND d.mime_type='application/pdf', false) AS source_bound,
       (SELECT x.decision FROM document_period_decisions x WHERE x.processing_id=w.id AND x.household_id=w.household_id) AS decision,
       (SELECT count(*) FROM document_processing o WHERE o.household_id=${hh}::uuid AND o.id IS DISTINCT FROM w.id AND o.period_start=t.start
         AND o.state IN ('reserved','started','indeterminate','completed')) AS used,
@@ -54,30 +65,38 @@ async function load(tx: ScopedClient, hh: string, documentId: string) {
       EXISTS(SELECT 1 FROM document_result_reviews v WHERE v.result_id=r.id AND v.household_id=r.household_id) AS reviewed
     FROM t LEFT JOIN r ON true
     LEFT JOIN document_processing w ON w.id=r.processing_id AND w.household_id=r.household_id
-    LEFT JOIN document_custodies c ON c.id=r.custody_id AND c.household_id=r.household_id`;
+    LEFT JOIN document_custodies c ON c.id=r.custody_id AND c.household_id=r.household_id
+    LEFT JOIN document_scans s ON s.id=r.scan_id AND s.household_id=r.household_id
+    LEFT JOIN document_scan_attempts a ON a.id=r.scan_attempt_id AND a.household_id=r.household_id
+    LEFT JOIN documents d ON d.id=r.document_id AND d.household_id=r.household_id`;
   return row!;
 }
 function view(documentId: string, r: Row): DocumentResultView {
   const used = Number(r.used), limit = r.plan_limit;
   const base = { documentId, resultId: r.result_id, resultPeriodStart: r.result_period?.toISOString() ?? null,
     currentPeriodStart: r.current_start.toISOString(), chargedPeriodStart: null as string | null,
-    capacity: limit === null ? null : { used, limit }, canApply: false, canDiscard: false, localOnly: true as const };
+    capacity: limit === null ? null : { used, limit }, canApply: false, canDiscard: false, localOnly: true as const,
+    evidence: null as ReturnType<typeof canonicalResultEvidence> };
   if (!r.result_id) return { ...base, state: "none" };
   if (r.fenced) return { ...base, state: "deletion-fenced" };
   if (r.decision === "discard") return { ...base, state: "discarded" };
+  const proof = !r.incompatible && r.source_bound ? canonicalResultEvidence(r) : null;
   if (r.work_state === "completed" && r.result_ref === r.result_id && r.reviewed)
-    return { ...base, state: "applied", chargedPeriodStart: r.work_period?.toISOString() ?? null };
-  if (r.incompatible) return { ...base, state: "incompatible-result" };
+    return { ...base, state: "applied", chargedPeriodStart: r.work_period?.toISOString() ?? null,
+      evidence: r.custody_ok ? proof : null };
+  if (!proof) return { ...base, state: "incompatible-result" };
   if (r.work_state !== "started" && r.work_state !== "indeterminate" || r.charged_at || r.result_period?.getTime() !== r.work_period?.getTime())
     return { ...base, state: "operator-review-required" };
   const pending = { ...base, canDiscard: true };
   if (!r.custody_ok) return { ...pending, state: "held" };
   if (limit === null) return { ...pending, state: "operator-review-required" };
+  pending.evidence = proof;
   const room = used < limit, old = r.result_period!.getTime() < r.current_start.getTime();
   if (!room) return { ...pending, state: "capacity-unavailable" };
   return { ...pending, canApply: true, state: old ? "action-required" : "awaiting-review" };
 }
-/** Owner-only, metadata-only view of a document's latest result (no content or citation text). */
+/** Owner-only state and hash-verified PUBLIC synthetic source evidence. No general
+ * extraction or retained-object download. GET and apply share this exact proof. */
 export async function readDocumentResultState(db: Database, hh: string, documentId: string) {
   const userId = owner();
   if (!uuid.test(documentId)) throw new DocumentResultRefused("not-found");
@@ -109,7 +128,7 @@ export async function applyDocumentResult(db: Database, hh: string, documentId: 
       if (current.resultId !== resultId) throw new DocumentResultRefused("not-found");
       if (current.state === "applied") return { ...(await approveSyntheticResultInTransaction(tx, hh, userId, resultId)), state: "applied" as const };
       if (current.state === "capacity-unavailable") throw new DocumentResultRefused("capacity");
-      if (!current.canApply) throw new DocumentResultRefused("not-actionable");
+      if (!current.canApply) throw new DocumentResultRefused(current.state === "discarded" ? "not-actionable" : "unavailable");
       if (current.state === "action-required") {
         await tx.$executeRaw`INSERT INTO document_period_decisions(household_id,processing_id,result_id,owner_id,decision)
           SELECT household_id,processing_id,id,${userId}::uuid,'apply-current-period' FROM document_results WHERE id=${resultId}::uuid AND household_id=${hh}::uuid`;

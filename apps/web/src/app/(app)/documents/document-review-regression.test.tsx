@@ -13,7 +13,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePat
 
 const doc = "document-a", resultId = "result-a";
 const base: DocumentResultView = { documentId: doc, resultId, state: "action-required", resultPeriodStart: "2026-09-01T00:00:00Z",
-  currentPeriodStart: "2026-10-01T00:00:00Z", chargedPeriodStart: null, capacity: { used: 3, limit: 10 }, canApply: true, canDiscard: true };
+  currentPeriodStart: "2026-10-01T00:00:00Z", chargedPeriodStart: null, capacity: { used: 3, limit: 10 }, canApply: true, canDiscard: true,
+  evidence: { kind: "public-synthetic-deadline", dueDate: "2028-02-29", page: 1 } };
 const done = { ...base, state: "applied", chargedPeriodStart: base.currentPeriodStart, canApply: false, canDiscard: false };
 const problem = (status: number) => Response.json({ type: "about:blank", title: "Unavailable", status }, { status });
 function deferred<T>() { let resolve!: (v: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
@@ -65,6 +66,8 @@ it.each([401, 403, 404])("removes cached result data after background %s", async
   await act(async () => { await client.invalidateQueries({ queryKey: ["household", HOUSEHOLD.id] }); });
   expect(client.getQueryData(["household", HOUSEHOLD.id, "document-result", doc])).toBeNull();
   await waitFor(() => expect(screen.queryByText(/read this document in September/)).not.toBeInTheDocument());
+  expect(screen.queryByText("February 29, 2028")).not.toBeInTheDocument();
+  expect(screen.queryByText(/View source text/)).not.toBeInTheDocument();
 });
 
 it("reconciles a committed write with a lost response without replaying it", async () => {
@@ -204,6 +207,7 @@ it("hides and removes a fresh owner cache when the role changes", async () => {
     <DocumentResultPanel documentId={doc} />
   </HouseholdProvider></QueryClientProvider>);
   expect(screen.queryByText(/read this document in September/)).not.toBeInTheDocument();
+  expect(screen.queryByText("February 29, 2028")).not.toBeInTheDocument();
   expect(view.client.getQueryData(["household", HOUSEHOLD.id, "document-result", doc])).toBeUndefined();
 });
 

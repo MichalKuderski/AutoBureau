@@ -201,6 +201,8 @@ describe("PRD §21.3 old-period results", () => {
     if (mode === "fence") await admin.householdDeletion.create({ data: { householdId: f.hh, requestedBy: f.owner, requestedAt: new Date(Date.now() - 20 * 86400000), undoUntil: new Date(Date.now() - 6 * 86400000), state: "fenced", fencedAt: new Date(Date.now() - 3600000), settleUntil: new Date(Date.now() - 2700000) } });
     if (mode === "suspended") await admin.user.update({ where: { id: f.owner }, data: { status: "suspended" } });
     if (mode === "custody-expired") await admin.documentCustody.update({ where: { id: f.custody.id }, data: { reviewAt: new Date(0) } });
+    if (mode === "suspended") await expect(state(f)).rejects.toThrow();
+    else expect(await state(f)).toMatchObject({ evidence: null });
     expect(await reason(apply(f))).not.toBe("ok");
     if (mode !== "custody-expired") expect(await reason(discard(f))).not.toBe("ok");
     else {
