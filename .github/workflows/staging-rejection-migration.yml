@@ -44,6 +44,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Verify reviewed migration public CA
+        run: node scripts/staging-migration-trust.mjs
       - run: pnpm --filter @autobureau/db exec prisma generate
         env:
           DATABASE_URL: postgresql://unused:unused@127.0.0.1:5432/unused

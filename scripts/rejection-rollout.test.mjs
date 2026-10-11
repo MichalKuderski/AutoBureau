@@ -1,5 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 import {plan,execute} from './rejection-rollout-plan.mjs';
+import './rejection-rollout-tls.test.mjs';
 const manifest=JSON.parse(readFileSync(new URL('./rejection-rollout-manifest.json',import.meta.url)));
 const sha='a'.repeat(40);const phases=Object.keys(manifest.phases);
 function fixture(phase){const i=phases.indexOf(phase),before={...manifest.baseline},local={...manifest.baseline};
