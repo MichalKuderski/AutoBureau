@@ -53,7 +53,7 @@ const refused = (p: Promise<unknown>) => p.then(() => "ok", e => String(e instan
 /** Hold the existing DB guard lock until both real worker claims are waiting on it.
  * Old code reads absence before blocking at INSERT; fixed code blocks before its read.
  * No query results are mocked, and the administrator only controls test scheduling. */
-async function simultaneousClaims(hh: string, deletionId: string, whileBlocked?: () => Promise<void>) {
+async function simultaneousOperations<T>(hh: string, role: string, operation: () => Promise<T>, whileBlocked?: () => Promise<void>) {
   let release!: () => void, ready!: (pid: number) => void;
   const released = new Promise<void>(resolve => { release = resolve; });
   const locked = new Promise<number>(resolve => { ready = resolve; });
@@ -65,10 +65,7 @@ async function simultaneousClaims(hh: string, deletionId: string, whileBlocked?:
   }, { timeout: 10_000 });
   // Propagate holder setup failure rather than waiting forever for readiness.
   const pid = await Promise.race([locked, holder.then(() => { throw new Error("Claim gate ended before ready"); })]);
-  const outcomes = Promise.allSettled([
-    claimJournalRetirement(retentionDb, hh, deletionId),
-    claimJournalRetirement(retentionDb, hh, deletionId),
-  ]);
+  const outcomes = Promise.allSettled([operation(), operation()]);
   try {
     const deadline = Date.now() + 2_000;
     let waiting = 0;
@@ -77,7 +74,7 @@ async function simultaneousClaims(hh: string, deletionId: string, whileBlocked?:
         FROM pg_locks w JOIN pg_stat_activity a ON a.pid=w.pid
         JOIN pg_locks h ON h.pid=${pid} AND h.granted AND h.locktype='advisory'
           AND (w.database,w.classid,w.objid,w.objsubid)=(h.database,h.classid,h.objid,h.objsubid)
-        WHERE w.locktype='advisory' AND NOT w.granted AND a.usename='app_retention_worker'`;
+        WHERE w.locktype='advisory' AND NOT w.granted AND a.usename=${role}`;
       waiting = row!.n;
       if (waiting === 2) break;
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -91,8 +88,32 @@ async function simultaneousClaims(hh: string, deletionId: string, whileBlocked?:
   }
   return outcomes;
 }
+const simultaneousClaims = (hh: string, deletionId: string, whileBlocked?: () => Promise<void>) =>
+  simultaneousOperations(hh, "app_retention_worker", () => claimJournalRetirement(retentionDb, hh, deletionId), whileBlocked);
 
 describe("ADR-019 retirement planning (no purge)", () => {
+  it("serializes simultaneous independent observations without duplicating retained evidence", async () => {
+    const f = await sealed(), other = await sealed();
+    const plan = await planJournalRetirement(retentionDb, f.hh, f.deletionId);
+    const otherPlan = await planJournalRetirement(retentionDb, other.hh, other.deletionId);
+    const outcomes = await simultaneousOperations(f.hh, "app_deletion_verifier",
+      () => observeJournalRetention(verifyDb, f.hh, plan.runId), async () => {
+        expect(await observeJournalRetention(verifyDb, other.hh, otherPlan.runId)).toHaveLength(11);
+      });
+    expect(outcomes.map(o => o.status)).toEqual(["fulfilled", "fulfilled"]);
+    const seen = outcomes.map(o => { if (o.status === "rejected") throw o.reason; return o.value; });
+    expect(seen[0]).toEqual(seen[1]);
+    expect(seen[0]).toHaveLength(11);
+    expect(await admin.journalRetirementObservation.count({ where: { householdId: f.hh, runId: plan.runId } })).toBe(11);
+  });
+  it("returns the original observation on retry even when retained counts have changed", async () => {
+    const f = await sealed(), plan = await planJournalRetirement(retentionDb, f.hh, f.deletionId);
+    const original = await observeJournalRetention(verifyDb, f.hh, plan.runId);
+    const rows = await admin.journalRetirementObservation.findMany({ where: { householdId: f.hh }, orderBy: { classId: "asc" } });
+    await admin.outboxEvent.create({ data: { householdId: f.hh, eventType: "document.uploaded", aggregateType: "document", aggregateId: randomUUID(), payload: {} } });
+    expect(await observeJournalRetention(verifyDb, f.hh, plan.runId)).toEqual(original);
+    expect(await admin.journalRetirementObservation.findMany({ where: { householdId: f.hh }, orderBy: { classId: "asc" } })).toEqual(rows);
+  });
   it("serializes simultaneous initial claims and leaves another household unblocked", async () => {
     const f = await sealed(), other = await sealed();
     const outcomes = await simultaneousClaims(f.hh, f.deletionId, async () => {

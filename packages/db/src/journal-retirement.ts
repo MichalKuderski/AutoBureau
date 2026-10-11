@@ -94,6 +94,9 @@ export async function planJournalRetirement(db: Database, hh: string, deletionId
 /** Independent verifier: counts what is RETAINED per class (identifiers only) after planning. */
 export async function observeJournalRetention(db: Database, hh: string, runId: string) {
   return runAsSystem("Independently observe retained journal evidence", () => db.withHousehold(hh, async tx => {
+    // Serialize the read-before-insert snapshot with the existing DB guard lock.
+    // Concurrent verifiers must reuse immutable observations, not race their unique key.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended('retirement:'||${hh}::uuid::text,0))`;
     const out: Array<{ classId: RetirementClass; retainedRows: number }> = [];
     for (const classId of CLASSES) {
       let total = 0;
