@@ -2,8 +2,9 @@
 
 Status: local synthetic experiment, unpublished. No ADR018 amendment, live gateway,
 transport, provider call, credential, payment or new application caller. OpenAI
-remains selected; neither candidate model was evaluated. The decision on keeping
-wording local versus permitting reviewed contextual egress is still pending.
+remains selected; neither candidate model was evaluated. The owner subsequently selected a privacy-first hybrid design direction; see
+[hybrid threat model](../../docs/engineering/proposals/adr018-projection/hybrid-threat-model.md).
+No particular contextual projection or transmission is thereby approved.
 
 ## Reviewable pieces and invocation
 
@@ -68,7 +69,8 @@ are not an eval corpus, a measured model score, safe redaction rate or F7 comple
 No acceptance threshold or policy is weakened. Current ADR018 provider payload
 remains fixed enums and live calls remain disabled.
 
-Meaningful next design depends on the owner's architecture/privacy choice:
+The selected privacy-first hybrid combines the following paths conditionally,
+without activating either a new provider payload or a new local engine:
 
 1. If document wording must remain local, retain the useful local validation/
    reference tests and invest in local semantic extraction and review coverage.
@@ -84,5 +86,6 @@ Meaningful next design depends on the owner's architecture/privacy choice:
 Product rules are still restricted to printed observations: renewal/grace windows,
 deposit eligibility/return triggers, warranty lifetime/duration computations and
 subscription recurrence/cancel/refund semantics remain unresolved. No additional
-outbound format, service integration or generic prototype is justified before the
-owner's choice. PR13 and its deployed head remain untouched.
+outbound format or service integration is authorized by the architecture direction
+alone. The next work is the named evidence and design gates in the hybrid threat
+model. PR13 and its deployed head remain untouched.
