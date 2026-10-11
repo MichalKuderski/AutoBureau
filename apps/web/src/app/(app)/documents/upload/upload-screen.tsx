@@ -31,7 +31,7 @@ export function UploadScreen() {
     <>
       <PageHeader
         title="Add documents"
-        description="However it reaches us, we'll read it, file it, and watch the dates."
+        description="Private preview: use synthetic sample data only. Do not upload or forward real sensitive documents."
       />
 
       <div className="grid gap-6 lg:grid-cols-[1.15fr_1fr]">
@@ -58,7 +58,7 @@ export function UploadScreen() {
               <CardTitle>Forward it instead</CardTitle>
               <CardDescription>
                 {alias
-                  ? "The one that keeps working when you're busy — set it once and forget it."
+                  ? "For approved synthetic testing only. Delivery and processing still need verification."
                   : "Not set up for this household yet."}
               </CardDescription>
             </CardHeader>

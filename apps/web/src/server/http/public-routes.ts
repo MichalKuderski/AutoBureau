@@ -8,13 +8,16 @@
  * reviewable act, and a test pins the list so an addition cannot pass unnoticed.
  */
 
-/** D3 verbatim: the pages a signed-out person is meant to reach. */
+/** Session-entry pages plus explicitly reviewed, static public information pages. */
 const PUBLIC_PAGES = ["/", "/sign-in", "/sign-up", "/forgot-password",
   // The recovery link's landing page. Reached from an inbox with no session; the one-use
   // token hash in its URL is the credential, redeemed only by the loopback-guarded
   // completion endpoint. The page itself grants nothing and renders "unavailable" unless
   // the synthetic local account mount is active.
-  "/auth/recovery"] as const;
+  "/auth/recovery",
+  // Static help/status notices: no session, household reads or mutation handlers.
+  // Exact paths only; nested paths and every data endpoint remain protected.
+  "/help", "/privacy", "/security", "/terms"] as const;
 
 /**
  * The endpoints that establish or repair a session.

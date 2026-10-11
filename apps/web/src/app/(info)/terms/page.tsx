@@ -1,0 +1,11 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+export const metadata: Metadata = { title: "Terms status" };
+export default function Page() { return <>
+<h1 className="text-3xl sm:text-4xl">Terms status</h1><p className="mt-4 max-w-2xl text-lg text-ink-secondary">Final terms of service are not yet published. This page is not a reviewed legal agreement.</p>
+<div className="mt-8 max-w-3xl space-y-5">
+<section className="rounded-lg border border-line bg-surface p-6"><h2 className="text-xl">Development preview</h2><p className="mt-3 leading-relaxed text-ink-secondary">Use synthetic sample data only. Planned features and prices may change; live paid plans and bank connections are unavailable. Do not use the preview for decisions that depend on a correct deadline or a complete record.</p></section>
+<section className="rounded-lg border border-line bg-surface p-6"><h2 className="text-xl">Your decisions stay yours</h2><p className="mt-3 leading-relaxed text-ink-secondary">Pellum does not provide legal, medical or financial advice, move money or file paperwork on your behalf. Verify important information with the original source or an appropriate professional.</p></section>
+<section className="rounded-lg border border-line bg-surface p-6"><h2 className="text-xl">Before public launch</h2><p className="mt-3 leading-relaxed text-ink-secondary">The operator identity, eligible markets and ages, account rules, payment and cancellation terms, content rights, dispute terms and support contact require owner and legal review. No jurisdiction or contractual policy is implied by this draft status page.</p></section>
+<section className="rounded-lg border border-line bg-surface p-6"><h2 className="text-xl">Copyright and your documents</h2><p className="mt-3 leading-relaxed text-ink-secondary">The Pellum name on a page does not transfer ownership of your documents. Only use approved synthetic fixtures in the preview; permissions for third-party material and the service’s content license must be settled in the final terms.</p></section>
+</div><Link href="/help" className="mt-8 inline-block font-medium text-accent underline underline-offset-4">Browse help and frequently asked questions</Link></>; }

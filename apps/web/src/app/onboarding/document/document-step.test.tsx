@@ -1,20 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderScreen } from "@/test/render";
 import { EMPTY_ONBOARDING } from "@/test/onboarding-fixture";
 import { OnboardingDraftProvider } from "../onboarding-provider";
 import { DocumentStep } from "./document-step";
 
-/**
- * Blueprint P0-10.
- *
- * "Identity numbers are stored encrypted" was present tense for a control with no
- * implementation anywhere in the repository — no code writes to `item_secrets`. This
- * is the same claim as the dedicated upload screen's, on the one screen where the
- * dropzone underneath it is still the live, interactive path (P0-07 deliberately left
- * onboarding's fake "documents received" toast alone, and this task does not touch it
- * either — only the encryption sentence in the Alert changes here).
- */
+// Preview onboarding must not invite real uploads or promise unverified data handling.
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), back: vi.fn() }),
@@ -35,16 +27,24 @@ describe("P0-10 Test A · no present-tense encryption claim", () => {
   });
 });
 
-describe("P0-10 Test B · the replacement is accurate commitment tense", () => {
-  it("states encryption as a plan, not a running control", () => {
+describe("Preview limits are explicit", () => {
+  it("offers a keyboard-accessible link to security and visibility limits", async () => {
     renderStep();
-    expect(screen.getByText(/the plan is to encrypt them before they're ever stored/i)).toBeInTheDocument();
-    expect(screen.getByText(/that protection isn't built yet/i)).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: "Read about security and what we can't see" });
+    expect(link).toHaveAttribute("href", "/security");
+    await userEvent.setup().tab();
+    expect(link).toHaveFocus();
   });
 
-  it("still says full identity numbers are never shown — that part was already true", () => {
+  it("states the remaining verification and live-AI boundary", () => {
     renderStep();
-    expect(screen.getByText(/identity numbers are\s*\n?\s*never shown in full/i)).toBeInTheDocument();
+    expect(screen.getByText(/Live AI reading is disabled/)).toBeInTheDocument();
+    expect(screen.getByText(/still need verification/)).toBeInTheDocument();
+  });
+
+  it("discourages real sensitive paperwork", () => {
+    renderStep();
+    expect(screen.getByText(/Do not add real sensitive paperwork/)).toBeInTheDocument();
   });
 
   it("invents no timeline or already-underway claim", () => {
@@ -54,11 +54,11 @@ describe("P0-10 Test B · the replacement is accurate commitment tense", () => {
   });
 });
 
-describe("P0-10 Test E · unrelated onboarding content is unaffected", () => {
-  it("still renders the activation heading and deletion note", () => {
+describe("Optional onboarding remains usable", () => {
+  it("offers exploration without a document and avoids a deletion promise", () => {
     renderStep();
-    expect(screen.getByRole("heading", { name: /one document is the fastest start/i })).toBeInTheDocument();
-    expect(screen.getByText(/delete the document and everything we derived from it goes too/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /explore without uploading a document/i })).toBeInTheDocument();
+    expect(screen.queryByText(/delete the document and everything we derived from it goes too/i)).not.toBeInTheDocument();
   });
 
   it("still offers the continue path", () => {
@@ -83,7 +83,7 @@ describe("P0-07 · onboarding never reports a document it did not receive", () =
 
   it("says sending is unavailable rather than inviting a send", () => {
     renderStep();
-    expect(screen.getByText(/sending one isn't available yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/uploads are not available here yet/i)).toBeInTheDocument();
   });
 
   it("makes no present-tense claim that a document was received or is being read", () => {
