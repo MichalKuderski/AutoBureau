@@ -20,7 +20,7 @@ Do not dispatch it as part of this PR, approve a preview, or alter the migration
   database `postgres`. Other hosts, transaction-pool port 6543, unknown options,
   duplicate options and permissive TLS settings fail before connection.
 - Certificate-verified TLS, one connection, five-second connect/pool limits.
-- Successful authentication and an explicitly read-only PostgreSQL transaction.
+- An explicit connection attempt, then a separately confirmed read-only PostgreSQL transaction.
 - Database `postgres`, session/current role `postgres`, login capability.
 - All 48 baseline migration names/checksums and successful completion state, with
   no unexpected or rolled-back entry; local migration files must match the manifest.
@@ -57,10 +57,19 @@ SQL and code boundary therefore matter; no role/security configuration is change
 Dependencies and Prisma generation run before the secret-bearing step. That final
 step passes only a reconstructed validated URL and `NODE_ENV` to a fixed child, with
 no inherited preload/debug flags. Child stdout/stderr are discarded at the OS pipe
-boundary, including native failures and disconnect errors. IPC accepts only ordered
-integers; exceptions and received messages are never printed. The parent emits only
-seven fixed `PASS`/`FAIL` lines. A failure marks unreached checks `FAIL`; it does not
-claim each independently failed. `TRANSACTION_COMPLETED` must pass for overall success.
+boundary, including native failures and disconnect errors. IPC accepts only ordered fixed-length integer events with validated transitions and
+closed reason codes; exceptions and received messages are never printed. The parent
+emits fixed results for `AUTHORITY`, `ROUTING`, `LOCAL_SETUP`, `CONNECT`,
+`READ_ONLY_CONFIRMATION`, `DATABASE_ROLE`, `MIGRATION_CHECKSUMS`, `SCHEMA_POSTURE`,
+`TRANSACTION_COMPLETED`, `DISCONNECT` and `PROCESS_COMPLETION`.
+
+Each stage is `PASS`, `FAIL` or `NOT_RUN`. Unreached stages remain `NOT_RUN`.
+Completed stages remain passed after a later crash or watchdog failure. An active
+stage fails if its worker crashes; a crash between stages fails process completion
+without pretending the next stage started. Invalid IPC cannot supply arbitrary log
+text. Clean worker exit and all stage passes are required for overall success.
+`TRANSACTION_COMPLETED` passes only after Prisma resolves the read-only transaction;
+disconnect failure separately prevents overall success.
 No connection strings, raw errors, query rows, secret hashes or artifacts are emitted.
 GitHub's platform secret masking remains an additional layer for the step environment.
 
@@ -68,17 +77,71 @@ This is not isolation against compromised reviewed dependencies or a malicious
 runner; the driver must consume the existing credential to authenticate. It does not
 retrieve the credential for the operator or agent, or expand persistent access.
 
+## Fixed failure categories
+
+`LOCAL_SETUP` includes local inventory reads/hashes and generated-client loading and
+construction. `CONNECT` calls Prisma `$connect()` explicitly. Native engine startup
+may still occur inside `$connect()`; a generic failure there remains `UNKNOWN`, not
+an invented authentication diagnosis. Transaction acquisition, setup statements and
+server read-only confirmation belong to `READ_ONLY_CONFIRMATION`.
+
+Only own data properties `errorCode`/`code` are considered. Conflicting, inherited,
+unknown or accessor properties map to `UNKNOWN`. Messages, causes, URLs, provider
+metadata and query rows are never parsed or forwarded. The mapping is pinned to
+[Prisma ORM v6's error contract](https://www.prisma.io/docs/orm/v6/reference/error-reference):
+
+| Structured code | Fixed category |
+| --- | --- |
+| P1000 | AUTH_REJECTED |
+| P1001 | UNREACHABLE |
+| P1002 | SERVER_TIMEOUT |
+| P1003 | DATABASE_MISSING |
+| P1008 | OPERATION_TIMEOUT |
+| P1010 | ACCESS_DENIED |
+| P1011 | TLS_FAILURE |
+| P1017 | CONNECTION_CLOSED |
+| P2024 | POOL_TIMEOUT |
+| P2028 | TRANSACTION_FAILURE |
+
+`UNREACHABLE` does not distinguish DNS from network failure. `SERVER_TIMEOUT` is
+not a claim that DNS failed. `TRANSACTION_FAILURE` does not mean authentication
+failed or necessarily a timeout. Unsupported/raw-query errors stay `UNKNOWN`.
+Locally detected invariant failures have fixed `LOCAL_SETUP_FAILURE`,
+`READ_ONLY_FAILURE`, `IDENTITY_MISMATCH`, `LEDGER_MISMATCH` or `SCHEMA_MISMATCH`.
+The supervisor uses `WORKER_FAILURE`, `PROTOCOL_FAILURE`, `WATCHDOG_TIMEOUT` or
+`REPORTED_FAILURE` for process completion. No unknown string is printed as a category.
+
+The first hosted run (38167856233) reported routing pass and a generic authentication
+failure in about one second. That earlier marker combined local startup, connection
+and read-only setup. Its output cannot establish a wrong password or another root
+cause. The refinement does not authorize another hosted attempt; the prior one-run
+approval is consumed.
+
+A local reproduction on 2026-10-11 ran the original packaged CLI/worker against the
+synthetic baseline using the same local-only constructor adapter described below.
+All seven original results passed in about 150ms. Thus the hosted failure was not
+reproduced locally; this does not verify hosted networking, TLS, credentials or
+GitHub runner-specific initialization. No hosted root cause has been established.
+
 ## Local verification
 
 `node scripts/staging-binding.test.mjs` exercises routing, authority, workflow
-boundaries, hostile child output/IPC, process failure and the supervisor timeout.
+boundaries, hostile child output/IPC, partial progress, structured error mapping,
+local setup failures, process crashes and the supervisor timeout.
 `DIAGNOSTIC_TEST_DATABASE_URL` must name a **fresh disposable loopback** PostgreSQL
 database `postgres`, user `postgres`. Run
 `node scripts/staging-binding.integration.test.mjs` against that fixture only.
 The integration suite constructs the 48-migration baseline locally and deliberately
 attempts writes to prove server enforcement, with a writable negative control. It
-also covers statement/lock/transaction timeouts, ledger/RLS drift, and real driver
-authentication-error suppression. Destroy the disposable service after testing.
+also covers statement/lock/transaction timeouts and ledger/RLS drift. Packaged tests
+copy the actual CLI/worker/scripts and inventory unchanged into a temporary tree.
+A test-only dependency adapter substitutes the generated-client constructor URL with
+a synthetic loopback URL, while using the real Prisma driver. This exercises the
+actual process, module resolution, restricted environment and result path without
+adding any hosted override. It is not a test of Supabase routing/TLS connectivity.
+The packaged tests cover startup/import/constructor/inventory failures, actual
+P1000 authentication and P1011 TLS errors, identity mismatch, transaction completion
+and disconnect failure, and suppression of synthetic canary output. Destroy the disposable service after testing.
 CI uses a separate local PostgreSQL 16 service and no hosted secret/environment.
 The hosted project is PostgreSQL 17; CI is not hosted binding evidence.
 
