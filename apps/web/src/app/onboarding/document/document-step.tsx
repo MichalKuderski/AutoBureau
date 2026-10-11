@@ -29,11 +29,10 @@ export function DocumentStep() {
 
   return (
     <>
-      <h1 className="text-2xl leading-tight sm:text-3xl">One document is the fastest start</h1>
+      <h1 className="text-2xl leading-tight sm:text-3xl">Explore without uploading a document</h1>
       <p className="mt-2 max-w-xl text-ink-secondary text-pretty">
-        Sending one isn&apos;t available yet. When it is, we&apos;ll read it, file it under the
-        right person, and pull out the dates that matter — that is the step that turns a claim
-        into a real date.
+        Uploads are not available here yet. Continue without a document and use synthetic
+        sample data while you explore. Do not add real sensitive paperwork.
       </p>
 
       {suggestions.length > 0 ? (
@@ -82,14 +81,13 @@ export function DocumentStep() {
        * accepted but not built — no code writes to `item_secrets`). Restated as the
        * design commitment it actually is, without implementing anything here.
        */}
-      <Alert tone="info" title="What happens to it" className="mt-6">
-        We read it for dates, amounts, and who it belongs to. Identity numbers are never
-        shown in full, and the plan is to encrypt them before they're ever stored — that
-        protection isn't built yet. Delete the document and everything we derived from it
-        goes too.
+      <Alert tone="info" title="Before you add documents" className="mt-6">
+        Live AI reading is disabled. Document safety, key custody, recovery and hosted
+        export and deletion still need verification. Keep your original records and
+        existing reminders outside this preview.
       </Alert>
 
-      <StepFooter note="You can forward documents by email later — that's the channel that keeps working when you're busy.">
+      <StepFooter note="This step is optional. You can explore without uploading or forwarding anything.">
         <Button variant="primary" onClick={() => router.push("/onboarding/ready")}>
           Continue
         </Button>

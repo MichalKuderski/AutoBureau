@@ -36,6 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 const SECONDARY_ITEMS: NavItem[] = [
+  { href: "/help", label: "Help & FAQ", icon: Icon.Documents },
   { href: "/notifications", label: "Notifications", icon: Icon.Bell, badgeKey: "unread" },
   { href: "/settings", label: "Settings", icon: Icon.Settings },
 ];

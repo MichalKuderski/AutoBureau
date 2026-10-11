@@ -22,6 +22,7 @@ describe("A4 · the public surface is exactly this and nothing more", () => {
         "/auth/recovery",
         "/auth/refresh",
         "/forgot-password",
+        "/help", "/privacy", "/security", "/terms",
         "/icon.svg",
         "/manifest.webmanifest",
         "/sign-in",
@@ -43,6 +44,7 @@ describe("A4 · the public surface is exactly this and nothing more", () => {
   });
 
   it.each([
+    "/help/private", "/privacy/export", "/security/admin", "/terms/accept",
     "/dashboard",
     "/obligations",
     "/obligations/o-1",

@@ -1,0 +1,11 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+export const metadata: Metadata = { title: "Privacy preview notice" };
+export default function Page() { return <>
+<h1 className="text-3xl sm:text-4xl">Privacy preview notice</h1><p className="mt-4 max-w-2xl text-lg text-ink-secondary">This is a development-status notice, not a complete privacy policy.</p>
+<div className="mt-8 max-w-3xl space-y-5">
+<section className="rounded-lg border border-line bg-surface p-6"><h2 className="text-xl">Use sample data only</h2><p className="mt-3 leading-relaxed text-ink-secondary">Do not upload real sensitive documents or another person’s information. The preview can process account details and test records you enter; synthetic mode does not make your account details anonymous.</p></section>
+<section className="rounded-lg border border-line bg-surface p-6"><h2 className="text-xl">AI and integrations</h2><p className="mt-3 leading-relaxed text-ink-secondary">Live AI document extraction, payments and bank connections are disabled in this preview. Offline experiments and sandbox checks do not authorize sending your personal documents to a model or financial provider.</p></section>
+<section className="rounded-lg border border-line bg-surface p-6"><h2 className="text-xl">Export, deletion and retention</h2><p className="mt-3 leading-relaxed text-ink-secondary">Hosted export and deletion are not ready for real-data use. Retention, backup removal and the complete list of data recipients still need operational and legal review; no deletion deadline is promised here.</p></section>
+<section className="rounded-lg border border-line bg-surface p-6"><h2 className="text-xl">Before real-data use</h2><p className="mt-3 leading-relaxed text-ink-secondary">The operator identity, privacy contact, applicable markets, data purposes and recipients, rights process and retention details must be published and reviewed. A full privacy policy is not yet available. Ask your preview coordinator about test-account questions; do not send sensitive files.</p></section>
+</div><Link href="/help" className="mt-8 inline-block font-medium text-accent underline underline-offset-4">Browse help and frequently asked questions</Link></>; }

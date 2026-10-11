@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PublicFooter } from "@/components/public/public-footer";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { Icon } from "@/components/ui/icon";
 
@@ -39,7 +40,8 @@ export function LandingScreen() {
           <BrandMark className="size-8 shrink-0 text-accent" />
           <span className="font-serif text-lg font-semibold tracking-tight">Pellum</span>
 
-          <nav aria-label="Account" className="ml-auto flex items-center gap-1.5">
+          <nav aria-label="Account" className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
+            <Link href="/help" className="rounded-md px-3 py-2 text-sm font-medium hover:bg-surface-sunken">Help</Link>
             <Link
               href="/sign-in"
               className="rounded-md px-3 py-2 text-sm font-medium text-ink-secondary transition-colors hover:bg-surface-sunken hover:text-ink"
@@ -84,7 +86,7 @@ export function LandingScreen() {
             </div>
 
             <p className="mt-4 text-sm text-ink-tertiary text-pretty">
-              Private preview. No card needed. No service is cancelled or paperwork filed on your behalf.
+              Private preview. Use synthetic sample data only; do not upload real sensitive documents. Live AI reading, payments and bank connections are disabled.
             </p>
           </div>
         </section>
@@ -117,7 +119,7 @@ export function LandingScreen() {
         <section aria-labelledby="what-you-see" className="py-14 sm:py-20">
           <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
             <h2 id="what-you-see" className="text-2xl sm:text-3xl">
-              A clearer picture of what matters
+              Our goal: a clearer picture of what matters
             </h2>
             <div className="mt-8 grid gap-5 sm:grid-cols-3">
               {BENEFITS.map(({ title, body, Glyph }) => (
@@ -141,8 +143,7 @@ export function LandingScreen() {
                 What Pellum will never do
               </h2>
               <p className="mt-3 text-ink-secondary text-pretty">
-                This product holds some of the most sensitive paper a family owns. Every line below
-                is a decision we made on purpose, not a feature we haven&apos;t got to yet.
+                These are our product commitments. This preview is not yet ready for sensitive family paperwork; operational and legal checks are still in progress.
               </p>
             </div>
             <ul className="flex flex-col gap-3">
@@ -207,9 +208,9 @@ export function LandingScreen() {
 
         <section className="border-t border-line bg-surface py-14 sm:py-20">
           <div className="mx-auto w-full max-w-2xl px-4 text-center sm:px-6">
-            <h2 className="text-2xl sm:text-3xl">Nothing lapses quietly</h2>
+            <h2 className="text-2xl sm:text-3xl">Make room for the next thing</h2>
             <p className="mt-3 text-ink-secondary text-pretty">
-              That is the whole promise. Everything else this product does is in service of it.
+              Explore with sample records, and keep your existing reminders while Pellum is being tested.
             </p>
             <Link
               href="/sign-up"
@@ -221,20 +222,7 @@ export function LandingScreen() {
         </section>
       </main>
 
-      <footer className="border-t border-line py-8">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 text-sm text-ink-tertiary sm:px-6">
-          <p className="text-pretty">
-            Pellum is a private development preview. Document processing, reminders, billing
-            and data export are still being implemented and verified. Use sample data during testing.
-          </p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span>© {new Date().getFullYear()} Pellum</span>
-            <Link href="/sign-in" className="underline-offset-4 hover:text-ink hover:underline">
-              Sign in
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }
@@ -266,8 +254,8 @@ const BENEFITS = [
     Glyph: Icon.Wallet,
   },
   {
-    title: "Every fact shows its source",
-    body: "Tap any date and see the document it came from. When we're not sure, we ask instead of guessing.",
+    title: "Source-backed facts",
+    body: "We’re building a way to check a date against its source. Source opening and correction are still being tested; they are not available for every record.",
     Glyph: Icon.Documents,
   },
 ];
